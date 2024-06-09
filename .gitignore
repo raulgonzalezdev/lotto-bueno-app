@@ -1,6 +1,5 @@
 # Excluir archivos y carpetas específicos
 data/
-lottobueno_backup.dump
 .env
 __pycache__/
 .DS_Store

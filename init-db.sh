@@ -14,12 +14,7 @@ wait-for-it.sh "$PG_HOST" "$PG_PORT" --timeout=60 --strict -- echo "Postgres is 
 echo "PostgreSQL is available. Proceeding with initialization."
 
 # Crear archivo .env
-mkdir -p /app
-echo "POSTGRES_DB=lottobueno" > /app/.env
-echo "POSTGRES_USER=lottobueno" >> /app/.env
-echo "POSTGRES_PASSWORD=lottobueno" >> /app/.env
-echo "DATABASE_URL=postgresql://lottobueno:lottobueno@postgres:5432/lottobueno" >> /app/.env
-echo "REDIS_URL=redis://localhost:6380/0" >> /app/.env
+
 
 # Comprobación de la existencia de la base de datos
 if [ "$(PGPASSWORD=$DB_PASS psql -U "$DB_USER" -d postgres -h "$PG_HOST" -p "$PG_PORT" -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'")" == '1' ]; then

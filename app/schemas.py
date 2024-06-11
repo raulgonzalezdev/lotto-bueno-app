@@ -120,3 +120,17 @@ class UserList(UserBase):
 
     class Config:
         orm_mode = True
+        
+class CentroVotacionList(BaseModel):
+    id: int
+    codificacion_vieja_cv: str
+    codificacion_nueva_cv: str
+    condicion: str
+    codigo_estado: int
+    codigo_municipio: int
+    codigo_parroquia: int
+    nombre_cv: str
+    direccion_cv: str
+
+    class Config:
+        orm_mode = True

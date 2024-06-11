@@ -1,17 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 
-const ChatComponent = ({ 
-  production, 
-  settingConfig, 
-  APIHost, 
-  RAGConfig, 
-  setCurrentPage, 
-  isAdmin, 
-  toggleAdmin, 
-  title, 
-  subtitle, 
-  imageSrc 
+const ChatComponent = ({
+  production,
+  settingConfig,
+  APIHost,
+  RAGConfig,
+  setCurrentPage,
+  isAdmin,
+  toggleAdmin,
+  title,
+  subtitle,
+  imageSrc
 }) => {
   const [electores, setElectores] = useState([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -36,7 +36,7 @@ const ChatComponent = ({
     fetchEstados();
     fetchElectores();
     fetchTotalElectores();
-  }, []);
+  }, [codigoEstado, codigoMunicipio, codigoParroquia, codigoCentroVotacion, currentElectorPage]);
 
   const fetchEstados = async () => {
     try {
@@ -90,7 +90,7 @@ const ChatComponent = ({
         ...(codigoParroquia && { codigo_parroquia: codigoParroquia }),
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
-  
+
       const response = await fetch(`${APIHost}/electores/?${query}`);
       const data = await response.json();
       setElectores(Array.isArray(data) ? data : []);
@@ -99,7 +99,7 @@ const ChatComponent = ({
       setElectores([]);
     }
   };
-  
+
   const fetchTotalElectores = async () => {
     try {
       const query = new URLSearchParams({
@@ -108,8 +108,8 @@ const ChatComponent = ({
         ...(codigoParroquia && { codigo_parroquia: codigoParroquia }),
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
-  
-      const response = await fetch(`${APIHost}/electores/total?${query}`);
+
+      const response = await fetch(`${APIHost}/total/electores?${query}`);
       const total = await response.json();
       setTotalPages(Math.ceil(total / electoresPerPage));
     } catch (error) {
@@ -117,7 +117,18 @@ const ChatComponent = ({
       setTotalPages(1);
     }
   };
-  
+
+  const fetchElectorDetail = async (numero_cedula) => {
+    if (!APIHost) return;
+    try {
+      const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
+      const data = await response.json();
+      setSelectedElector(data);
+    } catch (error) {
+      console.error("Error fetching elector detail:", error);
+    }
+  };
+
   const handleEstadoChange = (e) => {
     const value = e.target.value;
     setCodigoEstado(value);
@@ -125,8 +136,6 @@ const ChatComponent = ({
     setCodigoParroquia("");
     setCentrosVotacion([]);
     fetchMunicipios(value);
-    fetchTotalElectores();
-    fetchElectores();
   };
 
   const handleMunicipioChange = (e) => {
@@ -135,23 +144,17 @@ const ChatComponent = ({
     setCodigoParroquia("");
     setCentrosVotacion([]);
     fetchParroquias(codigoEstado, value);
-    fetchTotalElectores();
-    fetchElectores();
   };
 
   const handleParroquiaChange = (e) => {
     const value = e.target.value;
     setCodigoParroquia(value);
     fetchCentrosVotacion(codigoEstado, codigoMunicipio, value);
-    fetchTotalElectores();
-    fetchElectores();
   };
 
   const handleCentroVotacionChange = (e) => {
     const value = e.target.value;
     setCodigoCentroVotacion(value);
-    fetchTotalElectores();
-    fetchElectores();
   };
 
   const handleCedulaSearchChange = (e) => {
@@ -175,8 +178,8 @@ const ChatComponent = ({
     setSearchTerm(e.target.value);
   };
 
-  const openModal = (cedula) => {
-    setSelectedElector(electores.find(elector => elector.numero_cedula === cedula));
+  const openModal = (numero_cedula) => {
+    fetchElectorDetail(numero_cedula);
     setModalIsOpen(true);
   };
 
@@ -193,7 +196,6 @@ const ChatComponent = ({
     } else {
       setCurrentElectorPage(pageNumber);
     }
-    fetchTotalElectores();
     fetchElectores();
   };
 
@@ -254,7 +256,7 @@ const ChatComponent = ({
           >
             <option value="">Seleccione un centro de votación</option>
             {centrosVotacion.map(centro => (
-              <option key={centro.codigo_centro_votacion} value={centro.codigo_centro_votacion}>
+              <option key={centro.codificacion_nueva_cv} value={centro.codificacion_nueva_cv}>
                 {centro.nombre_cv}
               </option>
             ))}
@@ -313,13 +315,13 @@ const ChatComponent = ({
           ))}
         </tbody>
       </table>
-      <div className="pagination mb-4 flex justify-center">
+      {/* <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
         <button onClick={() => paginate(currentElectorPage - 1)} className="btn btn-primary mr-1">{"<"}</button>
         <span className="btn btn-disabled mr-1">Página {currentElectorPage} de {totalPages}</span>
         <button onClick={() => paginate(currentElectorPage + 1)} className="btn btn-primary mr-1">{">"}</button>
         <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
-      </div>
+      </div> */}
       {modalIsOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -327,12 +329,17 @@ const ChatComponent = ({
             <h2>Detalle del Elector</h2>
             {selectedElector && (
               <div>
-                <p><strong>Cédula:</strong> {`${selectedElector.letra_cedula}-${selectedElector.numero_cedula}`}</p>
-                <p><strong>Nombre:</strong> {`${selectedElector.p_nombre} ${selectedElector.s_nombre}`}</p>
-                <p><strong>Apellido:</strong> {`${selectedElector.p_apellido} ${selectedElector.s_apellido}`}</p>
-                <p><strong>Sexo:</strong> {selectedElector.sexo}</p>
-                <p><strong>Fecha de Nacimiento:</strong> {selectedElector.fecha_nacimiento}</p>
-                <p><strong>Centro de Votación:</strong> {selectedElector.codigo_centro_votacion}</p>
+                <p><strong>ID:</strong> {selectedElector.elector.id}</p>
+                <p><strong>Cédula:</strong> {`${selectedElector.elector.letra_cedula}-${selectedElector.elector.numero_cedula}`}</p>
+                <p><strong>Nombre:</strong> {`${selectedElector.elector.p_nombre} ${selectedElector.elector.s_nombre}`}</p>
+                <p><strong>Apellido:</strong> {`${selectedElector.elector.p_apellido} ${selectedElector.elector.s_apellido}`}</p>
+                <p><strong>Sexo:</strong> {selectedElector.elector.sexo}</p>
+                <p><strong>Fecha Nacimiento:</strong> {new Date(selectedElector.elector.fecha_nacimiento).toLocaleDateString()}</p>
+                <p><strong>Estado:</strong> {selectedElector.geografico.estado}</p>
+                <p><strong>Municipio:</strong> {selectedElector.geografico.municipio}</p>
+                <p><strong>Parroquia:</strong> {selectedElector.geografico.parroquia}</p>
+                <p><strong>Centro de Votación:</strong> {selectedElector.centro_votacion.nombre_cv}</p>
+                <p><strong>Dirección Centro de Votación:</strong> {selectedElector.centro_votacion.direccion_cv}</p>
               </div>
             )}
           </div>

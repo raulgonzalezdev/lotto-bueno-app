@@ -5,9 +5,14 @@ from alembic import context
 import sys
 import os
 
-# Importa los modelos explícitamente si no se están detectando automáticamente
-from app.models import Base, Elector, Geografico, CentroVotacion  # Ajusta según tus modelos
+from sqlalchemy.ext.declarative import declarative_base
 
+
+# Importa los modelos explícitamente si no se están detectando automáticamente
+from app.models import  Elector, Geografico, CentroVotacion, Ticket, Recolector
+ # Ajusta según tus modelos
+
+Base = declarative_base()
 # Asegúrate de que estás asignando los metadatos correctamente
 target_metadata = Base.metadata
 

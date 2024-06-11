@@ -18,6 +18,8 @@ const UserControl: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "" });
 
   const [APIHost, setAPIHost] = useState<string | null>(null);
@@ -28,7 +30,7 @@ const UserControl: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [APIHost]);
+  }, [APIHost, currentPage, searchTerm]);
 
   const fetchHost = async () => {
     try {
@@ -42,9 +44,22 @@ const UserControl: React.FC = () => {
 
   const fetchUsers = async () => {
     if (!APIHost) return;
-    const response = await fetch(`${APIHost}/api/users`);
-    const data: User[] = await response.json();
-    setUsers(data);
+    const query = new URLSearchParams({
+      skip: (currentPage - 1) * usersPerPage,
+      limit: usersPerPage,
+      ...(searchTerm && { search: searchTerm }),
+    }).toString();
+
+    try {
+      const response = await fetch(`${APIHost}/api/users?${query}`);
+      const data: User[] = await response.json();
+      setUsers(data);
+      setTotalPages(Math.ceil(data.length / usersPerPage));
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+      setTotalPages(1);
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -91,52 +106,66 @@ const UserControl: React.FC = () => {
     setSelectedUser(null);
   };
 
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const paginate = (pageNumber: number) => {
+    if (pageNumber < 1) {
+      setCurrentPage(1);
+    } else if (pageNumber > totalPages) {
+      setCurrentPage(totalPages);
+    } else {
+      setCurrentPage(pageNumber);
+    }
+    fetchUsers();
+  };
 
   return (
-    <div>
+    <div className="p-4">
       <h2>Control de Usuarios</h2>
       <button onClick={() => openModal()} className="btn btn-primary mb-4">Create New User</button>
+      <input
+        type="text"
+        placeholder="Buscar..."
+        value={searchTerm}
+        onChange={handleSearchChange}
+        className="input input-bordered mb-4"
+      />
+      <div className="pagination mb-4 flex justify-center">
+        <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
+        <button onClick={() => paginate(currentPage - 1)} className="btn btn-primary mr-1">{"<"}</button>
+        <span className="btn btn-disabled mr-1">Página {currentPage} de {totalPages}</span>
+        <button onClick={() => paginate(currentPage + 1)} className="btn btn-primary mr-1">{">"}</button>
+        <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
+      </div>
       <table className="table-auto w-full">
         <thead>
           <tr>
             <th>ID</th>
             <th>Username</th>
             <th>Email</th>
-            <th>Password</th>
             <th>Created_at</th>
             <th>Updated_at</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {currentUsers.map((user) => (
+          {users.map((user) => (
             <tr key={user.id}>
               <td>{user.id}</td>
               <td>{user.username}</td>
               <td>{user.email}</td>
-              <td>{user.hashed_password}</td>
               <td>{user.created_at}</td>
               <td>{user.updated_at}</td>
               <td>
-                <button className="view-details-button" onClick={() => openModal(user)}>Edit</button>
-                <button className="delete-button" onClick={() => handleDelete(user.id)}>Eliminar</button>
+                <button className="btn btn-primary mr-2" onClick={() => openModal(user)}>Edit</button>
+                <button className="btn btn-danger" onClick={() => handleDelete(user.id)}>Eliminar</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="pagination">
-        {[...Array(Math.ceil(users.length / usersPerPage)).keys()].map((number) => (
-          <button key={number} onClick={() => paginate(number + 1)}>
-            {number + 1}
-          </button>
-        ))}
-      </div>
       {modalIsOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -171,14 +200,8 @@ const UserControl: React.FC = () => {
             <input
               type="password"
               placeholder="Password"
-              value={isEditing && selectedUser ? selectedUser.hashed_password : newUser.password}
-              onChange={(e) => {
-                if (isEditing && selectedUser) {
-                  setSelectedUser({ ...selectedUser, hashed_password: e.target.value });
-                } else {
-                  setNewUser({ ...newUser, password: e.target.value });
-                }
-              }}
+              value={newUser.password}
+              onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
               className="input input-bordered w-full mb-2"
             />
             <button onClick={isEditing ? () => handleUpdate(selectedUser!) : handleCreate} className="btn btn-primary">

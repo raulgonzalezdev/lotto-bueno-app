@@ -5,7 +5,7 @@ interface WelcomeComponentProps {
   title: string;
   subtitle: string;
   imageSrc: string;
-  setCurrentPage: (page: "WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS" | "REGISTER") => void;
+  setCurrentPage: (page: "WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES" | "REGISTER") => void;
 }
 
 const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ title, subtitle, imageSrc, setCurrentPage }) => {

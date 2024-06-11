@@ -9,9 +9,9 @@ interface NavbarButtonProps {
   title: string;
   currentPage: string;
   setCurrentPage: (
-    page:  "WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS"
+    page:  "WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES"
   ) => void;
-  setPage:  "WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS"
+  setPage:  "WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES"
   APIHost: string | null;
   hide: boolean;
 }

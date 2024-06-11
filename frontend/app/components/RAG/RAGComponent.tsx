@@ -50,7 +50,7 @@ const RAGComponent: React.FC<RAGComponentProps> = ({
       importData();
     } else {
       importConfig();
-      setCurrentPage("CHAT");
+      setCurrentPage("ELECTORES");
     }
   };
 

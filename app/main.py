@@ -23,8 +23,8 @@ from sqlalchemy.sql import func
 from datetime import datetime, date
 from redis.asyncio import Redis
 from app.database import SessionLocal
-from app.models import Elector, Geografico, CentroVotacion, Ticket, Recolector, Users
-from app.schemas import ElectorList,UserCreate, UserList, GeograficoList, CentroVotacionList, ElectorCreate, GeograficoCreate, CentroVotacionCreate, ElectorDetail, TicketCreate, TicketList, RecolectorCreate, RecolectorList
+from app.models import Elector, Geografico, CentroVotacion, Ticket, Recolector, Users, LineaTelefonica
+from app.schemas import LineaTelefonicaList, LineaTelefonicaCreate, LineaTelefonicaUpdate, RecolectorEstadisticas,ElectorList,UserCreate, UserList, GeograficoList, CentroVotacionList,TicketUpdate,TicketUpdate, TicketUpdate, ElectorCreate, GeograficoCreate, CentroVotacionCreate, ElectorDetail, TicketCreate, TicketList, RecolectorCreate, RecolectorList, RecolectorUpdate
 from dotenv import load_dotenv
 
 
@@ -201,13 +201,14 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
     except Exception as err:
         return {"status": "error", "message": "No se pudo conectar a la API de envío de códigos QR"}
 
+# Definición de los endpoints y modelos
 @app.post("/generate_ticket")
 def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
     whatsapp_check = check_whatsapp(request.telefono)
     if "status" in whatsapp_check:
-        raise HTTPException(status_code=400, detail="El número no tiene WhatsApp")
-    
+        return {"status": "error", "message": "El número no tiene WhatsApp"}
+
     # Verificar la cédula usando la función verificar_cedula
     try:
         elector_response = verificar_cedula(CedulaRequest(numero_cedula=request.cedula))
@@ -215,15 +216,15 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
             # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
             message = "La cédula proporcionada no es válida para participar en Lotto Bueno."
             send_message(request.telefono, message)
-            raise HTTPException(status_code=400, detail="La cédula no es válida")
+            return {"status": "error", "message": "La cédula no es válida"}
     except HTTPException as e:
         # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
         message = "La cédula proporcionada no es válida para participar en Lotto Bueno."
         send_message(request.telefono, message)
-        raise e
+        return {"status": "error", "message": str(e.detail)}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        return {"status": "error", "message": str(e)}
+
     # Procesar los datos del elector
     elector_data = elector_response.get("elector")
     nombre = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
@@ -231,9 +232,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     estado = elector_geografico['estado']
     municipio = elector_geografico['municipio']
     parroquia = elector_geografico['parroquia']
-    
-    
-     # Verificar si ya existe un ticket con la cédula o el teléfono proporcionados
+
+    # Verificar si ya existe un ticket con la cédula o el teléfono proporcionados
     existing_ticket = db.query(Ticket).filter((Ticket.cedula == request.cedula) | (Ticket.telefono == request.telefono)).first()
     if existing_ticket:
         # Enviar mensaje de texto por WhatsApp con el ID del ticket existente
@@ -249,6 +249,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         send_qr_code(request.telefono, qr_buf)
 
         return {
+            "status": "success",
+            "message": message,
             "ticket_number": existing_ticket.numero_ticket,
             "qr_code": qr_code_base64
         }
@@ -288,9 +290,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
 
     # Enviar código QR por WhatsApp
     send_result = send_qr_code(request.telefono, buf)
-   
     if send_result.get("status") == "error":
-        raise HTTPException(status_code=500, detail=send_result["message"])
+        return {"status": "error", "message": send_result["message"]}
 
     # Guardar el ticket en la base de datos
     qr_code_base64 = base64.b64encode(buf.getvalue()).decode()
@@ -316,13 +317,16 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     message = f"Hola. {db_ticket.nombre} Apartir de este momento.  Estás participando en Lotto Bueno con el ID de ticket: {db_ticket.id}"
     send_message(request.telefono, message)
     
-        # Enviar contacto de la empresa
+    # Enviar contacto de la empresa
     send_contact(request.telefono)
 
     return {
+        "status": "success",
+        "message": message,
         "ticket_number": ticket_number,
         "qr_code": qr_code_base64
     }
+
 
 def send_contact(chat_id):
     phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")  # Variable de ambiente para el número de contacto de la empresa
@@ -628,6 +632,19 @@ async def create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(db_ticket)
     return to_dict(db_ticket)
 
+@app.patch("/tickets/{ticket_id}", response_model=TicketList)
+async def update_ticket(ticket_id: int, ticket: TicketUpdate, db: Session = Depends(get_db)):
+    db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not db_ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if "validado" in ticket.dict(exclude_unset=True):
+        db_ticket.validado = ticket.validado
+    if "ganador" in ticket.dict(exclude_unset=True):
+        db_ticket.ganador = ticket.ganador
+    db.commit()
+    db.refresh(db_ticket)
+    return to_dict(db_ticket)
+
 # CRUD para Recolector
 
 @app.get("/recolectores/", response_model=list[RecolectorList])
@@ -649,6 +666,45 @@ async def create_recolector(recolector: RecolectorCreate, db: Session = Depends(
     db.commit()
     db.refresh(db_recolector)
     return to_dict(db_recolector)
+
+@app.delete("/recolectores/{recolector_id}", response_model=dict)
+async def delete_recolector(recolector_id: int, db: Session = Depends(get_db)):
+    recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
+    if not recolector:
+        raise HTTPException(status_code=404, detail="Recolector not found")
+    db.delete(recolector)
+    db.commit()
+    return {"message": "Recolector deleted successfully"}
+
+@app.patch("/recolectores/{recolector_id}", response_model=RecolectorList)
+async def update_recolector(recolector_id: int, recolector: RecolectorUpdate, db: Session = Depends(get_db)):
+    db_recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
+    if not db_recolector:
+        raise HTTPException(status_code=404, detail="Recolector not found")
+    for key, value in recolector.dict(exclude_unset=True).items():
+        setattr(db_recolector, key, value)
+    db.commit()
+    db.refresh(db_recolector)
+    return to_dict(db_recolector)
+
+@app.get("/recolectores/estadisticas/", response_model=List[RecolectorEstadisticas])
+async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: Session = Depends(get_db)):
+    query = (
+        db.query(
+            Recolector.id,
+            Recolector.nombre,
+            func.count(Ticket.id).label("tickets_count")
+        )
+        .join(Ticket, Ticket.referido_id == Recolector.id, isouter=True)
+        .group_by(Recolector.id, Recolector.nombre)
+    )
+
+    if recolector_id:
+        query = query.filter(Recolector.id == recolector_id)
+
+    estadisticas = query.all()
+    
+    return [{"recolector_id": est.id, "nombre": est.nombre, "tickets_count": est.tickets_count} for est in estadisticas]
 
 
 # Endpoint to get settings
@@ -806,7 +862,88 @@ async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codig
         )
         for centro in centros
     ]
+    
+    
+@app.get("/lineas_telefonicas/", response_model=list[LineaTelefonicaList])
+async def read_lineas_telefonicas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    lineas_telefonicas = db.query(LineaTelefonica).offset(skip).limit(limit).all()
+    return lineas_telefonicas
 
+@app.get("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+async def read_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):
+    linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
+    if not linea_telefonica:
+        raise HTTPException(status_code=404, detail="LineaTelefonica not found")
+    return linea_telefonica
+
+@app.post("/lineas_telefonicas/", response_model=LineaTelefonicaList)
+async def create_linea_telefonica(linea_telefonica: LineaTelefonicaCreate, db: Session = Depends(get_db)):
+    db_linea_telefonica = LineaTelefonica(**linea_telefonica.dict())
+    db.add(db_linea_telefonica)
+    db.commit()
+    db.refresh(db_linea_telefonica)
+    return db_linea_telefonica
+
+@app.patch("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+async def update_linea_telefonica(linea_telefonica_id: int, linea_telefonica: LineaTelefonicaUpdate, db: Session = Depends(get_db)):
+    db_linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
+    if not db_linea_telefonica:
+        raise HTTPException(status_code=404, detail="LineaTelefonica not found")
+    db_linea_telefonica.numero = linea_telefonica.numero
+    db_linea_telefonica.operador = linea_telefonica.operador
+    db.commit()
+    db.refresh(db_linea_telefonica)
+    return db_linea_telefonica
+
+@app.delete("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+async def delete_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):
+    db_linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
+    if not db_linea_telefonica:
+        raise HTTPException(status_code=404, detail="LineaTelefonica not found")
+    db.delete(db_linea_telefonica)
+    db.commit()
+    return db_linea_telefonica
+
+
+
+@app.post("/sorteo/ganadores", response_model=List[TicketList])
+async def sorteo_ganadores(
+    cantidad_ganadores: int,
+    estado: Optional[str] = None,
+    municipio: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Ticket).filter(Ticket.validado == True, Ticket.ganador == False)
+    
+    if estado:
+        query = query.filter(Ticket.estado == estado)
+    
+    if municipio:
+        query = query.filter(Ticket.municipio == municipio)
+    
+    tickets_validos = query.all()
+    
+    if len(tickets_validos) < cantidad_ganadores:
+        raise HTTPException(status_code=400, detail="No hay suficientes tickets válidos para seleccionar la cantidad de ganadores solicitada")
+
+    ganadores = random.sample(tickets_validos, cantidad_ganadores)
+
+    for ganador in ganadores:
+        ganador.ganador = True
+        db.commit()
+        db.refresh(ganador)
+    
+    return ganadores
+
+# API para quitar la marca de ganador a todos los tickets
+@app.post("/sorteo/quitar_ganadores")
+async def quitar_ganadores(db: Session = Depends(get_db)):
+    tickets_ganadores = db.query(Ticket).filter(Ticket.ganador == True).all()
+    for ticket in tickets_ganadores:
+        ticket.ganador = False
+        db.commit()
+        db.refresh(ticket)
+    return {"message": "Marca de ganadores eliminada de todos los tickets"}
 
 app.include_router(router)
 

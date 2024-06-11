@@ -14,16 +14,21 @@ interface Ticket {
   parroquia: string;
   referido_id: number | null;
   validado: boolean;
+  ganador: boolean;
+  created_at: string;
 }
 
 const TicketControl: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [editModalIsOpen, setEditModalIsOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [ticketsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [APIHost, setAPIHost] = useState<string | null>(null);
+  const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
 
   useEffect(() => {
     fetchHost();
@@ -31,7 +36,7 @@ const TicketControl: React.FC = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, [APIHost]);
+  }, [APIHost, currentPage]);
 
   const fetchHost = async () => {
     try {
@@ -45,9 +50,22 @@ const TicketControl: React.FC = () => {
 
   const fetchTickets = async () => {
     if (!APIHost) return;
-    const response = await fetch(`${APIHost}/tickets/?skip=0&limit=100`);
-    const data = await response.json();
-    setTickets(Array.isArray(data) ? data : []);
+    const query = new URLSearchParams({
+      skip: (currentPage - 1) * ticketsPerPage,
+      limit: ticketsPerPage,
+      ...(searchTerm && { search: searchTerm }),
+    }).toString();
+
+    try {
+      const response = await fetch(`${APIHost}/tickets/?${query}`);
+      const data = await response.json();
+      setTickets(Array.isArray(data) ? data : []);
+      setTotalPages(Math.ceil(data.length / ticketsPerPage));
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+      setTickets([]);
+      setTotalPages(1);
+    }
   };
 
   const openModal = (ticket: Ticket) => {
@@ -55,8 +73,19 @@ const TicketControl: React.FC = () => {
     setModalIsOpen(true);
   };
 
+  const openEditModal = (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setUpdatedTicket({ validado: ticket.validado, ganador: ticket.ganador });
+    setEditModalIsOpen(true);
+  };
+
   const closeModal = () => {
     setModalIsOpen(false);
+    setSelectedTicket(null);
+  };
+
+  const closeEditModal = () => {
+    setEditModalIsOpen(false);
     setSelectedTicket(null);
   };
 
@@ -64,20 +93,48 @@ const TicketControl: React.FC = () => {
     setSearchTerm(e.target.value);
   };
 
-  const filteredTickets = tickets.filter(ticket =>
-    Object.values(ticket).some(value =>
-      value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const paginate = (pageNumber: number) => {
+    if (pageNumber < 1) {
+      setCurrentPage(1);
+    } else if (pageNumber > totalPages) {
+      setCurrentPage(totalPages);
+    } else {
+      setCurrentPage(pageNumber);
+    }
+    fetchTickets();
+  };
 
-  const indexOfLastTicket = currentPage * ticketsPerPage;
-  const indexOfFirstTicket = indexOfLastTicket - ticketsPerPage;
-  const currentTickets = filteredTickets.slice(indexOfFirstTicket, indexOfLastTicket);
+  const handleUpdateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setUpdatedTicket((prevState) => ({ ...prevState, [name]: checked }));
+  };
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!APIHost || !selectedTicket) return;
+
+    try {
+      const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedTicket),
+      });
+
+      if (response.ok) {
+        fetchTickets();
+        closeEditModal();
+      } else {
+        console.error("Error updating ticket");
+      }
+    } catch (error) {
+      console.error("Error updating ticket:", error);
+    }
+  };
 
   return (
-    <div>
+    <div className="p-4">
       <h2>Control de Tickets</h2>
       <input
         type="text"
@@ -86,24 +143,33 @@ const TicketControl: React.FC = () => {
         onChange={handleSearchChange}
         className="input input-bordered mb-4"
       />
-      <table className="table-auto w-full">
+      <div className="pagination mb-4 flex justify-center">
+        <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
+        <button onClick={() => paginate(currentPage - 1)} className="btn btn-primary mr-1">{"<"}</button>
+        <span className="btn btn-disabled mr-1">Página {currentPage} de {totalPages}</span>
+        <button onClick={() => paginate(currentPage + 1)} className="btn btn-primary mr-1">{">"}</button>
+        <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
+      </div>
+      <table className="table-auto w-full mb-4">
         <thead>
           <tr>
             <th>ID</th>
-            <th>Numero Ticket</th>
-            <th>Cedula</th>
+            <th>Número Ticket</th>
+            <th>Cédula</th>
             <th>Nombre</th>
-            <th>Telefono</th>
+            <th>Teléfono</th>
             <th>Estado</th>
             <th>Municipio</th>
             <th>Parroquia</th>
             <th>Referido ID</th>
             <th>Validado</th>
+            <th>Ganador</th>
+            <th>Creado en</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {currentTickets.map((ticket) => (
+          {tickets.map((ticket) => (
             <tr key={ticket.id}>
               <td>{ticket.id}</td>
               <td>{ticket.numero_ticket}</td>
@@ -115,20 +181,20 @@ const TicketControl: React.FC = () => {
               <td>{ticket.parroquia}</td>
               <td>{ticket.referido_id}</td>
               <td>{ticket.validado ? "Sí" : "No"}</td>
+              <td>{ticket.ganador ? "Sí" : "No"}</td>
+              <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
               <td>
-                <button className="view-details-button" onClick={() => openModal(ticket)}>Ver Detalles</button>
+                <button className="btn btn-primary mr-2" onClick={() => openModal(ticket)}>
+                  Ver Detalles
+                </button>
+                <button className="btn btn-secondary" onClick={() => openEditModal(ticket)}>
+                  Editar
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="pagination">
-        {[...Array(Math.ceil(filteredTickets.length / ticketsPerPage)).keys()].map((number) => (
-          <button key={number} onClick={() => paginate(number + 1)}>
-            {number + 1}
-          </button>
-        ))}
-      </div>
       {modalIsOpen && selectedTicket && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -145,11 +211,46 @@ const TicketControl: React.FC = () => {
               <p><strong>Parroquia:</strong> {selectedTicket.parroquia}</p>
               <p><strong>Referido ID:</strong> {selectedTicket.referido_id}</p>
               <p><strong>Validado:</strong> {selectedTicket.validado ? "Sí" : "No"}</p>
+              <p><strong>Ganador:</strong> {selectedTicket.ganador ? "Sí" : "No"}</p>
+              <p><strong>Creado en:</strong> {new Date(selectedTicket.created_at).toLocaleDateString()}</p>
               <div>
                 <p><strong>QR Code:</strong></p>
                 <img src={`data:image/png;base64,${selectedTicket.qr_ticket}`} alt="QR Code" />
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {editModalIsOpen && selectedTicket && (
+        <div className="modal-overlay" onClick={closeEditModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-button" onClick={closeEditModal}>×</button>
+            <h2>Editar Ticket</h2>
+            <form onSubmit={handleUpdateSubmit}>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Validado</label>
+                <input
+                  type="checkbox"
+                  name="validado"
+                  checked={updatedTicket.validado}
+                  onChange={handleUpdateChange}
+                  className="form-checkbox"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Ganador</label>
+                <input
+                  type="checkbox"
+                  name="ganador"
+                  checked={updatedTicket.ganador}
+                  onChange={handleUpdateChange}
+                  className="form-checkbox"
+                />
+              </div>
+              <button type="submit" className="btn btn-primary mt-4">
+                Guardar Cambios
+              </button>
+            </form>
           </div>
         </div>
       )}

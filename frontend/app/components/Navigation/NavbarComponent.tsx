@@ -3,9 +3,9 @@
 // Navbar.tsx
 
 import React, { useState, useEffect } from "react";
-import { IoChatbubbleSharp, IoDocumentSharp, IoBuildSharp, IoSettingsSharp, IoPeopleSharp, IoListSharp } from "react-icons/io5";
-import { HiOutlineStatusOnline } from "react-icons/hi";
-import { IoMdAddCircle } from "react-icons/io";
+import {  IoSettingsSharp, IoPeopleSharp, IoListSharp, IoQrCodeSharp, IoCallSharp } from "react-icons/io5";
+
+import { FcAssistant , FcCollaboration, FcSmartphoneTablet , FcSalesPerformance  } from "react-icons/fc";
 import { LuMenu } from "react-icons/lu";
 
 import NavbarButton from "./NavButton";
@@ -19,7 +19,7 @@ interface NavbarProps {
   APIHost: string | null;
   production: boolean;
   setCurrentPage: (
-    page: "WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS"
+    page: "WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES"
   ) => void;
 }
 
@@ -57,19 +57,19 @@ const Navbar: React.FC<NavbarProps> = ({
           <NavbarButton
             hide={false}
             APIHost={APIHost}
-            Icon={IoChatbubbleSharp}
+            Icon={FcCollaboration}
             iconSize={icon_size}
-            title="Chat"
+            title="Electores"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
-            setPage="CHAT"
+            setPage="ELECTORES"
           />
           <NavbarButton
             hide={false}
             APIHost={APIHost}
-            Icon={IoDocumentSharp}
+            Icon={IoQrCodeSharp}
             iconSize={icon_size}
-            title="Documentos"
+            title="Tickets"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             setPage="TICKETS"
@@ -87,37 +87,37 @@ const Navbar: React.FC<NavbarProps> = ({
           <NavbarButton
             hide={false}
             APIHost={APIHost}
-            Icon={IoListSharp}
+            Icon={FcAssistant}
             iconSize={icon_size}
-            title="Conversaciones"
+            title="Recolectores"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
-            setPage="CONVERSATIONS"
+            setPage="RECOLECTORES"
           />
-          {/* <NavbarButton
+           <NavbarButton
             hide={false}
             APIHost={APIHost}
-            Icon={HiOutlineStatusOnline}
+            Icon={FcSalesPerformance }
             iconSize={icon_size}
-            title="Descripción general"
+            title="Soretasr Ganadors"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             setPage="STATUS"
-          /> */}
+          /> 
           <div
             className={` ${production ? "h-[0vh]" : "sm:h-[3vh] lg:h-[5vh] mx-1"} hidden sm:block bg-text-alt-verba w-px`}
           ></div>
-          <NavbarButton
+           <NavbarButton
             hide={production}
             APIHost={APIHost}
-            Icon={IoMdAddCircle}
+            Icon={FcSmartphoneTablet}
             iconSize={icon_size}
-            title="Añadir Documentos"
+            title="Lineas Telefonicas"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             setPage="ADD"
           />
-          <NavbarButton
+          {/* <NavbarButton
             hide={production}
             APIHost={APIHost}
             Icon={IoBuildSharp}
@@ -126,7 +126,7 @@ const Navbar: React.FC<NavbarProps> = ({
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             setPage="RAG"
-          />
+          />  */}
           <NavbarButton
             hide={production}
             APIHost={APIHost}
@@ -151,7 +151,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     <LuMenu size={20} />
                   </summary>
                   <ul className="bg-bg-alt-verba">
-                    <li onClick={() => setCurrentPage("CHAT")}>
+                    <li onClick={() => setCurrentPage("ELECTORES")}>
                       <a>Chat</a>
                     </li>
                     <li onClick={() => setCurrentPage("TICKETS")}>
@@ -160,7 +160,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     <li onClick={() => setCurrentPage("USERS")}>
                       <a>Usuarios</a>
                     </li>
-                    <li onClick={() => setCurrentPage("CONVERSATIONS")}>
+                    <li onClick={() => setCurrentPage("RECOLECTORES")}>
                       <a>Conversaciones</a>
                     </li>
                    

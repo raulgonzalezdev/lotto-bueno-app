@@ -6,7 +6,7 @@ interface LoginModalProps {
   isVisible: boolean;
   onClose: () => void;
   onAdminLogin: (isAdmin: boolean) => void;
-  setCurrentPage: React.Dispatch<React.SetStateAction<"WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS" | "REGISTER">>;
+  setCurrentPage: React.Dispatch<React.SetStateAction<"WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES" | "REGISTER">>;
   title: string;
   subtitle: string;
   imageSrc: string;

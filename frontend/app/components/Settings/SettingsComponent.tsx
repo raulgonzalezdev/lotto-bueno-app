@@ -187,7 +187,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
               title="Configuraciones de chat"
               currentSetting={setting}
               setSetting={setSetting}
-              setSettingString="Chat"
+              setSettingString="Electores"
             />
           </div>
         </div>

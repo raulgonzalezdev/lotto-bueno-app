@@ -9,6 +9,9 @@ import WelcomeComponent from "./components/Welcome/WelcomeComponent";
 import RegisterWindow from "./components/register/RegisterWindow";
 import UserControl from "./components/login/UserControl";
 import TicketControl from "./components/ticket/TicketControl";
+import RecolectorControl from "./components/recolertor/RecolectorControl";
+import LineaTelefonicaControl from "./components/lineas/LineaTelefonicaControl";
+import SorteoControl from "./components/sorteo/SorteoControl";
 import Conversations from "./components/Conversations/Conversations";
 import DocumentViewerComponent from "./components/Document/DocumentViewerComponent";
 import StatusComponent from "./components/Status/StatusComponent";
@@ -26,7 +29,7 @@ import PulseLoader from "react-spinners/PulseLoader";
 const Home = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPage, setCurrentPage] = useState<
-    "WELCOME" | "CHAT" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "CONVERSATIONS" | "REGISTER"
+    "WELCOME" | "ELECTORES" | "TICKETS" | "STATUS" | "ADD" | "SETTINGS" | "USERS" | "RECOLECTORES" | "REGISTER"
   >("WELCOME");
   const [production, setProduction] = useState(false);
   const [gtag, setGtag] = useState("");
@@ -209,7 +212,7 @@ const Home = () => {
               setCurrentPage={setCurrentPage}
             />
           )}
-          {isAdmin && currentPage === "CHAT" && (
+          {isAdmin && currentPage === "ELECTORES" && (
                <ChatComponent
                production={production}
                settingConfig={baseSetting[settingTemplate]}
@@ -225,11 +228,12 @@ const Home = () => {
             )}
 
           {isAdmin && currentPage === "STATUS" && (
-            <StatusComponent
-              fetchHost={fetchHost}
-              settingConfig={baseSetting[settingTemplate]}
-              APIHost={APIHost}
-            />
+            // <StatusComponent
+            //   fetchHost={fetchHost}
+            //   settingConfig={baseSetting[settingTemplate]}
+            //   APIHost={APIHost}
+            // />
+            <SorteoControl />
           )}
 
           {isAdmin && currentPage === "SETTINGS" && !production && (
@@ -246,8 +250,11 @@ const Home = () => {
            {isAdmin && currentPage === "TICKETS" && !production && (
             <TicketControl />
           )}
-          {isAdmin && currentPage === "CONVERSATIONS" && ! production && (
-            <Conversations />
+          {isAdmin && currentPage === "RECOLECTORES" && ! production && (
+            <RecolectorControl />
+          )}
+           {isAdmin && currentPage === "ADD" && ! production && (
+            <LineaTelefonicaControl />
           )}
           {/* {isAdmin && (
             <footer className="footer footer-center p-4 mt-8 bg-bg-verba text-text-alt-verba">

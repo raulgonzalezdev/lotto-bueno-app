@@ -74,6 +74,9 @@ class Ticket(Base):
     referido_id = Column(Integer, ForeignKey('recolectores.id'))
     referido = relationship("Recolector", back_populates="tickets")
     validado = Column(Boolean)
+    ganador = Column(Boolean)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     __table_args__ = (
         Index('ix_ticket_cedula', 'cedula'),  # Creación de índice
@@ -92,3 +95,9 @@ class Users(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class LineaTelefonica(Base):
+    __tablename__ = 'lineas_telefonicas'
+
+    id = Column(Integer, primary_key=True, index=True)
+    numero = Column(String(20), unique=True, index=True)
+    operador = Column(String(50))

@@ -80,6 +80,9 @@ class TicketBase(BaseModel):
     parroquia: Optional[str]
     referido_id: Optional[int]
     validado: Optional[bool]
+    ganador: Optional[bool]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
 class TicketCreate(TicketBase):
     pass
@@ -89,6 +92,10 @@ class TicketList(TicketBase):
 
     class Config:
         orm_mode = True
+
+class TicketUpdate(BaseModel):
+    validado: Optional[bool]
+    ganador: Optional[bool]
 
 class RecolectorBase(BaseModel):
     nombre: Optional[str]
@@ -101,6 +108,20 @@ class RecolectorCreate(RecolectorBase):
 
 class RecolectorList(RecolectorBase):
     id: int
+
+    class Config:
+        orm_mode = True
+
+class RecolectorUpdate(BaseModel):
+    nombre: Optional[str]
+    cedula: Optional[str]
+    telefono: Optional[str]
+    es_referido: Optional[bool]
+
+class RecolectorEstadisticas(BaseModel):
+    recolector_id: int
+    nombre: str
+    tickets_count: int
 
     class Config:
         orm_mode = True
@@ -120,17 +141,19 @@ class UserList(UserBase):
 
     class Config:
         orm_mode = True
-        
-class CentroVotacionList(BaseModel):
+class LineaTelefonicaBase(BaseModel):
+    numero: str
+    operador: str
+
+class LineaTelefonicaCreate(LineaTelefonicaBase):
+    pass
+
+class LineaTelefonicaUpdate(BaseModel):
+    numero: str
+    operador: str
+
+class LineaTelefonicaList(LineaTelefonicaBase):
     id: int
-    codificacion_vieja_cv: str
-    codificacion_nueva_cv: str
-    condicion: str
-    codigo_estado: int
-    codigo_municipio: int
-    codigo_parroquia: int
-    nombre_cv: str
-    direccion_cv: str
 
     class Config:
         orm_mode = True

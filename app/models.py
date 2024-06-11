@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, Index
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Index, Text, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
@@ -47,3 +48,47 @@ class CentroVotacion(Base):
     codigo_parroquia = Column(Integer)
     nombre_cv = Column(String(255))
     direccion_cv = Column(String(755))
+
+
+class Recolector(Base):
+    __tablename__ = 'recolectores'
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(100))
+    cedula = Column(String(20))
+    telefono = Column(String(20))
+    es_referido = Column(Boolean, default=False)
+    tickets = relationship("Ticket", back_populates="referido")
+class Ticket(Base):
+    __tablename__ = 'tickets'
+
+    id = Column(Integer, primary_key=True, index=True)
+    numero_ticket = Column(String(20), unique=True, index=True)
+    qr_ticket = Column(Text)
+    cedula = Column(String(20), unique=True, index=True)  # Añadido unique y index
+    nombre = Column(String(100))
+    telefono = Column(String(20), unique=True, index=True) 
+    estado = Column(String(35))
+    municipio = Column(String(35))
+    parroquia = Column(String(35))
+    referido_id = Column(Integer, ForeignKey('recolectores.id'))
+    referido = relationship("Recolector", back_populates="tickets")
+    validado = Column(Boolean)
+
+    __table_args__ = (
+        Index('ix_ticket_cedula', 'cedula'),  # Creación de índice
+    )
+    
+# Agregar la columna 'email' a la definición de la tabla users
+
+class Users(Base):
+    __tablename__ = 'users'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)  # Añadir la columna 'email'
+    hashed_password = Column(String(200), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+

@@ -1,0 +1,194 @@
+"use client";
+import React, { useState, useEffect } from "react";
+import { detectHost } from "../../api";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  hashed_password: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const UserControl: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage] = useState(10);
+  const [newUser, setNewUser] = useState({ username: "", email: "", password: "" });
+
+  const [APIHost, setAPIHost] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchHost();
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [APIHost]);
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host || 'http://localhost:8001');
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost('http://localhost:8001');
+    }
+  };
+
+  const fetchUsers = async () => {
+    if (!APIHost) return;
+    const response = await fetch(`${APIHost}/api/users`);
+    const data: User[] = await response.json();
+    setUsers(data);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!APIHost) return;
+    await fetch(`${APIHost}/api/users/${id}`, { method: "DELETE" });
+    fetchUsers();
+  };
+
+  const handleCreate = async () => {
+    if (!APIHost) return;
+    await fetch(`${APIHost}/api/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(newUser)
+    });
+    setNewUser({ username: "", email: "", password: "" });
+    fetchUsers();
+    closeModal();
+  };
+
+  const handleUpdate = async (user: User) => {
+    if (!APIHost) return;
+    await fetch(`${APIHost}/api/users/${user.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(user)
+    });
+    fetchUsers();
+    closeModal();
+  };
+
+  const openModal = (user: User | null = null) => {
+    setSelectedUser(user);
+    setIsEditing(!!user);
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setSelectedUser(null);
+  };
+
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = users.slice(indexOfFirstUser, indexOfLastUser);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+
+  return (
+    <div>
+      <h2>Control de Usuarios</h2>
+      <button onClick={() => openModal()} className="btn btn-primary mb-4">Create New User</button>
+      <table className="table-auto w-full">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Password</th>
+            <th>Created_at</th>
+            <th>Updated_at</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {currentUsers.map((user) => (
+            <tr key={user.id}>
+              <td>{user.id}</td>
+              <td>{user.username}</td>
+              <td>{user.email}</td>
+              <td>{user.hashed_password}</td>
+              <td>{user.created_at}</td>
+              <td>{user.updated_at}</td>
+              <td>
+                <button className="view-details-button" onClick={() => openModal(user)}>Edit</button>
+                <button className="delete-button" onClick={() => handleDelete(user.id)}>Eliminar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="pagination">
+        {[...Array(Math.ceil(users.length / usersPerPage)).keys()].map((number) => (
+          <button key={number} onClick={() => paginate(number + 1)}>
+            {number + 1}
+          </button>
+        ))}
+      </div>
+      {modalIsOpen && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-button" onClick={closeModal}>×</button>
+            <h2>{isEditing ? "Edit User" : "Create User"}</h2>
+            <input
+              type="text"
+              placeholder="Username"
+              value={isEditing && selectedUser ? selectedUser.username : newUser.username}
+              onChange={(e) => {
+                if (isEditing && selectedUser) {
+                  setSelectedUser({ ...selectedUser, username: e.target.value });
+                } else {
+                  setNewUser({ ...newUser, username: e.target.value });
+                }
+              }}
+              className="input input-bordered w-full mb-2"
+            />
+            <input
+              type="email"
+              placeholder="Email"
+              value={isEditing && selectedUser ? selectedUser.email : newUser.email}
+              onChange={(e) => {
+                if (isEditing && selectedUser) {
+                  setSelectedUser({ ...selectedUser, email: e.target.value });
+                } else {
+                  setNewUser({ ...newUser, email: e.target.value });
+                }
+              }}
+              className="input input-bordered w-full mb-2"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={isEditing && selectedUser ? selectedUser.hashed_password : newUser.password}
+              onChange={(e) => {
+                if (isEditing && selectedUser) {
+                  setSelectedUser({ ...selectedUser, hashed_password: e.target.value });
+                } else {
+                  setNewUser({ ...newUser, password: e.target.value });
+                }
+              }}
+              className="input input-bordered w-full mb-2"
+            />
+            <button onClick={isEditing ? () => handleUpdate(selectedUser!) : handleCreate} className="btn btn-primary">
+              {isEditing ? "Update User" : "Create User"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default UserControl;

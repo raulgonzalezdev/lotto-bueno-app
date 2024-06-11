@@ -64,7 +64,7 @@ const Home = () => {
       const response = await fetch(`${apiHost}/api/settings`);
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched settings data:", data); // Agregar console.log para verificar los datos
+        //console.log("Fetched settings data:", data); // Agregar console.log para verificar los datos
         setBaseSetting(data);
         setSettingTemplate(data.currentTemplate);
       } else {
@@ -249,13 +249,13 @@ const Home = () => {
           {isAdmin && currentPage === "CONVERSATIONS" && ! production && (
             <Conversations />
           )}
-          {isAdmin && (
+          {/* {isAdmin && (
             <footer className="footer footer-center p-4 mt-8 bg-bg-verba text-text-alt-verba">
               <aside>
                 <p>Build with ♥ and Caltion © 2024</p>
               </aside>
             </footer>
-          )}
+          )} */}
         </div>
       </main>
      

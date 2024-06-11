@@ -472,7 +472,32 @@ def custom_serializer(obj):
         return obj.isoformat()
     raise TypeError(f'Type {obj.__class__.__name} not serializable')
 
-@app.get("/electores/", response_model=list[ElectorList])
+
+router = APIRouter()
+
+@router.get("/total/electores", response_model=int)
+def get_total_electores(
+    codigo_estado: Optional[int] = None,
+    codigo_municipio: Optional[int] = None,
+    codigo_parroquia: Optional[int] = None,
+    codigo_centro_votacion: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(Elector)
+    
+    if codigo_estado is not None:
+        query = query.filter(Elector.codigo_estado == codigo_estado)
+    if codigo_municipio is not None:
+        query = query.filter(Elector.codigo_municipio == codigo_municipio)
+    if codigo_parroquia is not None:
+        query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
+    if codigo_centro_votacion is not None:
+        query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
+    
+    total = query.count()
+    return total
+
+@app.get("/electores/", response_model=List[ElectorList])
 async def read_electores(
     skip: int = 0,
     limit: int = 100,
@@ -493,23 +518,14 @@ async def read_electores(
         query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
 
     electores = query.offset(skip).limit(limit).all()
-    return [to_dict(elector) for elector in electores]
+    return [elector for elector in electores]
 
 @app.get("/electores/{elector_id}", response_model=ElectorList)
 async def read_elector(elector_id: int, db: Session = Depends(get_db)):
-    elector = await get_elector_from_cache(elector_id, db)
+    elector = db.query(Elector).filter(Elector.id == elector_id).first()
     if not elector:
         raise HTTPException(status_code=404, detail="Elector not found")
     return elector
-
-@app.post("/electores/", response_model=ElectorList)
-async def create_elector(elector: ElectorCreate, db: Session = Depends(get_db)):
-    db_elector = Elector(**elector.model_dump())
-    db.add(db_elector)
-    db.commit()
-    db.refresh(db_elector)
-    await redis.delete(f"elector:{db_elector.id}")
-    return to_dict(db_elector)
 
 @app.get("/electores/cedula/{numero_cedula}", response_model=ElectorDetail)
 async def read_elector_by_cedula(numero_cedula: int, db: Session = Depends(get_db)):
@@ -768,39 +784,31 @@ async def read_parroquias(codigo_estado: int, codigo_municipio: int, db: Session
     parroquias = db.query(Geografico.codigo_parroquia, Geografico.parroquia).filter(Geografico.codigo_estado == codigo_estado, Geografico.codigo_municipio == codigo_municipio).distinct().all()
     return [{"codigo_parroquia": parroquia[0], "parroquia": parroquia[1], "codigo_estado": codigo_estado, "codigo_municipio": codigo_municipio, "estado": None, "municipio": None, "id": i} for i, parroquia in enumerate(parroquias)]
 
-@app.get("/centros_votacion/{codigo_estado}/{codigo_municipio}/{codigo_parroquia}", response_model=list[CentroVotacionList])
+@app.get("/centros_votacion/{codigo_estado}/{codigo_municipio}/{codigo_parroquia}", response_model=List[CentroVotacionList])
 async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codigo_parroquia: int, db: Session = Depends(get_db)):
     centros = db.query(CentroVotacion).filter(
         CentroVotacion.codigo_estado == codigo_estado,
         CentroVotacion.codigo_municipio == codigo_municipio,
         CentroVotacion.codigo_parroquia == codigo_parroquia
     ).distinct().all()
-    return [centro for centro in centros]
-
-router = APIRouter()
-
-@router.get("/electores/total", response_model=int)
-def get_total_electores(
-    codigo_estado: Optional[int] = None,
-    codigo_municipio: Optional[int] = None,
-    codigo_parroquia: Optional[int] = None,
-    codigo_centro_votacion: Optional[int] = None,
-    db: Session = Depends(get_db)
-):
-    query = db.query(Elector)
     
-    if codigo_estado:
-        query = query.filter(Elector.codigo_estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Elector.codigo_municipio == codigo_municipio)
-    if codigo_parroquia:
-        query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
-    if codigo_centro_votacion:
-        query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
-    
-    total = query.count()
-    return total
+    return [
+        CentroVotacionList(
+            id=centro.id,
+            codificacion_vieja_cv=str(centro.codificacion_vieja_cv),
+            codificacion_nueva_cv=str(centro.codificacion_nueva_cv),
+            condicion=str(centro.condicion),
+            codigo_estado=centro.codigo_estado,
+            codigo_municipio=centro.codigo_municipio,
+            codigo_parroquia=centro.codigo_parroquia,
+            nombre_cv=centro.nombre_cv,
+            direccion_cv=centro.direccion_cv
+        )
+        for centro in centros
+    ]
 
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

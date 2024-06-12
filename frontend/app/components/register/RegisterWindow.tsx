@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useState, useEffect } from 'react';
 import LoginModal from '../login/Login';
 import Toast from '../toast/Toast';

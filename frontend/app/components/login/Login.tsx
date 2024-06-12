@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
 import React, { useState } from 'react';
+import Toast from '../toast/Toast'; // Asegúrate de importar tu componente Toast
 
 interface LoginModalProps {
   isVisible: boolean;
@@ -27,6 +28,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
   const handleLogin = async () => {
     const apiHost = APIHost || 'http://localhost:8001';
@@ -42,19 +45,57 @@ const LoginModal: React.FC<LoginModalProps> = ({
         }),
       });
       const data = await response.json();
-      if (response.ok) {
+      if (response.ok && data.isAdmin) {
         onAdminLogin(true);
-        setCurrentPage('CHAT'); // Cambia la página a CHAT después de iniciar sesión
+        setCurrentPage('ELECTORES'); // Cambia la página a CHAT después de iniciar sesión
+        setToastMessage("Inicio de sesión exitoso");
+        setToastType("success");
         onClose();
       } else {
-        alert("Inicio de sesión fallido: " + data.detail);
+        setToastMessage("Inicio de sesión fallido: " + (data.detail || "No autorizado"));
+        setToastType("error");
         onAdminLogin(false);
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
-      alert("Error al iniciar sesión. Por favor, inténtelo de nuevo.");
+      setToastMessage("Error al iniciar sesión. Por favor, inténtelo de nuevo.");
+      setToastType("error");
     }
     setUsername('');
+    setPassword('');
+  };
+
+  const handleRegister = async () => {
+    const apiHost = APIHost || 'http://localhost:8001';
+    try {
+      const response = await fetch(`${apiHost}/api/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username,
+          email: email,
+          password: password,
+          isAdmin: false,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setToastMessage("Registro exitoso. Ahora puedes iniciar sesión.");
+        setToastType("success");
+        setIsLoginMode(true);
+      } else {
+        setToastMessage("Registro fallido: " + data.detail);
+        setToastType("error");
+      }
+    } catch (error) {
+      console.error("Error al registrarse:", error);
+      setToastMessage("Error al registrarse. Por favor, inténtelo de nuevo.");
+      setToastType("error");
+    }
+    setUsername('');
+    setEmail('');
     setPassword('');
   };
 
@@ -111,6 +152,13 @@ const LoginModal: React.FC<LoginModalProps> = ({
             {isLoginMode ? "¿No tienes una cuenta? Regístrate" : "¿Ya tienes una cuenta? Inicia sesión"}
           </button>
         </div>
+        {toastMessage && (
+          <Toast 
+            message={toastMessage}
+            type={toastType}
+            onClose={() => setToastMessage(null)}
+          />
+        )}
       </div>
     </div>
   );

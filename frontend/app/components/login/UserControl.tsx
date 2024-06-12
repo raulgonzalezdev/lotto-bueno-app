@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { detectHost } from "../../api";
+import Toast from '../toast/Toast'; // Importar componente Toast
 
 interface User {
   id: number;
@@ -9,6 +10,7 @@ interface User {
   hashed_password: string;
   created_at: string;
   updated_at: string;
+  isAdmin: boolean;
 }
 
 const UserControl: React.FC = () => {
@@ -20,8 +22,9 @@ const UserControl: React.FC = () => {
   const [usersPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [newUser, setNewUser] = useState({ username: "", email: "", password: "" });
-
+  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", isAdmin: false });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [APIHost, setAPIHost] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,35 +67,59 @@ const UserControl: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (!APIHost) return;
-    await fetch(`${APIHost}/api/users/${id}`, { method: "DELETE" });
-    fetchUsers();
+    try {
+      await fetch(`${APIHost}/api/users/${id}`, { method: "DELETE" });
+      fetchUsers();
+      setToastMessage("Usuario eliminado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error eliminando usuario:", error);
+      setToastMessage("Error eliminando usuario. Por favor, intenta de nuevo.");
+      setToastType("error");
+    }
   };
 
   const handleCreate = async () => {
     if (!APIHost) return;
-    await fetch(`${APIHost}/api/users`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(newUser)
-    });
-    setNewUser({ username: "", email: "", password: "" });
-    fetchUsers();
-    closeModal();
+    try {
+      await fetch(`${APIHost}/api/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newUser)
+      });
+      setNewUser({ username: "", email: "", password: "", isAdmin: false });
+      fetchUsers();
+      closeModal();
+      setToastMessage("Usuario creado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error creando usuario:", error);
+      setToastMessage("Error creando usuario. Por favor, intenta de nuevo.");
+      setToastType("error");
+    }
   };
 
   const handleUpdate = async (user: User) => {
     if (!APIHost) return;
-    await fetch(`${APIHost}/api/users/${user.id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(user)
-    });
-    fetchUsers();
-    closeModal();
+    try {
+      await fetch(`${APIHost}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(user)
+      });
+      fetchUsers();
+      closeModal();
+      setToastMessage("Usuario actualizado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error actualizando usuario:", error);
+      setToastMessage("Error actualizando usuario. Por favor, intenta de nuevo.");
+      setToastType("error");
+    }
   };
 
   const openModal = (user: User | null = null) => {
@@ -147,6 +174,7 @@ const UserControl: React.FC = () => {
             <th>Email</th>
             <th>Created_at</th>
             <th>Updated_at</th>
+            <th>isAdmin</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -158,6 +186,7 @@ const UserControl: React.FC = () => {
               <td>{user.email}</td>
               <td>{user.created_at}</td>
               <td>{user.updated_at}</td>
+              <td>{user.isAdmin ? "Yes" : "No"}</td>
               <td>
                 <button className="btn btn-primary mr-2" onClick={() => openModal(user)}>Edit</button>
                 <button className="btn btn-danger" onClick={() => handleDelete(user.id)}>Eliminar</button>
@@ -204,11 +233,32 @@ const UserControl: React.FC = () => {
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
               className="input input-bordered w-full mb-2"
             />
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <input
+                type="checkbox"
+                checked={isEditing && selectedUser ? selectedUser.isAdmin : newUser.isAdmin}
+                onChange={(e) => {
+                  if (isEditing && selectedUser) {
+                    setSelectedUser({ ...selectedUser, isAdmin: e.target.checked });
+                  } else {
+                    setNewUser({ ...newUser, isAdmin: e.target.checked });
+                  }
+                }}
+              />
+              Es Admin
+            </label>
             <button onClick={isEditing ? () => handleUpdate(selectedUser!) : handleCreate} className="btn btn-primary">
               {isEditing ? "Update User" : "Create User"}
             </button>
           </div>
         </div>
+      )}
+      {toastMessage && (
+        <Toast 
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setToastMessage(null)}
+        />
       )}
     </div>
   );

@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 // components/Welcome/WelcomeComponent.tsx
 import React from 'react';
 

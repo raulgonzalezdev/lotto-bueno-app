@@ -3,9 +3,10 @@ import "./globals.css";
 
 import { detectHost } from "./api";
 
+// Use the environment variables for metadata
 export const metadata: Metadata = {
-  title: "Bernabo",
-  description: "Descubre el asistente AI de Laboratorios Bernabó, diseñado para revolucionar la interacción en el campo de la salud mediante la aplicación de tecnologías de generación de lenguaje avanzadas y análisis de datos precisos."
+  title: process.env.NEXT_PUBLIC_SITE_TITLE || "Default Title",
+  description: process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "Default Description",
 };
 
 export default function RootLayout({
@@ -13,10 +14,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const faviconUrl = process.env.NEXT_PUBLIC_FAVICON_URL || "/static/icon.ico";
+
   return (
-    <html lang="en">
-      <link rel="icon" href="icon.ico" />
-      <link rel="icon" href="static/icon.ico" />
+    <html lang="es">
+      {/* <link rel="icon" href="icon.ico" />
+      <link rel="icon" href={faviconUrl} /> */}
+
+      <link href={faviconUrl} rel="icon" type="image/x-icon"></link>
       <body>{children}</body>
     </html>
   );

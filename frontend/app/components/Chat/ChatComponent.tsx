@@ -1,7 +1,22 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 "use client";
 import React, { useState, useEffect } from "react";
 
-const ChatComponent = ({
+interface ChatComponentProps {
+  production: boolean;
+  settingConfig: any;
+  APIHost: string;
+  RAGConfig: any;
+  setCurrentPage: (page: string) => void;
+  isAdmin: boolean;
+  toggleAdmin: () => void;
+  title: string;
+  subtitle: string;
+  imageSrc: string;
+}
+
+const ChatComponent: React.FC<ChatComponentProps> = ({
   production,
   settingConfig,
   APIHost,
@@ -13,19 +28,19 @@ const ChatComponent = ({
   subtitle,
   imageSrc
 }) => {
-  const [electores, setElectores] = useState([]);
+  const [electores, setElectores] = useState<Elector[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [selectedElector, setSelectedElector] = useState(null);
+  const [selectedElector, setSelectedElector] = useState<Elector | null>(null);
   const [currentElectorPage, setCurrentElectorPage] = useState(1);
   const [electoresPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [cedulaSearch, setCedulaSearch] = useState("");
 
-  const [estados, setEstados] = useState([]);
-  const [municipios, setMunicipios] = useState([]);
-  const [parroquias, setParroquias] = useState([]);
-  const [centrosVotacion, setCentrosVotacion] = useState([]);
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [centrosVotacion, setCentrosVotacion] = useState<CentroVotacion[]>([]);
 
   const [codigoEstado, setCodigoEstado] = useState("");
   const [codigoMunicipio, setCodigoMunicipio] = useState("");
@@ -41,39 +56,39 @@ const ChatComponent = ({
   const fetchEstados = async () => {
     try {
       const response = await fetch(`${APIHost}/estados/`);
-      const data = await response.json();
-      const uniqueEstados = Array.from(new Set(data.map(item => item.estado)))
-        .map(estado => data.find(item => item.estado === estado));
-      setEstados(uniqueEstados);
+      const data: Estado[] = await response.json();
+      const uniqueEstados = Array.from(new Set(data.map((item: Estado) => item.estado)))
+        .map(estado => data.find((item: Estado) => item.estado === estado));
+      setEstados(uniqueEstados as Estado[]);
     } catch (error) {
       console.error("Error fetching estados:", error);
     }
   };
 
-  const fetchMunicipios = async (codigoEstado) => {
+  const fetchMunicipios = async (codigoEstado: string) => {
     try {
       const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
-      const data = await response.json();
+      const data: Municipio[] = await response.json();
       setMunicipios(data);
     } catch (error) {
       console.error("Error fetching municipios:", error);
     }
   };
 
-  const fetchParroquias = async (codigoEstado, codigoMunicipio) => {
+  const fetchParroquias = async (codigoEstado: string, codigoMunicipio: string) => {
     try {
       const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
-      const data = await response.json();
+      const data: Parroquia[] = await response.json();
       setParroquias(data);
     } catch (error) {
       console.error("Error fetching parroquias:", error);
     }
   };
 
-  const fetchCentrosVotacion = async (codigoEstado, codigoMunicipio, codigoParroquia) => {
+  const fetchCentrosVotacion = async (codigoEstado: string, codigoMunicipio: string, codigoParroquia: string) => {
     try {
       const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
-      const data = await response.json();
+      const data: CentroVotacion[] = await response.json();
       setCentrosVotacion(data);
     } catch (error) {
       console.error("Error fetching centros votacion:", error);
@@ -83,8 +98,8 @@ const ChatComponent = ({
   const fetchElectores = async () => {
     try {
       const query = new URLSearchParams({
-        skip: (currentElectorPage - 1) * electoresPerPage,
-        limit: electoresPerPage,
+        skip: ((currentElectorPage - 1) * electoresPerPage).toString(),
+        limit: electoresPerPage.toString(),
         ...(codigoEstado && { codigo_estado: codigoEstado }),
         ...(codigoMunicipio && { codigo_municipio: codigoMunicipio }),
         ...(codigoParroquia && { codigo_parroquia: codigoParroquia }),
@@ -92,7 +107,7 @@ const ChatComponent = ({
       }).toString();
 
       const response = await fetch(`${APIHost}/electores/?${query}`);
-      const data = await response.json();
+      const data: Elector[] = await response.json();
       setElectores(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching electores:", error);
@@ -118,18 +133,18 @@ const ChatComponent = ({
     }
   };
 
-  const fetchElectorDetail = async (numero_cedula) => {
+  const fetchElectorDetail = async (numero_cedula: string) => {
     if (!APIHost) return;
     try {
       const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
-      const data = await response.json();
+      const data: Elector = await response.json();
       setSelectedElector(data);
     } catch (error) {
       console.error("Error fetching elector detail:", error);
     }
   };
 
-  const handleEstadoChange = (e) => {
+  const handleEstadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoEstado(value);
     setCodigoMunicipio("");
@@ -138,7 +153,7 @@ const ChatComponent = ({
     fetchMunicipios(value);
   };
 
-  const handleMunicipioChange = (e) => {
+  const handleMunicipioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoMunicipio(value);
     setCodigoParroquia("");
@@ -146,18 +161,18 @@ const ChatComponent = ({
     fetchParroquias(codigoEstado, value);
   };
 
-  const handleParroquiaChange = (e) => {
+  const handleParroquiaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoParroquia(value);
     fetchCentrosVotacion(codigoEstado, codigoMunicipio, value);
   };
 
-  const handleCentroVotacionChange = (e) => {
+  const handleCentroVotacionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoCentroVotacion(value);
   };
 
-  const handleCedulaSearchChange = (e) => {
+  const handleCedulaSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCedulaSearch(e.target.value);
   };
 
@@ -165,7 +180,7 @@ const ChatComponent = ({
     if (cedulaSearch) {
       try {
         const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
-        const data = await response.json();
+        const data: Elector = await response.json();
         setSelectedElector(data);
         setModalIsOpen(true);
       } catch (error) {
@@ -174,11 +189,11 @@ const ChatComponent = ({
     }
   };
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
   };
 
-  const openModal = (numero_cedula) => {
+  const openModal = (numero_cedula: string) => {
     fetchElectorDetail(numero_cedula);
     setModalIsOpen(true);
   };
@@ -188,7 +203,7 @@ const ChatComponent = ({
     setSelectedElector(null);
   };
 
-  const paginate = (pageNumber) => {
+  const paginate = (pageNumber: number) => {
     if (pageNumber < 1) {
       setCurrentElectorPage(1);
     } else if (pageNumber > totalPages) {
@@ -315,13 +330,6 @@ const ChatComponent = ({
           ))}
         </tbody>
       </table>
-      {/* <div className="pagination mb-4 flex justify-center">
-        <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
-        <button onClick={() => paginate(currentElectorPage - 1)} className="btn btn-primary mr-1">{"<"}</button>
-        <span className="btn btn-disabled mr-1">Página {currentElectorPage} de {totalPages}</span>
-        <button onClick={() => paginate(currentElectorPage + 1)} className="btn btn-primary mr-1">{">"}</button>
-        <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
-      </div> */}
       {modalIsOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

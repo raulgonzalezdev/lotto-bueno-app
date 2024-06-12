@@ -136,6 +136,7 @@ class UserCreate(UserBase):
 class UserList(UserBase):
     id: int
     hashed_password: str
+    isAdmin: bool
     created_at: datetime
     updated_at: datetime
 

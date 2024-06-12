@@ -89,10 +89,12 @@ class Users(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False)
-    email = Column(String(100), unique=True, nullable=False)  # Añadir la columna 'email'
+    email = Column(String(100), unique=True, nullable=False)
     hashed_password = Column(String(200), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    isAdmin = Column(Boolean, default=False)
+
 
 
 class LineaTelefonica(Base):

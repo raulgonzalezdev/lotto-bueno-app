@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
+from sqlalchemy import distinct
 from datetime import datetime, date
 from redis.asyncio import Redis
 from app.database import SessionLocal
@@ -328,8 +329,21 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     }
 
 
-def send_contact(chat_id):
-    phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")  # Variable de ambiente para el número de contacto de la empresa
+def send_contact(chat_id: int, db: Session = Depends(get_db)):
+    # Intentar obtener un número de contacto aleatorio de la tabla 'lineas_telefonicas'
+    try:
+        # Obtener todos los números de contacto
+        phone_contacts = db.query(LineaTelefonica.numero).all()
+        if phone_contacts:
+            # Seleccionar un número de contacto aleatorio
+            phone_contact = random.choice(phone_contacts)[0]
+        else:
+            # Usar la variable de ambiente si no hay números disponibles
+            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")
+    except Exception as e:
+        # Usar la variable de ambiente en caso de cualquier error
+        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")
+
     contact_request = ContactRequest(
         chat_id=chat_id,
         phone_contact=phone_contact,
@@ -645,6 +659,16 @@ async def update_ticket(ticket_id: int, ticket: TicketUpdate, db: Session = Depe
     db.refresh(db_ticket)
     return to_dict(db_ticket)
 
+
+@app.get("/tickets/estados", response_model=List[str])
+async def get_estados(db: Session = Depends(get_db)):
+    estados = db.query(distinct(Ticket.estado)).all()
+    return [estado[0] for estado in estados]
+
+@app.get("/tickets/municipios", response_model=List[str])
+async def get_municipios(estado: str, db: Session = Depends(get_db)):
+    municipios = db.query(distinct(Ticket.municipio)).filter(Ticket.estado == estado).all()
+    return [municipio[0] for municipio in municipios]
 # CRUD para Recolector
 
 @app.get("/recolectores/", response_model=list[RecolectorList])
@@ -744,6 +768,7 @@ def write_settings(settings: dict):
 class UserCreate(BaseModel):
     username: str
     email: str
+    isAdmin: bool
     password: str
 
 # Crear usuario
@@ -754,6 +779,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     new_user = Users(
         username=user.username,
         email=user.email,
+        isAdmin=user.isAdmin,
         hashed_password=hashed_password,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -787,6 +813,7 @@ async def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_
     db_user.username = user.username
     db_user.email = user.email
     db_user.hashed_password = hashed_password
+    db_user.isAdmin = user.isAdmin
     db_user.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_user)
@@ -813,7 +840,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
     access_token = create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer", "isAdmin": user.isAdmin}
 
 # Logout de usuario
 @app.post("/api/logout")
@@ -906,27 +933,30 @@ async def delete_linea_telefonica(linea_telefonica_id: int, db: Session = Depend
 
 
 
+class SorteoRequest(BaseModel):
+    cantidad_ganadores: int
+    estado: Optional[str]
+    municipio: Optional[str]
+
 @app.post("/sorteo/ganadores", response_model=List[TicketList])
-async def sorteo_ganadores(
-    cantidad_ganadores: int,
-    estado: Optional[str] = None,
-    municipio: Optional[str] = None,
-    db: Session = Depends(get_db)
-):
+async def sorteo_ganadores(request: SorteoRequest, db: Session = Depends(get_db)):
     query = db.query(Ticket).filter(Ticket.validado == True, Ticket.ganador == False)
     
-    if estado:
-        query = query.filter(Ticket.estado == estado)
+    if request.estado:
+        query = query.filter(Ticket.estado == request.estado)
     
-    if municipio:
-        query = query.filter(Ticket.municipio == municipio)
+    if request.municipio:
+        query = query.filter(Ticket.municipio == request.municipio)
     
     tickets_validos = query.all()
     
-    if len(tickets_validos) < cantidad_ganadores:
-        raise HTTPException(status_code=400, detail="No hay suficientes tickets válidos para seleccionar la cantidad de ganadores solicitada")
+    if len(tickets_validos) < request.cantidad_ganadores:
+        return JSONResponse(
+            status_code=400,
+            content={"message": "No hay suficientes tickets válidos para seleccionar la cantidad de ganadores solicitada"}
+        )
 
-    ganadores = random.sample(tickets_validos, cantidad_ganadores)
+    ganadores = random.sample(tickets_validos, request.cantidad_ganadores)
 
     for ganador in ganadores:
         ganador.ganador = True
@@ -935,7 +965,6 @@ async def sorteo_ganadores(
     
     return ganadores
 
-# API para quitar la marca de ganador a todos los tickets
 @app.post("/sorteo/quitar_ganadores")
 async def quitar_ganadores(db: Session = Depends(get_db)):
     tickets_ganadores = db.query(Ticket).filter(Ticket.ganador == True).all()

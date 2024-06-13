@@ -277,6 +277,7 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         "municipio": municipio,
         "parroquia": parroquia,
         "referido_id": referido_id
+        
     }
     qr_data_json = json.dumps(qr_data)
 
@@ -312,13 +313,20 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         municipio=municipio,
         parroquia=parroquia,
         referido_id=referido_id,
-        validado=False
+        validado=False,
+        ganador=False,
+        created_at=datetime.now(),  # Establece el momento actual si es necesario
+        updated_at=datetime.now()   #
     )
     
-    db_ticket = Ticket(**new_ticket.model_dump())
-    db.add(db_ticket)
-    db.commit()
-    db.refresh(db_ticket)
+    try:
+        db_ticket = Ticket(**new_ticket.dict())
+        db.add(db_ticket)
+        db.commit()
+        db.refresh(db_ticket)
+    except Exception as e:
+        print(f"Error al guardar en la base de datos: {e}")
+        return {"status": "error", "message": "Error interno del servidor no se guardo la tabla ticket"}
 
     # Enviar mensaje de texto por WhatsApp con el ID del nuevo ticket
     message = f"Hola. {db_ticket.nombre} Apartir de este momento.  Estás participando en Lotto Bueno con el ID de ticket: {db_ticket.id}"

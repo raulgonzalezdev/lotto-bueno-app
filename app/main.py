@@ -161,21 +161,24 @@ def api_send_message(request: MessageRequest):
     
     return {"status": "Mensaje enviado", "data": result.get("data")}
 
+from fastapi import FastAPI, HTTPException, Query
+
+app = FastAPI()
+
 @app.get("/verificar_cedula")
-def verificar_cedula(request: CedulaRequest):
-    numero_cedula = request.numero_cedula
+def verificar_cedula(numero_cedula: str = Query(..., description="Número de cédula a verificar")):
     url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        if not data["elector"]:
+        if not data.get("elector"):
             raise HTTPException(status_code=404, detail="Cédula no encontrada")
         return data
     except requests.exceptions.HTTPError as http_err:
         raise HTTPException(status_code=response.status_code, detail=str(http_err))
-    # except Exception as err:
-    #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
+    except Exception as err:
+        raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
 
 
 def generate_ticket_number():

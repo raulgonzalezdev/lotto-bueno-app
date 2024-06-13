@@ -40,7 +40,8 @@ origins = [
     "http://localhost:8000",
     "http://localhost:8001",
     "http://localhost:3000",
-    "http://localhost:3001"
+    "http://localhost:3001",
+    "https://7103.api.greenapi.com"
 ]
 
 app.add_middleware(
@@ -167,7 +168,7 @@ from fastapi import FastAPI, HTTPException, Query
 app = FastAPI()
 
 @app.get("/verificar_cedula")
-def verificar_cedula(numero_cedula: str = Query(..., description="Número de cédula a verificar")):
+def verificar_cedula(numero_cedula: str = Query(..., description="Número de cédula")):
     url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
     try:
         response = requests.get(url)
@@ -179,9 +180,9 @@ def verificar_cedula(numero_cedula: str = Query(..., description="Número de cé
     except requests.exceptions.HTTPError as http_err:
         logging.error(f"HTTP Error: {http_err} for URL: {url}")
         raise HTTPException(status_code=response.status_code, detail=str(http_err))
-    except Exception as err:
-        logging.error(f"Unhandled exception: {err}")
-        raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
+    # except Exception as err:
+    #     logging.error(f"Unhandled exception: {err}")
+    #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
 
 def generate_ticket_number():
     characters = string.ascii_letters + string.digits
@@ -217,7 +218,7 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
 
     # Verificar la cédula usando la función verificar_cedula
     try:
-        elector_response = verificar_cedula(CedulaRequest(numero_cedula=request.cedula))
+        elector_response = verificar_cedula(request.cedula)
         if not elector_response.get("elector"):
             # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
             message = "La cédula proporcionada no es válida para participar en Lotto Bueno."

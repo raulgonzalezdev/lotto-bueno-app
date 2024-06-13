@@ -4,7 +4,7 @@
 DB_USER="lottobueno"
 DB_PASSWORD="lottobueno"
 DB_NAME="lottobueno"
-DB_HOST="172.17.0.3"
+DB_HOST="172.17.0.4"
 DB_PORT="5432"
 
 # Check if PostgreSQL is running

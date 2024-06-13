@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
-from datetime import date
+from pydantic import BaseModel, EmailStr
+from typing import Optional, List
+from datetime import date, datetime
 
 class ElectorBase(BaseModel):
     letra_cedula: Optional[str]
@@ -65,6 +65,96 @@ class ElectorDetail(BaseModel):
     elector: ElectorList
     centro_votacion: Optional[CentroVotacionList]
     geografico: Optional[GeograficoList]
+
+    class Config:
+        orm_mode = True
+
+class TicketBase(BaseModel):
+    numero_ticket: Optional[str]
+    qr_ticket: Optional[str]
+    cedula: Optional[str]
+    nombre: Optional[str]
+    telefono: Optional[str]
+    estado: Optional[str]
+    municipio: Optional[str]
+    parroquia: Optional[str]
+    referido_id: Optional[int]
+    validado: Optional[bool]
+    ganador: Optional[bool]
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+class TicketCreate(TicketBase):
+    pass
+
+class TicketList(TicketBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class TicketUpdate(BaseModel):
+    validado: Optional[bool]
+    ganador: Optional[bool]
+
+class RecolectorBase(BaseModel):
+    nombre: Optional[str]
+    cedula: Optional[str]
+    telefono: Optional[str]
+    es_referido: Optional[bool]
+
+class RecolectorCreate(RecolectorBase):
+    pass
+
+class RecolectorList(RecolectorBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class RecolectorUpdate(BaseModel):
+    nombre: Optional[str]
+    cedula: Optional[str]
+    telefono: Optional[str]
+    es_referido: Optional[bool]
+
+class RecolectorEstadisticas(BaseModel):
+    recolector_id: int
+    nombre: str
+    tickets_count: int
+
+    class Config:
+        orm_mode = True
+
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str
+
+class UserList(UserBase):
+    id: int
+    hashed_password: str
+    isAdmin: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+class LineaTelefonicaBase(BaseModel):
+    numero: str
+    operador: str
+
+class LineaTelefonicaCreate(LineaTelefonicaBase):
+    pass
+
+class LineaTelefonicaUpdate(BaseModel):
+    numero: str
+    operador: str
+
+class LineaTelefonicaList(LineaTelefonicaBase):
+    id: int
 
     class Config:
         orm_mode = True

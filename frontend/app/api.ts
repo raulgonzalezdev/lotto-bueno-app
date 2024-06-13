@@ -1,4 +1,6 @@
-export const detectHost = async (): Promise<string> => {
-  return "http://localhost:8001";  // Asume que el servidor API está corriendo en localhost:8000
-};
 
+export const detectHost = async (): Promise<string> => {
+  // Utiliza la URL desde el archivo .env, o usa un valor predeterminado si no está disponible
+  const apiUrl = process.env.NEXT_API_URL || "http://localhost:8001";
+  return apiUrl;
+};

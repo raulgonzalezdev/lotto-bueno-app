@@ -43,41 +43,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = FastAPI()
-
-# Configuración de CORS
-origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "http://20.233.248.245:8003",
-    "http://20.233.248.245:8003",
-    "http://localhost:8002", 
-    "http://localhost:8004",
-    "http://localhost:8005",
-    "http://localhost:3000",
-    "http://localhost:3002",
-    "http://localhost:3001",
-    "https://7103.api.greenapi.com"
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-API_URL_BASE = os.getenv("API_URL_BASE")
-API_TOKEN = os.getenv("API_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-
-
-
-
 
 
 
@@ -123,12 +88,51 @@ else:
 
 Base = declarative_base()
 
+app = FastAPI()
+
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+# Configuración de CORS
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://20.233.248.245:8003",
+    "http://20.233.248.245:8003",
+    "http://localhost:8002", 
+    "http://localhost:8004",
+    "http://localhost:8005",
+    "http://localhost:3000",
+    "http://localhost:3002",
+    "http://localhost:3001",
+    "https://7103.api.greenapi.com"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+API_URL_BASE = os.getenv("API_URL_BASE")
+API_TOKEN = os.getenv("API_TOKEN")
+REDIS_URL = os.getenv("REDIS_URL")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL")
+SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+
+
+
+
+
+
 
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)

@@ -32,7 +32,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
   const handleLogin = async () => {
-    const apiHost = APIHost || 'http://localhost:8003';
+    const apiHost = APIHost || 'http://20.233.248.245:8003';
     try {
       const response = await fetch(`${apiHost}/api/login`, {
         method: 'POST',
@@ -66,7 +66,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleRegister = async () => {
-    const apiHost = APIHost || 'http://localhost:8003';
+    const apiHost = APIHost || 'http://20.233.248.245:8003';
     try {
       const response = await fetch(`${apiHost}/api/register`, {
         method: 'POST',

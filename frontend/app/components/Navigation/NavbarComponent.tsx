@@ -173,11 +173,11 @@ const Navbar: React.FC<NavbarProps> = ({
                         <a>Add Documents</a>
                       </li>
                     )}
-                    {!production && (
+                    {/* {!production && (
                       <li onClick={() => setCurrentPage("RAG")}>
                         <a>RAG</a>
                       </li>
-                    )}
+                    )} */}
                     {!production && (
                       <li onClick={() => setCurrentPage("SETTINGS")}>
                         <a>Settings</a>

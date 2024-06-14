@@ -2,15 +2,16 @@
 
 "use client";
 import React, { useState, useEffect } from "react";
+import { Elector, Estado, Municipio, Parroquia, CentroVotacion, elector } from './types';
 
 interface ChatComponentProps {
   production: boolean;
   settingConfig: any;
-  APIHost: string;
+  APIHost: any;
   RAGConfig: any;
-  setCurrentPage: (page: string) => void;
+
   isAdmin: boolean;
-  toggleAdmin: () => void;
+
   title: string;
   subtitle: string;
   imageSrc: string;
@@ -21,9 +22,9 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   settingConfig,
   APIHost,
   RAGConfig,
-  setCurrentPage,
+
   isAdmin,
-  toggleAdmin,
+
   title,
   subtitle,
   imageSrc
@@ -316,13 +317,13 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         </thead>
         <tbody>
           {electores.map((elector) => (
-            <tr key={elector.id}>
-              <td>{`${elector.letra_cedula}-${elector.numero_cedula}`}</td>
-              <td>{elector.p_nombre}</td>
-              <td>{elector.p_apellido}</td>
-              <td>{elector.codigo_centro_votacion}</td>
+            <tr key={elector?.id}>
+              <td>{`${elector?.letra_cedula}-${elector?.numero_cedula}`}</td>
+              <td>{elector?.p_nombre}</td>
+              <td>{elector?.p_apellido}</td>
+              <td>{elector?.codigo_centro_votacion}</td>
               <td>
-                <button className="btn btn-primary" onClick={() => openModal(elector.numero_cedula)}>
+                <button className="btn btn-primary" onClick={() => openModal(elector?.numero_cedula)}>
                   Ver Detalle
                 </button>
               </td>

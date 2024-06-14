@@ -17,7 +17,7 @@ const LineaTelefonicaControl: React.FC = () => {
   const [lineasPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string>("http://localhost:8001");
+  const [APIHost, setAPIHost] = useState<string>("http://localhost:8003");
   const [newLinea, setNewLinea] = useState({ numero: "", operador: "" });
 
   useEffect(() => {
@@ -25,6 +25,7 @@ const LineaTelefonicaControl: React.FC = () => {
   }, [APIHost, currentPage, searchTerm]);
 
   const fetchLineas = async () => {
+    //@ts-ignore
     const query = new URLSearchParams({
       skip: (currentPage - 1) * lineasPerPage,
       limit: lineasPerPage,

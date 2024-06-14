@@ -41,7 +41,7 @@ const InfoComponent: React.FC<InfoComponentProps> = ({
       <button onClick={handleIconClick} className="btn btn-circle btn-sm border-none bg-bg-verba hover:bg-secondary-verba text-text-verba">
         {isAdmin ? <FaUserCog /> : <FaInfo />}
       </button>
-      <LoginModal
+      {/* <LoginModal
         isVisible={isModalVisible}
         onClose={() => setModalVisible(false)}
         onAdminLogin={(isAdminStatus) => {
@@ -51,7 +51,7 @@ const InfoComponent: React.FC<InfoComponentProps> = ({
         title={title}
         subtitle={subtitle}
         imageSrc={imageSrc}
-      />
+      /> */}
       <div className="tooltip tooltip-right text-xs" data-tip={tooltip_text}>
         <p className="text-sm text-text-alt-verba">{display_text}</p>
       </div>

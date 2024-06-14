@@ -236,22 +236,22 @@ def api_send_message(request: MessageRequest):
 
 
 
-@app.get("/verificar_cedula")
-def verificar_cedula(numero_cedula: str = Query(..., description="Número de cédula")):
+@app.post("/verificar_cedula")
+def verificar_cedula(request: CedulaRequest):
+    numero_cedula = request.numero_cedula
     url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Esto lanzará un error si el estado HTTP no es 200
+        response.raise_for_status()
         data = response.json()
-        if not data.get("elector"):
+        if not data["elector"]:
             raise HTTPException(status_code=404, detail="Cédula no encontrada")
         return data
     except requests.exceptions.HTTPError as http_err:
-        logging.error(f"HTTP Error: {http_err} for URL: {url}")
         raise HTTPException(status_code=response.status_code, detail=str(http_err))
-    # except Exception as err:
-    #     logging.error(f"Unhandled exception: {err}")
-    #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
+    except Exception as err:
+        raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
+
 
 def generate_ticket_number():
     characters = string.ascii_letters + string.digits

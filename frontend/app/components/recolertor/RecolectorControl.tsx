@@ -37,7 +37,7 @@ const RecolectorControl: React.FC = () => {
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
 
-  const APIHost = 'http://localhost:8001';
+  const APIHost = 'http://localhost:8003';
 
   useEffect(() => {
     fetchRecolectores();

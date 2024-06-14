@@ -21,6 +21,7 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
   setSettingString,
 }) => {
   return (
+    // @ts-ignore
     <button
       key={title}
       className={`btn lg:btn-lg flex items-center justify-center border-none hover:bg-button-hover-verba ${currentSetting === setSettingString ? "bg-primary-verba text-text-verba" : "bg-button-verba text-text-alt-verba"}`}

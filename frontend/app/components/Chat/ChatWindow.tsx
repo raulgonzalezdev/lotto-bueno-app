@@ -157,7 +157,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <p>Build with ♥ and Lotto Bueno © 2024</p>
               </aside>
             </footer>
-            <LoginModal
+            {/* <LoginModal
               isVisible={isModalVisible}
               onClose={() => setModalVisible(false)}
               onAdminLogin={(isAdminStatus) => {
@@ -167,7 +167,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               title={settingConfig.Customization.settings.title.text}
               subtitle={settingConfig.Customization.settings.subtitle.text}
               imageSrc={settingConfig.Customization.settings.image.src}
-            />
+            /> */}
           </div>
         )}
       </div>

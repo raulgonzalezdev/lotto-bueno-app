@@ -123,7 +123,7 @@ app.add_middleware(
 API_URL_BASE = os.getenv("API_URL_BASE")
 API_TOKEN = os.getenv("API_TOKEN")
 REDIS_URL = os.getenv("REDIS_URL")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL" )
 SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 

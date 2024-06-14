@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session
 import os
 
 # Cargar las variables de entorno desde el archivo .env
@@ -44,3 +46,10 @@ else:
 # Base declarativa para los modelos
 from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

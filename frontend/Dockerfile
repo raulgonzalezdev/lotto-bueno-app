@@ -10,7 +10,7 @@ FROM node:20.13.1-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN yarn build
+RUN yarn dev
 
 # Production image, copy all the files and run next
 FROM node:20.13.1-alpine AS runner
@@ -35,4 +35,4 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-CMD ["yarn", "start"]
+CMD ["yarn", "dev"]

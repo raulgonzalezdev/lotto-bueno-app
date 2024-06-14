@@ -287,7 +287,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
 
     # Verificar la cédula usando la función verificar_cedula
     try:
-        elector_response = verificar_cedula(request.cedula)
+        #elector_response = verificar_cedula(request.cedula)
+        elector_response = verificar_cedula(CedulaRequest(numero_cedula=request.cedula))
         if not elector_response.get("elector"):
             # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
             message = "La cédula proporcionada no es válida para participar en Lotto Bueno."

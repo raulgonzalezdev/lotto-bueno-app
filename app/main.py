@@ -14,6 +14,8 @@ from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -24,7 +26,10 @@ from sqlalchemy.sql import func
 from sqlalchemy import distinct
 from datetime import datetime, date
 from redis.asyncio import Redis
-from app.database import SessionLocal
+from app.database import SessionLocal, get_db
+
+
+
 from app.models import Elector, Geografico, CentroVotacion, Ticket, Recolector, Users, LineaTelefonica
 from app.schemas import LineaTelefonicaList, LineaTelefonicaCreate, LineaTelefonicaUpdate, RecolectorEstadisticas,ElectorList,UserCreate, UserList, GeograficoList, CentroVotacionList,TicketUpdate,TicketUpdate, TicketUpdate, ElectorCreate, GeograficoCreate, CentroVotacionCreate, ElectorDetail, TicketCreate, TicketList, RecolectorCreate, RecolectorList, RecolectorUpdate
 from dotenv import load_dotenv
@@ -93,12 +98,7 @@ class Estado(BaseModel):
     estado: str
     
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()

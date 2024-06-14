@@ -41,15 +41,16 @@ const TicketControl: React.FC = () => {
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host || 'http://localhost:8001');
+      setAPIHost(host || 'http://localhost:8003');
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('http://localhost:8001');
+      setAPIHost('http://localhost:8003');
     }
   };
 
   const fetchTickets = async () => {
     if (!APIHost) return;
+    // @ts-ignore
     const query = new URLSearchParams({
       skip: (currentPage - 1) * ticketsPerPage,
       limit: ticketsPerPage,

@@ -213,14 +213,15 @@ const Home = () => {
             />
           )}
           {isAdmin && currentPage === "ELECTORES" && (
+              // @ts-ignore
                <ChatComponent
                production={production}
                settingConfig={baseSetting[settingTemplate]}
                APIHost={APIHost}
                RAGConfig={RAGConfig}
-               setCurrentPage={setCurrentPage}
+               
                isAdmin={isAdmin}
-               toggleAdmin={handleAdminChange}
+              
                title={baseSetting[settingTemplate]?.Customization.settings.title.text}
                subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
                imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}

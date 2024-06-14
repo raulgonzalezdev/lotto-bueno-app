@@ -183,13 +183,14 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
               setSetting={setSetting}
               setSettingString="Customization"
             />
+         
             <SettingButton
               Icon={IoChatbubbleSharp}
               iconSize={iconSize}
               title="Configuraciones de chat"
               currentSetting={setting}
               setSetting={setSetting}
-              setSettingString="Electores"
+              setSettingString=""
             />
           </div>
         </div>

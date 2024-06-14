@@ -12,7 +12,15 @@ DATABASE_URLS = [
     "postgresql+psycopg2://lottobueno:lottobueno@localhost:5432/lottobueno",
     "postgresql://lottobueno:lottobueno@localhost:5432/lottobueno",
     "postgresql+psycopg2://lottobueno:lottobueno@postgres:5432/lottobueno",
+    "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno",
     "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.3:5432/lottobueno"
+    "postgresql://lottobueno:lottobueno@172.21.0.3:5432/lottobueno"
+    "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.4:5432/lottobueno"
+    "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.4:5432/lottobueno"
+    "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.3:5432/lottobueno"
+    "postgresql://lottobueno:lottobueno@172.17.0.4:5432/lottobueno"
+    "postgresql://lottobueno:lottobueno@172.17.0.3:5432/lottobueno"
+    
 ]
 
 # Intentar establecer una conexión

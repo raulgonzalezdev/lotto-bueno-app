@@ -1,4 +1,4 @@
-# Use the base Node.js image from Docker Hub
+# Base Node.js image
 FROM node:20.13.1-alpine AS runner
 WORKDIR /app
 
@@ -9,15 +9,21 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# You might want to disable Next.js telemetry for production.
-# ENV NEXT_TELEMETRY_DISABLED 1
+# Install dependencies
+# Assume that you have a package.json and yarn.lock in your repository
+COPY package.json yarn.lock ./
+RUN yarn install --production --frozen-lockfile
 
-# Copy the .next directory and other necessary files
+# Copy the pre-built .next directory from your repository
 COPY .next ./.next
+
+# Copy other necessary directories such as public if you have public assets
 COPY public ./public
-COPY styles ./styles
-COPY node_modules ./node_modules
-COPY package.json ./package.json
+
+# You may also need to copy any other files or directories that your Next.js app uses
+# Example:
+# COPY locales ./locales
+# COPY utils ./utils
 
 # Specify the user to use when running your app
 USER nextjs

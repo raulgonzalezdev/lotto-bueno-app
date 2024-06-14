@@ -8,8 +8,8 @@ RUN yarn install
 # Rebuild the source code only when needed
 FROM node:20.13.1-alpine AS builder
 WORKDIR /app
-#COPY --from=deps /app/node_modules ./node_modules
-#COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 RUN yarn build
 
 # Production image, copy all the files and run next

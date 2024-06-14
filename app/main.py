@@ -26,7 +26,13 @@ from sqlalchemy.sql import func
 from sqlalchemy import distinct
 from datetime import datetime, date
 from redis.asyncio import Redis
-from app.database import SessionLocal, get_db
+
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import scoped_session
 
 
 
@@ -68,6 +74,62 @@ REDIS_URL = os.getenv("REDIS_URL")
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+
+
+
+
+
+
+
+
+
+
+# Definir las posibles URLs de conexión
+DATABASE_URLS = [
+    # "postgresql+psycopg2://lottobueno:lottobueno@localhost:5432/lottobueno",
+    # "postgresql://lottobueno:lottobueno@localhost:5432/lottobueno",
+    "postgresql+psycopg2://lottobueno:lottobueno@postgres:5432/lottobueno"
+    # "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno",
+    # "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.3:5432/lottobueno",
+    # "postgresql://lottobueno:lottobueno@172.21.0.3:5432/lottobueno",
+    # "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.4:5432/lottobueno",
+    # "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.4:5432/lottobueno",
+    # "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.3:5432/lottobueno",
+    # "postgresql://lottobueno:lottobueno@172.17.0.4:5432/lottobueno",
+    # "postgresql://lottobueno:lottobueno@172.17.0.3:5432/lottobueno"
+]
+
+engine = None
+SessionLocal = None
+
+for db_url in DATABASE_URLS:
+    try:
+        engine = create_engine(db_url)
+        # Probar la conexión
+        with engine.connect() as conn:
+            print(f"Conectado exitosamente usando: {db_url}")
+            break  # Salir del bucle si la conexión es exitosa
+    except SQLAlchemyError as e:
+        print(f"Fallo al conectar usando {db_url}: {e}")
+
+if engine is not None:
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+else:
+    print("No se pudo establecer conexión con ninguna de las bases de datos proporcionadas.")
+    os._exit(1)
+
+# Base declarativa para los modelos
+
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 
@@ -168,9 +230,7 @@ def api_send_message(request: MessageRequest):
     
     return {"status": "Mensaje enviado", "data": result.get("data")}
 
-from fastapi import FastAPI, HTTPException, Query
 
-app = FastAPI()
 
 @app.get("/verificar_cedula")
 def verificar_cedula(numero_cedula: str = Query(..., description="Número de cédula")):

@@ -822,7 +822,7 @@ async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: S
 
 def read_settings():
     try:
-        with open("settings.json", "r") as file:
+        with open("app/settings.json", "r") as file:
             return json.load(file)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Settings file not found")
@@ -833,7 +833,7 @@ def read_settings():
 
 def write_settings(settings: dict):
     try:
-        with open("settings.json", "w") as file:
+        with open("app/settings.json", "w") as file:
             json.dump(settings, file, indent=4)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

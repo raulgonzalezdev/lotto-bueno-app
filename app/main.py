@@ -102,8 +102,8 @@ def get_db():
 origins = [
     "http://localhost",
     "http://localhost:8000",
-    "https://rep.uaenorth.cloudapp.azure.com",
-    "https://rep.uaenorth.cloudapp.azure.com",
+    "https://lot.uaenorth.cloudapp.azure.com",
+    "https://lot.uaenorth.cloudapp.azure.com",
     "http://localhost:8002", 
     "http://localhost:8004",
     "http://localhost:8005",

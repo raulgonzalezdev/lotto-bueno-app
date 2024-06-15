@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
-import { detectHost } from "../../api";
+//import { detectHost } from "../../api";
 
 interface Recolector {
   id: number;
@@ -37,24 +37,25 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  const [APIHost, setAPIHost] = useState<string | null>(null);
+  //const [APIHost, setAPIHost] = useState<string | null>(null);
 
   
 
+  const APIHost = 'https://rep.uaenorth.cloudapp.azure.com';
 
-  useEffect(() => {
-    fetchHost();
-  }, []);
+  // useEffect(() => {
+  //   fetchHost();
+  // }, []);
 
-  const fetchHost = async () => {
-    try {
-      const host = await detectHost();
-      setAPIHost(host || 'https://rep.uaenorth.cloudapp.azure.com');
-    } catch (error) {
-      console.error("Error detecting host:", error);
-      setAPIHost('https://rep.uaenorth.cloudapp.azure.com');
-    }
-  };
+  // const fetchHost = async () => {
+  //   try {
+  //     const host = await detectHost();
+  //     setAPIHost(host || 'https://rep.uaenorth.cloudapp.azure.com');
+  //   } catch (error) {
+  //     console.error("Error detecting host:", error);
+  //     setAPIHost('https://rep.uaenorth.cloudapp.azure.com');
+  //   }
+  // };
 
   useEffect(() => {
     fetchRecolectores();

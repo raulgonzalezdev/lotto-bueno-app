@@ -38,10 +38,10 @@ ALGORITHM=HS256' > /bueno/lotto-bueno-app/.env
 
 
 
-docker cp ./lottobueno_backup.dump f70448e24996:/docker-entrypoint-initdb.d/lottobueno_backup.dump
+docker cp ./lottobueno_backup.dump f70448e24996:/lottobueno_backup.dump
 
 
-docker exec -i f70448e24996 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
+docker exec -i f70448e24996 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /lottobueno_backup.dump"
 
 
 ```

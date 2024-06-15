@@ -56,7 +56,7 @@ const RecolectorControl: React.FC = () => {
   useEffect(() => {
     fetchRecolectores();
    }, [APIHost, currentPage, searchTerm]);
-   
+
    const fetchRecolectores = async () => {
     //@ts-ignore
     const query = new URLSearchParams({
@@ -64,9 +64,10 @@ const RecolectorControl: React.FC = () => {
       limit: recolectoresPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
     }).toString();
+    const secureAPIHost = APIHost.replace("http://", "https://");
   
     try {
-      const response = await fetch(`${APIHost}/recolectores?${query}`);
+      const response = await fetch(`${secureAPIHost}/recolectores?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }

@@ -37,11 +37,7 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  //const [APIHost, setAPIHost] = useState<string | null>(null);
-
-  
-
-  const APIHost = 'https://rep.uaenorth.cloudapp.azure.com';
+  const [APIHost, setAPIHost] = useState<string>("https://rep.uaenorth.cloudapp.azure.com");
 
   // useEffect(() => {
   //   fetchHost();
@@ -59,19 +55,23 @@ const RecolectorControl: React.FC = () => {
 
   useEffect(() => {
     fetchRecolectores();
-  }, [currentPage, searchTerm]);
-
-  const fetchRecolectores = async () => {
+   }, [APIHost, currentPage, searchTerm]);
+   
+   const fetchRecolectores = async () => {
+    //@ts-ignore
     const query = new URLSearchParams({
       skip: ((currentPage - 1) * recolectoresPerPage).toString(),
       limit: recolectoresPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
     }).toString();
-
+  
     try {
       const response = await fetch(`${APIHost}/recolectores?${query}`);
-      const data: Recolector[] = await response.json();
-      setRecolectores(data);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setRecolectores(Array.isArray(data) ? data : []);
       setTotalPages(Math.ceil(data.length / recolectoresPerPage));
     } catch (error) {
       console.error("Error fetching recolectores:", error);
@@ -79,6 +79,7 @@ const RecolectorControl: React.FC = () => {
       setTotalPages(1);
     }
   };
+  
 
   const handleDelete = async () => {
     if (!APIHost || !recolectorToDelete) return;

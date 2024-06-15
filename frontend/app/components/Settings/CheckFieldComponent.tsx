@@ -6,7 +6,7 @@ import { SettingsConfiguration, CheckboxSetting } from "./types";
 interface CheckComponent {
   title: string;
   CheckboxSetting: CheckboxSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" | "EnvVariables";
 
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;

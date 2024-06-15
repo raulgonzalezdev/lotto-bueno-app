@@ -4,7 +4,7 @@ import { SettingsConfiguration, SelectSetting } from "./types";
 interface SelectComponentProps {
   title: string;
   SelectSetting: SelectSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" |  "EnvVariables";
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;
   setSettingTemplate?: (s: string) => void;

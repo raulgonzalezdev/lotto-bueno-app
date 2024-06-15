@@ -6,7 +6,7 @@ import { SettingsConfiguration, NumberFieldSetting } from "./types";
 interface NumberFieldComponentProps {
   title: string;
   NumberFieldSetting: NumberFieldSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" |  "EnvVariables";
 
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;

@@ -41,9 +41,9 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
   baseSetting,
   setBaseSetting,
 }) => {
-  const [setting, setSetting] = useState<"Customization" | "Chat" | "">("Customization");
+  const [setting, setSetting] = useState<"Customization" | "EnvVariables" | "">("Customization");
   const [currentSettingsConfig, setCurrentSettingsConfig] = useState<SettingsConfiguration>(
-    baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } }
+    baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} }, EnvVariables: { title: "", description: "", settings: {} } }
   );
 
   const [availableTemplate, setAvailableTemplate] = useState<string[]>([]);
@@ -62,7 +62,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
     const response = await fetch("/api/settings");
     const data = await response.json();
     setBaseSetting(data);
-    setCurrentSettingsConfig(data[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } });
+    setCurrentSettingsConfig(data[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} }, EnvVariables: { title: "", description: "", settings: {} } });
     setSettingTemplate(data.currentTemplate);
   };
 
@@ -82,10 +82,23 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
       },
       body: JSON.stringify(updatedSettings),
     });
+
+    // Llamar a la API para actualizar el archivo HTML
+    await fetch("/api/update-html", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: currentSettingsConfig.EnvVariables.settings.NEXT_PUBLIC_SITE_TITLE.text,
+        description: currentSettingsConfig.EnvVariables.settings.NEXT_PUBLIC_SITE_DESCRIPTION.text,
+        faviconUrl: currentSettingsConfig.EnvVariables.settings.NEXT_PUBLIC_FAVICON_URL.text,
+      }),
+    });
   };
 
   const revertChanges = () => {
-    setCurrentSettingsConfig(baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } });
+    setCurrentSettingsConfig(baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} }, EnvVariables: { title: "", description: "", settings: {} } });
   };
 
   const renderSettingComponent = (
@@ -165,7 +178,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const name = e.target.value;
     setSettingTemplate(name);
-    setCurrentSettingsConfig(baseSetting[name] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } });
+    setCurrentSettingsConfig(baseSetting[name] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} }, EnvVariables: { title: "", description: "", settings: {} } });
   };
 
   return (
@@ -183,14 +196,21 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
               setSetting={setSetting}
               setSettingString="Customization"
             />
-         
-            <SettingButton
+            {/* <SettingButton
               Icon={IoChatbubbleSharp}
               iconSize={iconSize}
               title="Configuraciones de chat"
               currentSetting={setting}
               setSetting={setSetting}
-              setSettingString=""
+              setSettingString="Chat"
+            /> */}
+            <SettingButton
+              Icon={FaPaintBrush}
+              iconSize={iconSize}
+              title="Environment Variables"
+              currentSetting={setting}
+              setSetting={setSetting}
+              setSettingString="EnvVariables"
             />
           </div>
         </div>
@@ -220,8 +240,11 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
                     <li onClick={() => setSetting("Customization")}>
                       <a>Personalizar App</a>
                     </li>
-                    <li onClick={() => setSetting("Chat")}>
+                    {/* <li onClick={() => setSetting("Chat")}>
                       <a>Configuraciones de chat</a>
+                    </li> */}
+                    <li onClick={() => setSetting("EnvVariables")}>
+                      <a>Variables de entorno</a>
                     </li>
                   </ul>
                 </details>
@@ -252,14 +275,22 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
                 </p>
               </div>
             </div>
+            // eslint-disable-next-line react/jsx-no-comment-textnodes
           )}
-          <div className="flex-coll gap-4 grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {setting &&
-              currentSettingsConfig &&
-              Object.entries(currentSettingsConfig[setting].settings).map(([key, settingValue]) =>
-                renderSettingComponent(key, settingValue)
-              )}
-          </div>
+          { //@ts-ignore 
+            <div className="flex-coll gap-4 grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {
+                setting && currentSettingsConfig &&
+                Object.entries(currentSettingsConfig[setting].settings).map(([key, settingValue]) => {
+                  // Asegúrate de que settingValue no sea un string 'light' o 'dark'
+                  if (typeof settingValue === 'object') {
+                    return renderSettingComponent(key, settingValue);
+                  }
+                  return null; // o manejar de otra forma si settingValue es 'light' o 'dark'
+                })
+              }
+            </div>
+          }
           <div className="flex justify-end gap-2 mt-3">
             <button
               onClick={applyChanges}

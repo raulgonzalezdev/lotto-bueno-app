@@ -7,7 +7,7 @@ import { HexColorPicker } from "react-colorful";
 interface ColorFieldComponentProps {
   title: string;
   ColorSetting: ColorSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" | "EnvVariables";
 
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;

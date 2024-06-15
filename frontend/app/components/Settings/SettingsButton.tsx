@@ -7,9 +7,9 @@ interface SettingsButtonProps {
   Icon: typeof FaStar;
   iconSize: number;
   title: string;
-  currentSetting: string;
-  setSetting: (page: "Customization" | "Chat" | "") => void;
-  setSettingString: "Customization" | "Chat" | "";
+  currentSetting: "Customization" | "EnvVariables" | "";
+  setSetting: (setting: "Customization" | "EnvVariables" | "") => void;
+  setSettingString: "Customization" | "EnvVariables";
 }
 
 const SettingsButton: React.FC<SettingsButtonProps> = ({

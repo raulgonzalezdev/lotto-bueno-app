@@ -7,7 +7,7 @@ import { SettingsConfiguration, ImageFieldSetting } from "./types";
 interface ImageFieldComponentProps {
   title: string;
   ImageFieldSetting: ImageFieldSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" | "EnvVariables";
 
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;

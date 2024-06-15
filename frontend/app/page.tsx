@@ -48,11 +48,6 @@ const Home = () => {
     }
   };
 
-  const toggleAdmin = (adminKey: string): void => {
-    if (adminKey === "1234") {
-      setIsAdmin(!isAdmin);
-    }
-  };
 
   const handleAdminChange = (value: string | boolean): void => {
     if (typeof value === "string" && value === "1234") {
@@ -80,6 +75,11 @@ const Home = () => {
     }
   };
 
+
+
+
+
+  
   const fetchHost = async () => {
     try {
       const host = await detectHost();

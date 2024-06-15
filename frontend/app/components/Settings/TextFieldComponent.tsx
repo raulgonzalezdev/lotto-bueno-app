@@ -6,7 +6,7 @@ import { SettingsConfiguration, TextFieldSetting } from "./types";
 interface TextFieldComponentProps {
   title: string;
   TextFieldSetting: TextFieldSetting;
-  setting: "Customization" | "Chat";
+  setting: "Customization" |  "EnvVariables" ;
 
   settingsConfig: SettingsConfiguration;
   setSettingsConfig: (settings: any) => void;

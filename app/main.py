@@ -8,6 +8,7 @@ import base64
 import requests
 import jwt
 import logging
+import re
 
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
@@ -815,38 +816,133 @@ async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: S
     return [{"recolector_id": est.id, "nombre": est.nombre, "tickets_count": est.tickets_count} for est in estadisticas]
 
 
+def read_settings():
+    try:
+        with open("goldenverba/server/settings.json", "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Settings file not found")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Error decoding JSON from settings file")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def write_settings(settings: dict):
+    try:
+        with open("goldenverba/server/settings.json", "w") as file:
+            json.dump(settings, file, indent=4)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Endpoint to get settings
 @app.get("/api/settings")
 async def get_settings():
-    try:
-        settings = read_settings()
-        return JSONResponse(status_code=200, content=settings)
-    except FileNotFoundError:
-        return JSONResponse(status_code=404, content={"error": "Settings file not found"})
-    except json.JSONDecodeError:
-        return JSONResponse(status_code=500, content={"error": "Error decoding JSON from settings file"})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-def read_settings():
-    with open("app/settings.json", "r") as file:
-        return json.load(file)
+    settings = read_settings()
+    return JSONResponse(status_code=200, content=settings)
 
 # Endpoint to update settings
 @app.post("/api/settings")
 async def update_settings(payload: dict):
     try:
         settings = read_settings()
-        settings.update(payload)
+
+        # Actualiza el valor de currentTemplate
+        if "currentTemplate" in payload:
+            settings["currentTemplate"] = payload["currentTemplate"]
+
+        current_template = settings.get("currentTemplate")
+
+        if not current_template:
+            raise HTTPException(status_code=400, detail="currentTemplate not set in settings")
+
+        if current_template not in settings:
+            raise HTTPException(status_code=400, detail=f"Template {current_template} not found in settings")
+
+        # Update the correct template
+        template_settings = settings[current_template]
+        for section_key, section_value in payload.get(current_template, {}).items():
+            if section_key in template_settings:
+                if isinstance(template_settings[section_key], dict) and isinstance(section_value, dict):
+                    template_settings[section_key].update(section_value)
+                else:
+                    template_settings[section_key] = section_value
+            else:
+                template_settings[section_key] = section_value
+
         write_settings(settings)
         return JSONResponse(status_code=200, content={"message": "Settings saved"})
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"error": e.detail})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-def write_settings(settings: dict):
-    with open("app/settings.json", "w") as file:
-        json.dump(settings, file, indent=4)
 
+
+
+class UpdateHTMLSettings(BaseModel):
+    title: str
+    description: str
+    faviconUrl: str
+    
+
+BASE_DIR = Path(__file__).resolve().parent
+
+@app.post("/api/update-html")
+async def update_html(settings: UpdateHTMLSettings):
+    try:
+        # Path to index.html
+        html_path = BASE_DIR / "frontend/out/index.html"
+        with open(html_path, 'r', encoding='utf-8') as file:
+            html_content = file.read()
+
+        # Update the index.html file
+        html_content = re.sub(r'<title>.*?</title>', f'<title>{settings.title}</title>', html_content)
+        html_content = re.sub(
+            r'<meta name="description" content=".*?"/>',
+            f'<meta name="description" content="{settings.description}"/>',
+            html_content
+        )
+        html_content = re.sub(
+            r'<link rel="icon" href=".*?" type="image/x-icon"/>',
+            f'<link rel="icon" href="{settings.faviconUrl}" type="image/x-icon"/>',
+            html_content
+        )
+        
+        with open(html_path, 'w', encoding='utf-8') as file:
+            file.write(html_content)
+        
+        # Update the _next directory files
+        _next_dir = BASE_DIR / "frontend/out/_next/static/chunks/app"
+        for root, _, files in os.walk(_next_dir):
+            for name in files:
+                if name.endswith(".js"):
+                    file_path = os.path.join(root, name)
+                    with open(file_path, 'r', encoding='utf-8') as file:
+                        file_content = file.read()
+                    
+                    # Update the JavaScript content
+                    file_content = re.sub(
+                        r'title:t.title\|\|"[^"]+"',
+                        f'title:t.title||"{settings.title}"',
+                        file_content
+                    )
+                    file_content = re.sub(
+                        r'description:t.description\|\|"[^"]+"',
+                        f'description:t.description||"{settings.description}"',
+                        file_content
+                    )
+                    file_content = re.sub(
+                        r'faviconUrl:t.faviconUrl\|\|"[^"]+"',
+                        f'faviconUrl:t.faviconUrl||"{settings.faviconUrl}"',
+                        file_content
+                    )
+                    
+                    with open(file_path, 'w', encoding='utf-8') as file:
+                        file.write(file_content)
+
+        return {"message": "HTML and chunks updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class UserCreate(BaseModel):

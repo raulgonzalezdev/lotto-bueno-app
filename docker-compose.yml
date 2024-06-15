@@ -11,10 +11,10 @@ services:
       POSTGRES_DB: lottobueno
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./lottobueno_backup.dump:/docker-entrypoint-initdb.d/lottobueno_backup.dump
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-      - ./wait-for-it.sh:/docker-entrypoint-initdb.d/wait-for-it.sh
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      #- ./lottobueno_backup.dump:/docker-entrypoint-initdb.d/lottobueno_backup.dump
+      #- ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      #- ./wait-for-it.sh:/docker-entrypoint-initdb.d/wait-for-it.sh
+      #- ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5547:5432"
     healthcheck:

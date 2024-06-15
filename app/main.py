@@ -105,19 +105,22 @@ origins = [
     "http://localhost",
     "http://localhost:8000",
     "https://lot.uaenorth.cloudapp.azure.com",
-    "https://lot.uaenorth.cloudapp.azure.com",
+    "http://lot.uaenorth.cloudapp.azure.com",
     "http://localhost:8002", 
+    "http://localhost:8003", 
     "http://localhost:8004",
     "http://localhost:8005",
     "http://localhost:3000",
     "http://localhost:3002",
     "http://localhost:3001",
-    "https://7103.api.greenapi.com"
+    "https://7103.api.greenapi.com",
+    "https://lot.uaenorth.cloudapp.azure.com/api/settings",
+    "https://lotto-bueno-app-tbsd.vercel.app/"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -32,7 +32,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
   const handleLogin = async () => {
-    const apiHost = APIHost || 'https://rep.uaenorth.cloudapp.azure.com';
+    const apiHost = APIHost || 'https://lot.uaenorth.cloudapp.azure.com';
     try {
       const response = await fetch(`${apiHost}/api/login`, {
         method: 'POST',
@@ -66,7 +66,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleRegister = async () => {
-    const apiHost = APIHost || 'https://rep.uaenorth.cloudapp.azure.com';
+    const apiHost = APIHost || 'https://lot.uaenorth.cloudapp.azure.com';
     try {
       const response = await fetch(`${apiHost}/api/register`, {
         method: 'POST',

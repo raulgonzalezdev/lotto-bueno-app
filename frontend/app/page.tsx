@@ -59,7 +59,7 @@ const Home = () => {
       const response = await fetch(`${apiHost}/api/settings`);
       if (response.ok) {
         const data = await response.json();
-        //console.log("Fetched settings data:", data); // Agregar console.log para verificar los datos
+        //console.log("Fetched settings data:", data, data.currentTemplate); // Agregar console.log para verificar los datos
         setBaseSetting(data);
         setSettingTemplate(data.currentTemplate);
       } else {
@@ -84,9 +84,41 @@ const Home = () => {
     }
   };
 
+  const importConfig = async () => {
+    if (!APIHost || !baseSetting) {
+      return;
+    }
+
+    try {
+      const payload = {
+        config: {
+          RAG: RAGConfig,
+          SETTING: { selectedTheme: settingTemplate, themes: baseSetting },
+        },
+      };
+      //console.log('payload', payload)
+      await fetch(`${APIHost}/api/settings`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload.config.SETTING),
+      });
+    } catch (error) {
+      console.error("Failed to update config:", error);
+    }
+  };
+
+
   useEffect(() => {
     fetchHost();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    importConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseSetting, settingTemplate]);
 
   useEffect(() => {
     if (baseSetting) {

@@ -2,6 +2,7 @@
 
 "use client";
 import React, { useState, useEffect } from "react";
+import { detectHost } from "../../api";
 import {
   SettingsConfiguration,
   TextFieldSetting,
@@ -46,6 +47,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
     baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } }
   );
 
+  const [APIHost, setAPIHost] = useState<string | null>('https://rep.uaenorth.cloudapp.azure.com');
   const [availableTemplate, setAvailableTemplate] = useState<string[]>([]);
 
   useEffect(() => {
@@ -58,8 +60,23 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
     fetchCurrentSettings();
   }, []);
 
+
+  useEffect(() => {
+    fetchHost();
+  }, []);
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost('https://rep.uaenorth.cloudapp.azure.com');
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost('https://rep.uaenorth.cloudapp.azure.com');
+    }
+  };
+
   const fetchCurrentSettings = async () => {
-    const response = await fetch("/api/settings");
+    const response = await fetch(`${APIHost}/api/settings`);
     const data = await response.json();
     setBaseSetting(data);
     setCurrentSettingsConfig(data[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } });
@@ -75,7 +92,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
       currentTemplate: settingTemplate,
     };
     setBaseSetting(updatedSettings);
-    await fetch("/api/settings", {
+    await fetch(`${APIHost}/api/settings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

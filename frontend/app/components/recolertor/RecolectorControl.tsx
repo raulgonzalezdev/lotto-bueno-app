@@ -67,7 +67,7 @@ const RecolectorControl: React.FC = () => {
     const secureAPIHost = APIHost.replace("http://", "https://");
   
     try {
-      const response = await fetch(`${secureAPIHost}/recolectores?${query}`);
+      const response = await fetch(`https://rep.uaenorth.cloudapp.azure.com/recolectores`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -78,6 +78,10 @@ const RecolectorControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
+      // const response = await fetch(`https://rep.uaenorth.cloudapp.azure.com/recolectores?${query}`);
+      // const data = await response.json();
+      // setRecolectores(Array.isArray(data) ? data : []);
+      // setTotalPages(Math.ceil(data.length / recolectoresPerPage));
     }
   };
   

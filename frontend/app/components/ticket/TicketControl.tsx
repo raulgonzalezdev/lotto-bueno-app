@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import React, { useState, useEffect } from "react";
 import { detectHost } from "../../api";
@@ -36,6 +37,7 @@ const TicketControl: React.FC = () => {
 
   useEffect(() => {
     fetchTickets();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [APIHost, currentPage]);
 
   const fetchHost = async () => {

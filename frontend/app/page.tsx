@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navigation/NavbarComponent";
 import SettingsComponent from "./components/Settings/SettingsComponent";
 import ChatComponent from "./components/Chat/ChatComponent";
-import ChatWindow from "./components/Chat/ChatWindow";
+
 import WelcomeComponent from "./components/Welcome/WelcomeComponent";
 import RegisterWindow from "./components/register/RegisterWindow";
 import UserControl from "./components/login/UserControl";
@@ -12,14 +12,10 @@ import TicketControl from "./components/ticket/TicketControl";
 import RecolectorControl from "./components/recolertor/RecolectorControl";
 import LineaTelefonicaControl from "./components/lineas/LineaTelefonicaControl";
 import SorteoControl from "./components/sorteo/SorteoControl";
-import Conversations from "./components/Conversations/Conversations";
-import DocumentViewerComponent from "./components/Document/DocumentViewerComponent";
-import StatusComponent from "./components/Status/StatusComponent";
-import FloatingChatButton from "./components/FloatingChatButton";
-import { Settings, BaseSettings } from "./components/Settings/types";
-import RAGComponent from "./components/RAG/RAGComponent";
-import { HealthPayload } from "./components/Status/types";
-import { RAGConfig, RAGResponse } from "./components/RAG/types";
+
+import { Settings } from "./components/Settings/types";
+
+import { RAGConfig } from "./components/RAG/types";
 import { detectHost } from "./api";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { fonts, FontKey } from "./info";
@@ -48,11 +44,7 @@ const Home = () => {
     }
   };
 
-  const toggleAdmin = (adminKey: string): void => {
-    if (adminKey === "1234") {
-      setIsAdmin(!isAdmin);
-    }
-  };
+
 
   const handleAdminChange = (value: string | boolean): void => {
     if (typeof value === "string" && value === "1234") {

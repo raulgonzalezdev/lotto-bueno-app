@@ -39,10 +39,10 @@ const UserControl: React.FC = () => {
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host || 'https://rep.uaenorth.cloudapp.azure.com');
+      setAPIHost(host || 'https://lot.uaenorth.cloudapp.azure.com');
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('https://rep.uaenorth.cloudapp.azure.com');
+      setAPIHost('https://lot.uaenorth.cloudapp.azure.com');
     }
   };
 

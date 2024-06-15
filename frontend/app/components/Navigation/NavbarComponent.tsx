@@ -99,7 +99,7 @@ const Navbar: React.FC<NavbarProps> = ({
             APIHost={APIHost}
             Icon={FcSalesPerformance }
             iconSize={icon_size}
-            title="Soretasr Ganadors"
+            title="Sortear Ganadors"
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             setPage="STATUS"
@@ -152,27 +152,27 @@ const Navbar: React.FC<NavbarProps> = ({
                   </summary>
                   <ul className="bg-bg-alt-verba">
                     <li onClick={() => setCurrentPage("ELECTORES")}>
-                      <a>Chat</a>
+                      <a>Electores</a>
                     </li>
                     <li onClick={() => setCurrentPage("TICKETS")}>
-                      <a>Documents</a>
+                      <a>Tickets</a>
                     </li>
                     <li onClick={() => setCurrentPage("USERS")}>
                       <a>Usuarios</a>
                     </li>
                     <li onClick={() => setCurrentPage("RECOLECTORES")}>
-                      <a>Conversaciones</a>
+                      <a>Recolectores</a>
                     </li>
                    
-                      <li onClick={() => setCurrentPage("STATUS")}>
-                        <a>Status</a>
+                       <li onClick={() => setCurrentPage("STATUS")}>
+                        <a>Sorteos</a>
                       </li>
                   
-                    {!production && (
+                    {/* {!production && (
                       <li onClick={() => setCurrentPage("ADD")}>
-                        <a>Add Documents</a>
+                        <a>Sorteos</a>
                       </li>
-                    )}
+                    )}  */}
                     {/* {!production && (
                       <li onClick={() => setCurrentPage("RAG")}>
                         <a>RAG</a>

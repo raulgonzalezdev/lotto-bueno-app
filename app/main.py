@@ -756,6 +756,8 @@ async def get_municipios(estado: str, db: Session = Depends(get_db)):
     return [municipio[0] for municipio in municipios]
 # CRUD para Recolector
 
+# CRUD para Recolector
+
 @app.get("/recolectores/", response_model=list[RecolectorList])
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     recolectores = db.query(Recolector).offset(skip).limit(limit).all()

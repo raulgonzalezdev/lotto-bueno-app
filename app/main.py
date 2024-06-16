@@ -657,14 +657,14 @@ async def read_electores(
 async def read_elector(elector_id: int, db: Session = Depends(get_db)):
     elector = db.query(Elector).filter(Elector.id == elector_id).first()
     if not elector:
-        raise HTTPException(status_code=404, detail="Elector not found")
+        raise HTTPException(status_code=404, detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno")
     return elector
 
 @app.get("/electores/cedula/{numero_cedula}", response_model=ElectorDetail)
 async def read_elector_by_cedula(numero_cedula: int, db: Session = Depends(get_db)):
     result = await get_elector_by_cedula_from_cache(numero_cedula, db)
     if not result:
-        raise HTTPException(status_code=404, detail="Elector not found")
+        raise HTTPException(status_code=404, detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno")
     return result
 
 def to_dict(obj):
@@ -689,7 +689,7 @@ async def read_elector_by_cedula_no_cache(numero_cedula: int, db: Session = Depe
         }
         return result
     else:
-        raise HTTPException(status_code=404, detail="Elector not found")
+        raise HTTPException(status_code=404, detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno")
 
 @app.get("/geograficos/", response_model=list[GeograficoList])
 async def read_geograficos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

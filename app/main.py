@@ -17,6 +17,7 @@ from datetime import datetime, timezone, timedelta
 from io import BytesIO
 from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from fastapi.responses import FileResponse, JSONResponse
@@ -102,25 +103,25 @@ def get_db():
         db.close()
 # Configuración de CORS
 origins = [
-    "http://localhost",
-    "http://localhost:8000",
-    "https://lot.uaenorth.cloudapp.azure.com",
-    "http://lot.uaenorth.cloudapp.azure.com",
-    "http://localhost:8002", 
-    "http://localhost:8003", 
-    "http://localhost:8004",
-    "http://localhost:8005",
+    # "http://localhost",
+    "http://localhost:8003",
+    # "http://localhost:8000",
+    # "http://lot.uaenorth.cloudapp.azure.com",
+    # "http://localhost:8002", 
+    # "http://localhost:8003", 
+    # "http://localhost:8004",
+    # "http://localhost:8005",
     "http://localhost:3000",
-    "http://localhost:3002",
-    "http://localhost:3001",
+    # "http://localhost:3002",
+    # "http://localhost:3001",
     "https://7103.api.greenapi.com",
-    "https://lot.uaenorth.cloudapp.azure.com/api/settings",
-    "https://lotto-bueno-app-tbsd.vercel.app/"
+    # "http://localhost:8000/api/settings",
+    # "https://lotto-bueno-app-tbsd.vercel.app/"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,7 +138,7 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 
 
-
+BASE_DIR = Path(__file__).resolve().parent
 
 
 
@@ -199,6 +200,21 @@ def check_whatsapp(phone_number: str):
         return {"status": "api", "message": "Error de HTTP en la verificación de WhatsApp"}
     except Exception as err:
         return {"status": "error", "message": "No se pudo conectar a la API de verificación de WhatsApp"}
+
+
+
+app.mount(
+    "/static/_next",
+    StaticFiles(directory=BASE_DIR / "frontend/out/_next"),
+    name="next-assets",
+)
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend/out"), name="app")
+
+@app.get("/")
+@app.head("/")
+async def serve_frontend():
+    return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
 
 @app.post("/check_whatsapp")
 def api_check_whatsapp(request: PhoneNumberRequest):

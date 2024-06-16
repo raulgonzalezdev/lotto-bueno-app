@@ -104,7 +104,7 @@ def get_db():
 # Configuración de CORS
 origins = [
     # "http://localhost",
-    "http://localhost:8003",
+    "http://localhost:8000",
     # "http://localhost:8000",
     # "http://lot.uaenorth.cloudapp.azure.com",
     # "http://localhost:8002", 

@@ -9,6 +9,7 @@ import requests
 import jwt
 import logging
 import re
+import asyncio
 from pathlib import Path
 
 
@@ -312,7 +313,7 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar la cédula usando la función verificar_cedula
     try:
         #elector_response = verificar_cedula(request.cedula)
-        elector_response = verificar_cedula(CedulaRequest(numero_cedula=request.cedula))
+        elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=request.cedula), db))
         if not elector_response.get("elector"):
             # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
             message = "La cédula proporcionada no es válida para participar en Lotto Bueno."
@@ -604,12 +605,8 @@ router = APIRouter()
 @router.post("/verificar_cedula")
 async def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)):
     numero_cedula = request.numero_cedula
-    # Llamar a la función read_elector_by_cedula_no_cache para obtener los datos
-    try:
-        response = await read_elector_by_cedula_no_cache(numero_cedula, db)
-        return response
-    except HTTPException as http_err:
-        raise HTTPException(status_code=http_err.status_code, detail=http_err.detail)
+    response = await read_elector_by_cedula_no_cache(numero_cedula, db)
+    return response
 
 @router.get("/total/electores", response_model=int)
 def get_total_electores(

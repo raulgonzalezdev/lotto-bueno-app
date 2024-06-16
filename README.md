@@ -56,7 +56,7 @@ ALGORITHM=HS256' > /.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
 
 aed5f68d9ee6
-docker cp .env bfe2403462b5:/app/app/.env
+docker cp .env 4799f9b9aea6:/app/app/.env
 docker exec -i dcdc4efeac4d sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
 docker exec -it dcdc4efeac4d bash

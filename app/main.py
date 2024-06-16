@@ -275,13 +275,7 @@ def api_send_message(request: MessageRequest):
 #     # except Exception as err:
 #     #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
 
-@app.post("/verificar_cedula")
-def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)):
-    numero_cedula = request.numero_cedula
-    result = get_elector_by_cedula_from_cache(numero_cedula, db)
-    if not result:
-        raise HTTPException(status_code=404, detail="Cédula no encontrada")
-    return result
+
 
 def generate_ticket_number():
     characters = string.ascii_letters + string.digits
@@ -607,6 +601,16 @@ def custom_serializer(obj):
 
 router = APIRouter()
 
+@router.post("/verificar_cedula")
+async def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)):
+    numero_cedula = request.numero_cedula
+    # Llamar a la función read_elector_by_cedula_no_cache para obtener los datos
+    try:
+        response = await read_elector_by_cedula_no_cache(numero_cedula, db)
+        return response
+    except HTTPException as http_err:
+        raise HTTPException(status_code=http_err.status_code, detail=http_err.detail)
+
 @router.get("/total/electores", response_model=int)
 def get_total_electores(
     codigo_estado: Optional[int] = None,
@@ -666,7 +670,12 @@ async def read_elector_by_cedula(numero_cedula: int, db: Session = Depends(get_d
         raise HTTPException(status_code=404, detail="Elector not found")
     return result
 
-@app.get("/electores/cedula_no_cache/{numero_cedula}", response_model=ElectorDetail)
+def to_dict(obj):
+    if not obj:
+        return None
+    return {c.key: getattr(obj, c.key) for c in obj.__table__.columns}
+
+@router.get("/electores/cedula_no_cache/{numero_cedula}", response_model=ElectorDetail)
 async def read_elector_by_cedula_no_cache(numero_cedula: int, db: Session = Depends(get_db)):
     db_elector = db.query(Elector).filter(Elector.numero_cedula == numero_cedula).first()
     if db_elector:

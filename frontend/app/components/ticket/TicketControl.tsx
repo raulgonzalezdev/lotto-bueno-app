@@ -43,10 +43,10 @@ const TicketControl: React.FC = () => {
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host || 'http://localhost:8000');
+      setAPIHost(host || 'http://sas.uaenorth.cloudapp.azure.com:8000');
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('http://localhost:8000');
+      setAPIHost('http://sas.uaenorth.cloudapp.azure.com:8000');
     }
   };
 

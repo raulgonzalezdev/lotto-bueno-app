@@ -34,7 +34,7 @@ git lfs clone https://github.com/raulgonzalezdev/lotto-bueno-app.git
 
 
 anexar . env 
-docker exec -i f70448e24996  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com:8000\nCOMPANY_PHONE_CONTACT=584129476026\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256' > /app/.env"
+docker exec -i f70448e24996  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com\nCOMPANY_PHONE_CONTACT=584129476026\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256' > /app/.env"
 
 
 
@@ -46,7 +46,7 @@ DATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@postgres:5432/lottobueno
 API_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544
 API_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0
 REDIS_URL=redis://localhost:6380/0
-FASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com:8000
+FASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com
 COMPANY_PHONE_CONTACT=584129476026
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
 ALGORITHM=HS256' > /.env

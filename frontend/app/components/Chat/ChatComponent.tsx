@@ -42,6 +42,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [parroquias, setParroquias] = useState<Parroquia[]>([]);
   const [centrosVotacion, setCentrosVotacion] = useState<CentroVotacion[]>([]);
+  const [searchError, setSearchError] = useState("");
 
   const [codigoEstado, setCodigoEstado] = useState("");
   const [codigoMunicipio, setCodigoMunicipio] = useState("");
@@ -176,16 +177,23 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const handleCedulaSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCedulaSearch(e.target.value);
   };
-
   const handleCedulaSearch = async () => {
     if (cedulaSearch) {
       try {
         const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
+        if (response.status === 404) {
+          setSearchError("Cédula no encontrada");
+          setSelectedElector(null);
+          setModalIsOpen(false);
+          return;
+        }
         const data: Elector = await response.json();
         setSelectedElector(data);
+        setSearchError("");
         setModalIsOpen(true);
       } catch (error) {
         console.error("Error searching by cedula:", error);
+        setSearchError("Error al buscar la cédula");
       }
     }
   };
@@ -202,6 +210,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const closeModal = () => {
     setModalIsOpen(false);
     setSelectedElector(null);
+    setSearchError("");
+
   };
 
   const paginate = (pageNumber: number) => {

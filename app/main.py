@@ -259,22 +259,29 @@ def api_send_message(request: MessageRequest):
 
 
 
-@app.post("/verificar_cedula")
-def verificar_cedula(request: CedulaRequest):
-    numero_cedula = request.numero_cedula
-    url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if not data["elector"]:
-            raise HTTPException(status_code=404, detail="Cédula no encontrada")
-        return data
-    except requests.exceptions.HTTPError as http_err:
-        raise HTTPException(status_code=response.status_code, detail=str(http_err))
-    # except Exception as err:
-    #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
+# @app.post("/verificar_cedula")
+# def verificar_cedula(request: CedulaRequest):
+#     numero_cedula = request.numero_cedula
+#     url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
+#     try:
+#         response = requests.get(url)
+#         response.raise_for_status()
+#         data = response.json()
+#         if not data["elector"]:
+#             raise HTTPException(status_code=404, detail="Cédula no encontrada")
+#         return data
+#     except requests.exceptions.HTTPError as http_err:
+#         raise HTTPException(status_code=response.status_code, detail=str(http_err))
+#     # except Exception as err:
+#     #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
 
+@app.post("/verificar_cedula")
+def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)):
+    numero_cedula = request.numero_cedula
+    result = get_elector_by_cedula_from_cache(numero_cedula, db)
+    if not result:
+        raise HTTPException(status_code=404, detail="Cédula no encontrada")
+    return result
 
 def generate_ticket_number():
     characters = string.ascii_letters + string.digits

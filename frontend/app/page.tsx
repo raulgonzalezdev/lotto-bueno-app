@@ -56,7 +56,8 @@ const Home = () => {
 
   const fetchCurrentSettings = async (apiHost: string) => {
     try {
-      const response = await fetch(`${apiHost}/api/settings`);
+      const response = await fetch(`/api/settings`);
+      //const response = await fetch(`${apiHost}/api/settings`);
       if (response.ok) {
         const data = await response.json();
         //console.log("Fetched settings data:", data, data.currentTemplate); // Agregar console.log para verificar los datos
@@ -97,7 +98,8 @@ const Home = () => {
         },
       };
       //console.log('payload', payload)
-      await fetch(`${APIHost}/api/settings`, {
+      //await fetch(`${APIHost}/api/settings`, {
+      await fetch(`/api/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

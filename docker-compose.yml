@@ -50,7 +50,7 @@ services:
       redis:
         condition: service_healthy
     ports:
-      - "8003:8000"
+      - "8000:8000"
     networks:
       - lotto-bueno-network
 

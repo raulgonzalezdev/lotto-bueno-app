@@ -34,7 +34,7 @@ git lfs clone https://github.com/raulgonzalezdev/lotto-bueno-app.git
 
 
 anexar . env 
-docker exec -i f70448e24996  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=http://sas.uaenorth.cloudapp.azure.com:8000\nCOMPANY_PHONE_CONTACT=584129476026\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256' > /app/.env"
+docker exec -i f70448e24996  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com:8000\nCOMPANY_PHONE_CONTACT=584129476026\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256' > /app/.env"
 
 
 
@@ -46,7 +46,7 @@ DATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@postgres:5432/lottobueno
 API_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544
 API_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0
 REDIS_URL=redis://localhost:6380/0
-FASTAPI_BASE_URL=http://sas.uaenorth.cloudapp.azure.com:8000
+FASTAPI_BASE_URL=https://sas.uaenorth.cloudapp.azure.com:8000
 COMPANY_PHONE_CONTACT=584129476026
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
 ALGORITHM=HS256' > /.env
@@ -56,7 +56,7 @@ ALGORITHM=HS256' > /.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
 
 aed5f68d9ee6
-docker cp .env 4799f9b9aea6:/app/app/.env
+docker cp .env 378844acefe9:/app/app/.env
 docker exec -i dcdc4efeac4d sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
 docker exec -it dcdc4efeac4d bash
@@ -137,3 +137,25 @@ bash
 Copiar código
 sudo systemctl start docker-compose-app.service
 ```
+
+
+sudo apt update
+sudo apt upgrade -y
+sudo apt install nginx -y
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+sudo nano /etc/nginx/sites-available/default
+
+
+copiar mi config
+
+
+sudo ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+
+sudo apt install certbot python3-certbot-nginx -y
+
+sudo certbot --nginx -d sas.uaenorth.cloudapp.azure.com 
+
+
+

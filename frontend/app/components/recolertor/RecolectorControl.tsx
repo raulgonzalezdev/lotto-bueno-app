@@ -37,8 +37,8 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  //const [APIHost, setAPIHost] = useState<string>("http://sas.uaenorth.cloudapp.azure.com:8000");
-  const [APIHost, setAPIHost] = useState<string>("http://sas.uaenorth.cloudapp.azure.com:8000");
+  //const [APIHost, setAPIHost] = useState<string>("https://sas.uaenorth.cloudapp.azure.com:8000");
+  const [APIHost, setAPIHost] = useState<string>("https://sas.uaenorth.cloudapp.azure.com:8000");
 
   // useEffect(() => {
   //   fetchHost();
@@ -47,10 +47,10 @@ const RecolectorControl: React.FC = () => {
   // const fetchHost = async () => {
   //   try {
   //     const host = await detectHost();
-  //     setAPIHost(host || 'http://sas.uaenorth.cloudapp.azure.com:8000');
+  //     setAPIHost(host || 'https://sas.uaenorth.cloudapp.azure.com:8000');
   //   } catch (error) {
   //     console.error("Error detecting host:", error);
-  //     setAPIHost('http://sas.uaenorth.cloudapp.azure.com:8000');
+  //     setAPIHost('https://sas.uaenorth.cloudapp.azure.com:8000');
   //   }
   // };
 
@@ -68,7 +68,7 @@ const RecolectorControl: React.FC = () => {
     const secureAPIHost = APIHost.replace("http://", "https://");
   
     try {
-      const response = await fetch(`http://sas.uaenorth.cloudapp.azure.com:8000/recolectores`);
+      const response = await fetch(`https://sas.uaenorth.cloudapp.azure.com:8000/recolectores`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -79,7 +79,7 @@ const RecolectorControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
-      // const response = await fetch(`http://sas.uaenorth.cloudapp.azure.com:8000/recolectores?${query}`);
+      // const response = await fetch(`https://sas.uaenorth.cloudapp.azure.com:8000/recolectores?${query}`);
       // const data = await response.json();
       // setRecolectores(Array.isArray(data) ? data : []);
       // setTotalPages(Math.ceil(data.length / recolectoresPerPage));

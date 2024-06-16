@@ -14,7 +14,7 @@ server {
 
 server {
     listen 443 ssl;
-    server_name lot.uaenorth.cloudapp.azure.com;
+    server_name sas.uaenorth.cloudapp.azure.com;
 
     ssl_certificate /etc/letsencrypt/live/sas.uaenorth.cloudapp.azure.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/sas.uaenorth.cloudapp.azure.com/privkey.pem;

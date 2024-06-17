@@ -258,27 +258,27 @@
             "description": "Personaliza el dise\u00f1o de tu Bernabo Bot cambiando el t\u00edtulo, subt\u00edtulo, logotipo y colores de la aplicaci\u00f3n.",
             "settings": {
                 "title": {
-                    "text": "Weaviate Verba",
+                    "text": "Looto Bueno",
                     "type": "text",
                     "description": "T\u00edtulo de la p\u00e1gina"
                 },
                 "subtitle": {
-                    "text": "Chatbot for Weaviate",
+                    "text": "Plataforma AI de Loteria y mas...",
                     "type": "text",
                     "description": "Subt\u00edtulo de la p\u00e1gina"
                 },
                 "intro_message": {
-                    "text": "Welcome to Weaviate, your AI-Native vector database. How can I help you with Weaviate today?",
+                    "text": "Descubre Lotto Bueno, tu puerta de entrada a la emoción de la lotería mejorada con inteligencia artificial. Participa, gana y experimenta la magia de la tecnología al servicio de tu suerte.",
                     "type": "text",
                     "description": "Mensaje de introducci\u00f3n"
                 },
                 "placeholder_message": {
-                    "text": "Ask all questions related to Weaviate",
+                    "text": "No solo lo dejes a la suerte pide ayuda a lotto Bueno",
                     "type": "text",
                     "description": "Marcador de posici\u00f3n de entrada"
                 },
                 "image": {
-                    "src": "https://github.com/weaviate/Verba/blob/1.0.0/frontend/public/weaviate.png?raw=true",
+                    "src": "https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lottos.png?raw=true",
                     "type": "image",
                     "description": "Logotipo de la P\u00e1gina"
                 },

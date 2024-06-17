@@ -258,7 +258,7 @@
             "description": "Personaliza el dise\u00f1o de tu Bernabo Bot cambiando el t\u00edtulo, subt\u00edtulo, logotipo y colores de la aplicaci\u00f3n.",
             "settings": {
                 "title": {
-                    "text": "Looto Bueno",
+                    "text": "Lotto Bueno",
                     "type": "text",
                     "description": "T\u00edtulo de la p\u00e1gina"
                 },

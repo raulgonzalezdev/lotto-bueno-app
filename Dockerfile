@@ -5,13 +5,13 @@ ENV POSTGRES_USER=lottobueno
 ENV POSTGRES_PASSWORD=lottobueno
 
 # Copiar el archivo de backup y los scripts de inicialización al contenedor
-# COPY lottobueno_backup.dump /docker-entrypoint-initdb.d/
-# COPY init-db.sh /docker-entrypoint-initdb.d/
-# COPY wait-for-it.sh /docker-entrypoint-initdb.d/
-# COPY init.sql /docker-entrypoint-initdb.d/
+ COPY lottobueno_backup.dump /docker-entrypoint-initdb.d/
+ COPY init-db.sh /docker-entrypoint-initdb.d/
+ COPY wait-for-it.sh /docker-entrypoint-initdb.d/
+ COPY init.sql /docker-entrypoint-initdb.d/
 
-# RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
-# RUN chmod +x /docker-entrypoint-initdb.d/wait-for-it.sh
+ RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
+ RUN chmod +x /docker-entrypoint-initdb.d/wait-for-it.sh
 
 # Etapa 2: Configuración de la aplicación
 FROM python:3.10-slim as app

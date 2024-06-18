@@ -56,16 +56,21 @@ https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lot
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
 
 aed5f68d9ee6
-docker cp .env 4acc8e2ff3f0:/app/app/.env
-docker exec -i dcdc4efeac4d sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
+docker cp .env acaba16268fb:/app/app/.env
+docker exec -i df01a774f33a sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
-docker exec -it dcdc4efeac4d bash
+docker exec -it df01a774f33a bash
 
 
 ```
 
 ```
 apagar las lineas del respaldo antes para luego hacer el respaldo manual
+
+      - ./lottobueno_backup.dump:/docker-entrypoint-initdb.d/lottobueno_backup.dump
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./wait-for-it.sh:/docker-entrypoint-initdb.d/wait-for-it.sh
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 Instalar Git LFS:
 

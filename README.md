@@ -160,7 +160,7 @@ sudo ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
 sudo apt install certbot python3-certbot-nginx -y
 
-sudo certbot --nginx -d sas.uaenorth.cloudapp.azure.com 
+sudo certbot --nginx -d app.lottobueno.com
 
 
 

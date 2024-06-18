@@ -107,7 +107,7 @@ origins = [
     # "http://localhost",
    
     "http://localhost:8000",
-    "http://sas.uaenorth.cloudapp.azure.com:8000",
+    "http://34.123.201.135:8000",
     
     # "http://localhost:8000",
     # "http://lot.uaenorth.cloudapp.azure.com",

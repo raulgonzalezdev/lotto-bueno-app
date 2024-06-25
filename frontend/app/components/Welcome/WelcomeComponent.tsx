@@ -17,7 +17,7 @@ const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ title, subtitle, im
   return (
     <div className="welcome-page">
       <div className="logo-container">
-        <img src={logoSrc} width={120} className="logo" alt="Logo" />
+        <img src={logoSrc} width={381} height={162} className="footer-logo" alt="Logo" />
       </div>
       <h1 className="title">{title}</h1>
       <h2 className="subtitle">{subtitle}</h2>
@@ -40,7 +40,7 @@ const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ title, subtitle, im
       </div>
       <footer className="footer">
         <p>Ganar premios nunca había sido tan sencillo</p>
-        <img src={logoSrc} width={80} alt="Logo" className="footer-logo" />
+        <img src={logoSrc} width={180} height={69} alt="Logo" className="footer-logo" />
       </footer>
     </div>
   );

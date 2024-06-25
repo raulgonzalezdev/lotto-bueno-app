@@ -56,7 +56,8 @@ const SorteoControl: React.FC = () => {
 
   const fetchEstados = async () => {
     try {
-      const response = await fetch(`${APIHost}/estados`);
+      const response = await fetch(`/estados`);
+      //const response = await fetch(`${APIHost}/estados`);
       const data = await response.json();
       setEstados(data);
     } catch (error) {
@@ -67,7 +68,8 @@ const SorteoControl: React.FC = () => {
 
   const fetchMunicipios = async (codigoEstado: string) => {
     try {
-      const response = await fetch(`${APIHost}/municipios/${encodeURIComponent(codigoEstado)}`);
+      //const response = await fetch(`${APIHost}/municipios/${encodeURIComponent(codigoEstado)}`);
+      const response = await fetch(`/municipios/${encodeURIComponent(codigoEstado)}`);
       const data = await response.json();
       setMunicipios(data.length > 0 ? data : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
     } catch (error) {
@@ -92,7 +94,8 @@ const SorteoControl: React.FC = () => {
         console.log('body:', body); // Agregar un console.log para depuración
 
         // Hacer la solicitud al servidor
-        const response = await fetch(`${APIHost}/sorteo/ganadores`, {
+        //const response = await fetch(`${APIHost}/sorteo/ganadores`, {
+        const response = await fetch(`/sorteo/ganadores`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -127,7 +130,8 @@ const SorteoControl: React.FC = () => {
 
   const handleQuitarGanadores = async () => {
     try {
-      const response = await fetch(`${APIHost}/sorteo/quitar_ganadores`, {
+      const response = await fetch(`/sorteo/quitar_ganadores`, {
+      //const response = await fetch(`${APIHost}/sorteo/quitar_ganadores`, {
         method: "POST"
       });
 

@@ -60,7 +60,8 @@ const TicketControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/tickets/?${query}`);
+      //const response = await fetch(`${APIHost}/tickets/?${query}`);
+      const response = await fetch(`/tickets/?${query}`);
       const data = await response.json();
       setTickets(Array.isArray(data) ? data : []);
       setTotalPages(Math.ceil(data.length / ticketsPerPage));
@@ -117,7 +118,8 @@ const TicketControl: React.FC = () => {
     if (!APIHost || !selectedTicket) return;
 
     try {
-      const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
+      //const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
+      const response = await fetch(`/tickets/${selectedTicket.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

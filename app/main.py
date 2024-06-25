@@ -214,7 +214,7 @@ def api_check_whatsapp(request: PhoneNumberRequest):
     if result.get("status") == "api":
         return {"status": "api", "message": "El servicio de verificación de WhatsApp no está disponible en este momento. Por favor, inténtalo más tarde."}
     if not result.get("existsWhatsapp"):
-        raise HTTPException(status_code=400, detail="El número no tiene WhatsApp")
+        raise HTTPException(status_code=400, detail="El número no tiene WhatsApp:" + request.phone_number )
     return {"status": "Número válido"}
 
 def send_message(chat_id: str, message: str):

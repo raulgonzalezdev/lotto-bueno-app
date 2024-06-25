@@ -139,120 +139,120 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
 
   return (
     <div className="welcome-page">
-    <div className="register-page p-4 flex flex-col items-center">
-      
-      <img src={imageSrc} width={381} height={162} className="footer-logo" alt="Logo" />
-      <h1 className="text-4xl font-bold mb-2 text-center">{title}</h1>
-      <h2 className="text-xl mb-6 text-center">{subtitle}</h2>
-      <form className="space-y-4 w-full max-w-md" onSubmit={handleSubmit}>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Promotor</label>
-          <input 
-            type="text"
-            placeholder="Buscar promotor..."
-            className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <select 
-            name="referido_id"
-            className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            onChange={handleInputChange}
-            value={formData.referido_id}
-          >
-            <option value="1">System</option>
-            {filteredReferidos.map((referido: any) => (
-              <option key={referido.id} value={referido.id}>
-                {`${referido.cedula} - ${referido.nombre}`}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Cédula</label>
-          <input 
-            type="text" 
-            name="cedula"
-            className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-            value={formData.cedula}
-            onChange={handleInputChange}
-          />
-        </div>
-        <div className="flex items-center">
-          
-          <div className="ml-2">
-            <label className="block text-sm font-medium text-gray-700">Operador</label>
+      <div className="register-page p-4 flex flex-col items-center">
+        
+        <img src={imageSrc} width={381} height={162} className="footer-logo" alt="Logo" />
+        <h1 className="text-4xl font-bold mb-2 text-center text-white">{title}</h1>
+        <h2 className="text-xl mb-6 text-center text-white">{subtitle}</h2>
+        <form className="space-y-4 w-full max-w-md" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 text-white">Promotor</label>
+            <input 
+              type="text"
+              placeholder="Buscar promotor..."
+              className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <select 
-              name="operador"
-              className="inputField mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              name="referido_id"
+              className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               onChange={handleInputChange}
-              value={formData.operador}
+              value={formData.referido_id}
             >
-              <option value="0414">0414</option>
-              <option value="0424">0424</option>
-              <option value="0416">0416</option>
-              <option value="0426">0426</option>
-              <option value="0412">0412</option>
+              <option value="1">ninguno</option>
+              {filteredReferidos.map((referido: any) => (
+                <option key={referido.id} value={referido.id}>
+                  {`${referido.cedula} - ${referido.nombre}`}
+                </option>
+              ))}
             </select>
           </div>
-          <div className="flex-grow">
-            <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 text-white">Cédula</label>
             <input 
               type="text" 
-              name="telefono"
-              placeholder="Ingrese el número de teléfono"
+              name="cedula"
               className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-              value={formData.telefono}
+              value={formData.cedula}
               onChange={handleInputChange}
             />
           </div>
-        </div>
-        <div className="flex justify-center">
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700" disabled={isLoading}>
-            {isLoading ? <span className="spinner"></span> : "Registrar"}
+          <div className="flex items-center">
+            
+            <div className="ml-2">
+              <label className="block text-sm font-medium text-gray-700 text-white">Operador</label>
+              <select 
+                name="operador"
+                className="inputField mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                onChange={handleInputChange}
+                value={formData.operador}
+              >
+                <option value="0414">0414</option>
+                <option value="0424">0424</option>
+                <option value="0416">0416</option>
+                <option value="0426">0426</option>
+                <option value="0412">0412</option>
+              </select>
+            </div>
+            <div className="flex-grow">
+              <label className="block text-sm font-medium text-gray-700 text-white">Teléfono</label>
+              <input 
+                type="text" 
+                name="telefono"
+                placeholder="Ingrese el número de teléfono"
+                className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+                value={formData.telefono}
+                onChange={handleInputChange}
+              />
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700" disabled={isLoading}>
+              {isLoading ? <span className="spinner"></span> : "Registrar"}
+            </button>
+          </div>
+        </form>
+        <div className="mt-4 text-center">
+          <button onClick={handleOpenLoginModal} className="text-blue-500 hover:underline">
+            Ir al Dashboard
           </button>
         </div>
-      </form>
-      <div className="mt-4 text-center">
-        <button onClick={handleOpenLoginModal} className="text-blue-500 hover:underline">
-          Ir al Dashboard
-        </button>
-      </div>
-      <LoginModal
-        isVisible={isLoginModalVisible}
-        onClose={handleCloseLoginModal}
-        onAdminLogin={onAdminLogin}
-        setCurrentPage={setCurrentPage}
-        title={title}
-        subtitle={subtitle}
-        imageSrc={imageSrc}
-        APIHost={APIHost}
-      />
-      {isQRModalVisible && qrCode && (
-        <div className="modal-overlay" onClick={handleCloseQRModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-button" onClick={handleCloseQRModal}>×</button>
-            <h2>Ticket Generado</h2>
-            <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" />
-            <p>El ticket ha sido generado exitosamente.</p>
+        <LoginModal
+          isVisible={isLoginModalVisible}
+          onClose={handleCloseLoginModal}
+          onAdminLogin={onAdminLogin}
+          setCurrentPage={setCurrentPage}
+          title={title}
+          subtitle={subtitle}
+          imageSrc={imageSrc}
+          APIHost={APIHost}
+        />
+        {isQRModalVisible && qrCode && (
+          <div className="modal-overlay" onClick={handleCloseQRModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-close-button" onClick={handleCloseQRModal}>×</button>
+              <h2>Ticket Generado</h2>
+              <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" />
+              <p>El ticket ha sido generado exitosamente.</p>
+            </div>
           </div>
-        </div>
-      )}
-      {toastMessage && (
-        <Toast 
-          message={toastMessage}
-          type={toastType}
-          onClose={() => setToastMessage(null)}
-        />
-      )}
-      {isConfirmationModalVisible && (
-        <ConfirmationModal
-          message="¿Quieres registrar otro ticket?"
-          onConfirm={handleConfirmRegisterAnother}
-          onCancel={handleCancelRegisterAnother}
-        />
-      )}
-    </div>
+        )}
+        {toastMessage && (
+          <Toast 
+            message={toastMessage}
+            type={toastType}
+            onClose={() => setToastMessage(null)}
+          />
+        )}
+        {isConfirmationModalVisible && (
+          <ConfirmationModal
+            message="¿Quieres registrar otro ticket?"
+            onConfirm={handleConfirmRegisterAnother}
+            onCancel={handleCancelRegisterAnother}
+          />
+        )}
+      </div>
     </div>
   );
 };

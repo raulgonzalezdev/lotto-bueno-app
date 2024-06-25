@@ -37,8 +37,8 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  //const [APIHost, setAPIHost] = useState<string>("http://localhost:8000");
-  const [APIHost, setAPIHost] = useState<string>("http://localhost:8000");
+  //const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
+  const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
 
   // useEffect(() => {
   //   fetchHost();
@@ -47,10 +47,10 @@ const RecolectorControl: React.FC = () => {
   // const fetchHost = async () => {
   //   try {
   //     const host = await detectHost();
-  //     setAPIHost(host || 'http://localhost:8000');
+  //     setAPIHost(host || 'http://applottobueno.com:8000');
   //   } catch (error) {
   //     console.error("Error detecting host:", error);
-  //     setAPIHost('http://localhost:8000');
+  //     setAPIHost('http://applottobueno.com:8000');
   //   }
   // };
 
@@ -79,7 +79,7 @@ const RecolectorControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
-      // const response = await fetch(`http://localhost:8000/recolectores?${query}`);
+      // const response = await fetch(`http://applottobueno.com:8000/recolectores?${query}`);
       // const data = await response.json();
       // setRecolectores(Array.isArray(data) ? data : []);
       // setTotalPages(Math.ceil(data.length / recolectoresPerPage));

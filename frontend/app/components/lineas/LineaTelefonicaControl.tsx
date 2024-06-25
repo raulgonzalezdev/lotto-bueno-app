@@ -17,7 +17,7 @@ const LineaTelefonicaControl: React.FC = () => {
   const [lineasPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string>("http://localhost:8000");
+  const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
   const [newLinea, setNewLinea] = useState({ numero: "", operador: "" });
 
   useEffect(() => {

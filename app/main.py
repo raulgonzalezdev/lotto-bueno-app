@@ -104,7 +104,7 @@ def get_db():
         db.close()
 # Configuración de CORS
 origins = [
-    "http://localhost:8000",
+    "http://applottobueno.com:8000",
     "http://localhost:3000",
     "https://7103.api.greenapi.com",
     "http://applottobueno.com",

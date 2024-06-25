@@ -208,8 +208,10 @@ const Home = () => {
 
         {currentPage === "WELCOME" && (
             <WelcomeComponent 
-              title={baseSetting[settingTemplate]?.Customization.settings.title.text} 
-              subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
+              // title={baseSetting[settingTemplate]?.Customization.settings.title.text} 
+              // subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
+              title="Completa tu registro y gana fabulosos premios" 
+              subtitle="En tan solo 3 simples pasos podrás convertirte en el ganador o ganadora de #LottoBueno"
               imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
               setCurrentPage={setCurrentPage}
             />

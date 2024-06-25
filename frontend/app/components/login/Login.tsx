@@ -34,7 +34,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const handleLogin = async () => {
     const apiHost = APIHost || 'http://localhost:8000';
     try {
-      const response = await fetch(`${apiHost}/api/login`, {
+     //const response = await fetch(`${apiHost}/api/login`, {
+      const response = await fetch(`/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -68,7 +69,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const handleRegister = async () => {
     const apiHost = APIHost || 'http://localhost:8000';
     try {
-      const response = await fetch(`${apiHost}/api/register`, {
+      //const response = await fetch(`${apiHost}/api/register`, {
+      const response = await fetch(`/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

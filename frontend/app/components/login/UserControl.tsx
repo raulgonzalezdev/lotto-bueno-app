@@ -56,7 +56,8 @@ const UserControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/api/users?${query}`);
+      //const response = await fetch(`${APIHost}/api/users?${query}`);
+      const response = await fetch(`/api/users?${query}`);
       const data: User[] = await response.json();
       setUsers(data);
       setTotalPages(Math.ceil(data.length / usersPerPage));
@@ -70,7 +71,8 @@ const UserControl: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!APIHost) return;
     try {
-      await fetch(`${APIHost}/api/users/${id}`, { method: "DELETE" });
+      //await fetch(`${APIHost}/api/users/${id}`, { method: "DELETE" });
+      await fetch(`/api/users/${id}`, { method: "DELETE" });
       fetchUsers();
       setToastMessage("Usuario eliminado exitosamente");
       setToastType("success");
@@ -84,7 +86,8 @@ const UserControl: React.FC = () => {
   const handleCreate = async () => {
     if (!APIHost) return;
     try {
-      await fetch(`${APIHost}/api/users`, {
+      //await fetch(`${APIHost}/api/users`, {
+        await fetch(`/api/users`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -106,7 +109,8 @@ const UserControl: React.FC = () => {
   const handleUpdate = async (user: User) => {
     if (!APIHost) return;
     try {
-      await fetch(`${APIHost}/api/users/${user.id}`, {
+      //await fetch(`${APIHost}/api/users/${user.id}`, {
+        await fetch(`/api/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"

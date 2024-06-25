@@ -314,7 +314,6 @@ input.input-bordered {
   width: 100%;
 }
 
-
 :root {
   --color-meteorite-dark: #2f1c6a;
   --color-meteorite: #8c85ff;
@@ -381,14 +380,16 @@ body {
 }
 
 .welcome-page .title {
-  font-size: 2.5rem;
+  font-size: 3rem; /* Aumentado el tamaño de la fuente */
   font-weight: bold;
   margin-bottom: 1rem;
+  line-height: 1.2; /* Ajustar la altura de línea para soportar varias líneas */
 }
 
 .welcome-page .subtitle {
-  font-size: 1.25rem;
+  font-size: 1.5rem; /* Aumentado el tamaño de la fuente */
   margin-bottom: 2rem;
+  line-height: 1.4; /* Ajustar la altura de línea para soportar varias líneas */
 }
 
 .register-button {
@@ -436,6 +437,8 @@ body {
   margin: 0;
   color: var(--color-light);
   text-align: center;
+  font-size: 1.5rem; 
+  font-weight: bold; /* Texto en negrita */
 }
 
 .footer .footer-logo {

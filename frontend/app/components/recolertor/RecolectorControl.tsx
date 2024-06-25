@@ -68,7 +68,7 @@ const RecolectorControl: React.FC = () => {
     const secureAPIHost = APIHost.replace("http://", "https://");
   
     try {
-      const response = await fetch(`http://localhost:8000/recolectores`);
+      const response = await fetch(`/recolectores/`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -89,7 +89,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleDelete = async () => {
     if (!APIHost || !recolectorToDelete) return;
-    await fetch(`${APIHost}/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    //await fetch(`${APIHost}/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    await fetch(`/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
     fetchRecolectores();
@@ -99,7 +100,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleCreate = async () => {
     if (!APIHost) return;
-    await fetch(`${APIHost}/recolectores`, {
+    //await fetch(`${APIHost}/recolectores`, {
+    await fetch(`/recolectores`, {  
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -115,7 +117,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleUpdate = async (recolector: Recolector) => {
     if (!APIHost) return;
-    await fetch(`${APIHost}/recolectores/${recolector.id}`, {
+    //await fetch(`${APIHost}/recolectores/${recolector.id}`, {
+    await fetch(`/recolectores/${recolector.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
@@ -155,7 +158,8 @@ const RecolectorControl: React.FC = () => {
   };
 
   const fetchEstadisticas = async (recolectorId?: number) => {
-    let url = `${APIHost}/recolectores/estadisticas/`;
+    //let url = `${APIHost}/recolectores/estadisticas/`;
+    let url = `/recolectores/estadisticas/`;
     if (recolectorId) {
       url += `?recolector_id=${recolectorId}`;
     }

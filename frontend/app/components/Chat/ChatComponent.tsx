@@ -112,7 +112,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      const response = await fetch(`${APIHost}/electores/?${query}`);
+      //const response = await fetch(`${APIHost}/electores/?${query}`);
+      const response = await fetch(`/electores/?${query}`);
       const data: Elector[] = await response.json();
       setElectores(Array.isArray(data) ? data : []);
     } catch (error) {

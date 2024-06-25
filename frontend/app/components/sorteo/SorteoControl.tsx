@@ -56,7 +56,7 @@ const SorteoControl: React.FC = () => {
 
   const fetchEstados = async () => {
     try {
-      const response = await fetch(`/estados`);
+      const response = await fetch(`/estados/`);
       //const response = await fetch(`${APIHost}/estados`);
       const data = await response.json();
       setEstados(data);

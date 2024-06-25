@@ -33,7 +33,8 @@ const LineaTelefonicaControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/lineas_telefonicas/?${query}`);
+      //const response = await fetch(`${APIHost}/lineas_telefonicas/?${query}`);
+      const response = await fetch(`/lineas_telefonicas/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -63,12 +64,14 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`${APIHost}/lineas_telefonicas/${id}`, { method: "DELETE" });
+    //await fetch(`${APIHost}/lineas_telefonicas/${id}`, { method: "DELETE" });
+    await fetch(`/lineas_telefonicas/${id}`, { method: "DELETE" });
     fetchLineas();
   };
 
   const handleCreate = async () => {
-    await fetch(`${APIHost}/lineas_telefonicas`, {
+    //await fetch(`${APIHost}/lineas_telefonicas`, {
+    await fetch(`/lineas_telefonicas`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -81,7 +84,8 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleUpdate = async (linea: LineaTelefonica) => {
-    await fetch(`${APIHost}/lineas_telefonicas/${linea.id}`, {
+    //await fetch(`${APIHost}/lineas_telefonicas/${linea.id}`, {
+    await fetch(`/lineas_telefonicas/${linea.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

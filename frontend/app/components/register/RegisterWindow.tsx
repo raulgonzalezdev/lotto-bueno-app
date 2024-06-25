@@ -33,7 +33,8 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
 
   const fetchReferidos = async () => {
     try {
-      const response = await fetch(`${APIHost}/recolectores/`);
+      //const response = await fetch(`${APIHost}/recolectores/`);
+      const response = await fetch(`/recolectores/`);
       const data = await response.json();
       setReferidos(data);
     } catch (error) {
@@ -91,7 +92,8 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     }
 
     try {
-      const response = await fetch(`${APIHost}/generate_ticket`, {
+      //const response = await fetch(`${APIHost}/generate_ticket`, {
+      const response = await fetch(`/generate_ticket`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

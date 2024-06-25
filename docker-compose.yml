@@ -58,17 +58,10 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
-    depends_on:
-      app:
-        condition: service_healthy
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     networks:
       - lotto-bueno-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://app:8000 || exit 1"]
-      interval: 10s
-      retries: 5
 
 volumes:
   pgdata:

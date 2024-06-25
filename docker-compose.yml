@@ -58,14 +58,17 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - nginx-certs:/etc/nginx/certs
     networks:
       - lotto-bueno-network
 
 volumes:
   pgdata:
   redis-data:
+  nginx-certs:
 
 networks:
   lotto-bueno-network:

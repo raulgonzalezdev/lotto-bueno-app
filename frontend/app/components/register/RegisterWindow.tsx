@@ -18,7 +18,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isQRModalVisible, setIsQRModalVisible] = useState(false);
   const [qrCode, setQRCode] = useState<string | null>(null);
   const [referidos, setReferidos] = useState([]);
-  const [formData, setFormData] = useState({ cedula: "", telefono: "", referido_id: 1 });
+  const [formData, setFormData] = useState({ cedula: "", operador: "0414", telefono: "", referido_id: 1 });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [searchTerm, setSearchTerm] = useState("");
@@ -26,7 +26,6 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
 
   const APIHost = 'http://localhost:8000';
-  //const APIHost = 'http://localhost:8000';
 
   useEffect(() => {
     fetchReferidos();
@@ -34,7 +33,6 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
 
   const fetchReferidos = async () => {
     try {
-     // const response = await fetch(`/recolectores/`);
       const response = await fetch(`${APIHost}/recolectores/`);
       const data = await response.json();
       setReferidos(data);
@@ -71,7 +69,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   };
 
   const handleConfirmRegisterAnother = () => {
-    setFormData({ cedula: "", telefono: "", referido_id: 1 });
+    setFormData({ cedula: "", operador: "0414", telefono: "", referido_id: 1 });
     setIsConfirmationModalVisible(false);
   };
 
@@ -84,8 +82,9 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     setIsLoading(true);
     setToastMessage(null);
 
-    if (!/^58\d{10}$/.test(formData.telefono)) {
-      setToastMessage("El número de teléfono debe comenzar con el código de país (58) y tener 10 dígitos adicionales.");
+    const fullPhoneNumber = `58${formData.operador.slice(1)}${formData.telefono}`;
+    if (!/^58\d{10}$/.test(fullPhoneNumber)) {
+      setToastMessage("El número de teléfono debe tener 10 dígitos después del operador.");
       setToastType('error');
       setIsLoading(false);
       return;
@@ -99,7 +98,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
         },
         body: JSON.stringify({
           cedula: formData.cedula,
-          telefono: formData.telefono,
+          telefono: fullPhoneNumber,
           referido_id: formData.referido_id || 1
         })
       });
@@ -137,8 +136,10 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   );
 
   return (
+    <div className="welcome-page">
     <div className="register-page p-4 flex flex-col items-center">
-      <img src={imageSrc} width={80} className="flex" alt="Logo" />
+      
+      <img src={imageSrc} width={381} height={162} className="footer-logo" alt="Logo" />
       <h1 className="text-4xl font-bold mb-2 text-center">{title}</h1>
       <h2 className="text-xl mb-6 text-center">{subtitle}</h2>
       <form className="space-y-4 w-full max-w-md" onSubmit={handleSubmit}>
@@ -175,15 +176,34 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
             onChange={handleInputChange}
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-          <input 
-            type="text" 
-            name="telefono"
-            className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
-            value={formData.telefono}
-            onChange={handleInputChange}
-          />
+        <div className="flex items-center">
+          
+          <div className="ml-2">
+            <label className="block text-sm font-medium text-gray-700">Operador</label>
+            <select 
+              name="operador"
+              className="inputField mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              onChange={handleInputChange}
+              value={formData.operador}
+            >
+              <option value="0414">0414</option>
+              <option value="0424">0424</option>
+              <option value="0416">0416</option>
+              <option value="0426">0426</option>
+              <option value="0412">0412</option>
+            </select>
+          </div>
+          <div className="flex-grow">
+            <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+            <input 
+              type="text" 
+              name="telefono"
+              placeholder="Ingrese el número de teléfono"
+              className="inputField mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
+              value={formData.telefono}
+              onChange={handleInputChange}
+            />
+          </div>
         </div>
         <div className="flex justify-center">
           <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700" disabled={isLoading}>
@@ -230,6 +250,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
           onCancel={handleCancelRegisterAnother}
         />
       )}
+    </div>
     </div>
   );
 };

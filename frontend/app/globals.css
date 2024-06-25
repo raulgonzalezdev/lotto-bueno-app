@@ -276,6 +276,45 @@ input.input-bordered {
   margin-bottom: 1rem;
 }
 
+:root {
+  --color-meteorite-dark: #2f1c6a;
+  --color-meteorite: #8c85ff;
+  --color-meteorite-light: #d5dfff;
+  --color-primary-dark: #5025d1;
+  --color-primary: #673de6;
+  --color-primary-light: #ebe4ff;
+  --color-danger-dark: #d63163;
+  --color-danger: #fc5185;
+  --color-danger-light: #ffe8ef;
+  --color-warning-dark: #fea419;
+  --color-warning-dark-2: #9F6000;
+  --color-warning: #ffcd35;
+  --color-warning-light: #fff8e2;
+  --color-success-dark: #008361;
+  --color-success: #00b090;
+  --color-success-light: #def4f0;
+  --color-dark: #1d1e20;
+  --color-gray-dark: #36344d;
+  --color-gray: #727586;
+  --color-gray-border: #dadce0;
+  --color-gray-light: #f2f3f6;
+  --color-light: #fff;
+  --color-azure: #357df9;
+  --color-azure-light: #e3ebf9;
+  --color-azure-dark: #265ab2;
+}
+
+html {
+  font-size: 95%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Rubik', sans-serif;
+  background-color: var(--color-primary);
+  color: var(--color-light);
+}
+
 .welcome-page,
 .register-page {
   display: flex;
@@ -288,11 +327,10 @@ input.input-bordered {
   background-color: var(--color-primary);
 }
 
-.welcome-page .logo-container {
+.logo-container {
   display: flex;
   justify-content: center;
   width: 100%;
-  margin-bottom: 1.5rem;
 }
 
 .welcome-page .logo {
@@ -371,10 +409,15 @@ input.input-bordered {
   display: block;
 }
 
+.text-white {
+  color: white;
+  font-weight: bold;
+}
+
 @media (max-width: 768px) {
   .register-button {
     width: 100%;
     padding: 1rem;
-    font-size: 1rem;
+    font-size: 1.5rem;
   }
 }

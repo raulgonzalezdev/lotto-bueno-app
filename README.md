@@ -163,4 +163,8 @@ sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx -d app.lottobueno.com
 
 
+docker system prune -a -f --volumes
+
+
+
 

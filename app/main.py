@@ -330,7 +330,13 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     existing_ticket = db.query(Ticket).filter((Ticket.cedula == request.cedula) | (Ticket.telefono == request.telefono)).first()
     if existing_ticket:
         # Enviar mensaje de texto por WhatsApp con el ID del ticket existente
-        message = f"Hola, {existing_ticket.nombre}. Tu ya estás participando en Lotto Bueno con el ID de ticket: {existing_ticket.id}. No hace falta que envíes más datos, solo agrega nuestro número para futuras promociones."
+        message = f"{existing_ticket.nombre}, hoy es tu día de suerte!\n\n" \
+          f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket.id} ¡El número ganador!\n\n" \
+          f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
+          f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+          f"¡Mucha suerte!\n" \
+          f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+
         send_message(request.telefono, message)
         
         # Enviar contacto de la empresa
@@ -415,7 +421,15 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         return {"status": "error", "message": "Error interno del servidor no se guardo la tabla ticket"}
 
     # Enviar mensaje de texto por WhatsApp con el ID del nuevo ticket
-    message = f"Hola. {db_ticket.nombre} Apartir de este momento.  Estás participando en Lotto Bueno con el ID de ticket: {db_ticket.id}"
+    #message = f"Hola. {db_ticket.nombre} Apartir de este momento.  Estás participando en Lotto Bueno con el ID de ticket: {db_ticket.id}"
+    message = f"{db_ticket.nombre}, hoy es tu día de suerte!\n\n" \
+          f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {db_ticket.id} ¡El número ganador!\n\n" \
+          f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
+          f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+          f"¡Mucha suerte!\n" \
+          f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+
+    
     send_message(request.telefono, message)
     
     # Enviar contacto de la empresa

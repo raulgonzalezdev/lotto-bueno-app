@@ -57,7 +57,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchEstados = async () => {
     try {
-      const response = await fetch(`${APIHost}/estados/`);
+      //const response = await fetch(`${APIHost}/estados/`);
+      const response = await fetch(`/estados/`);
       const data: Estado[] = await response.json();
       const uniqueEstados = Array.from(new Set(data.map((item: Estado) => item.estado)))
         .map(estado => data.find((item: Estado) => item.estado === estado));
@@ -69,7 +70,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchMunicipios = async (codigoEstado: string) => {
     try {
-      const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
+      //const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
+      const response = await fetch(`/municipios/${codigoEstado}`);
       const data: Municipio[] = await response.json();
       setMunicipios(data);
     } catch (error) {
@@ -79,7 +81,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchParroquias = async (codigoEstado: string, codigoMunicipio: string) => {
     try {
-      const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
+      //const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
+      const response = await fetch(`/parroquias/${codigoEstado}/${codigoMunicipio}`);
       const data: Parroquia[] = await response.json();
       setParroquias(data);
     } catch (error) {
@@ -89,7 +92,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchCentrosVotacion = async (codigoEstado: string, codigoMunicipio: string, codigoParroquia: string) => {
     try {
-      const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
+      //const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
+      const response = await fetch(`/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
       const data: CentroVotacion[] = await response.json();
       setCentrosVotacion(data);
     } catch (error) {
@@ -126,7 +130,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      const response = await fetch(`${APIHost}/total/electores?${query}`);
+      //const response = await fetch(`${APIHost}/total/electores?${query}`);
+      const response = await fetch(`/total/electores?${query}`);
       const total = await response.json();
       setTotalPages(Math.ceil(total / electoresPerPage));
     } catch (error) {
@@ -138,7 +143,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const fetchElectorDetail = async (numero_cedula: string) => {
     if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
+      //const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
+      const response = await fetch(`/electores/cedula/${numero_cedula}`);
       const data: Elector = await response.json();
       setSelectedElector(data);
     } catch (error) {
@@ -180,7 +186,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const handleCedulaSearch = async () => {
     if (cedulaSearch) {
       try {
-        const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
+        //const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
+        const response = await fetch(`/electores/cedula/${cedulaSearch}`);
         if (response.status === 404) {
           setSearchError("Cédula no encontrada");
           setSelectedElector(null);

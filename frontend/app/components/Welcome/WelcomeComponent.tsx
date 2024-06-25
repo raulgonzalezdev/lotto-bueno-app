@@ -12,7 +12,7 @@ interface WelcomeComponentProps {
 
 const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ title, subtitle, imageSrc, setCurrentPage }) => {
   const defaultImageSrc = '/lotto.avif';  // Ruta relativa a la imagen del logo por defecto
-  const logoSrc = defaultImageSrc || imageSrc  ;
+  const logoSrc =  imageSrc  ;
 
   return (
     <div className="welcome-page">

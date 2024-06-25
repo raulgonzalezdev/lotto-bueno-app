@@ -25,8 +25,8 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
 
-  const APIHost = 'https://sas.uaenorth.cloudapp.azure.com';
-  //const APIHost = 'https://sas.uaenorth.cloudapp.azure.com';
+  const APIHost = 'http://localhost:8000';
+  //const APIHost = 'http://localhost:8000';
 
   useEffect(() => {
     fetchReferidos();

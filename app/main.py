@@ -104,23 +104,11 @@ def get_db():
         db.close()
 # Configuración de CORS
 origins = [
-    # "http://localhost",
-    "https://sas.uaenorth.cloudapp.azure.com",
-    "https://sas.uaenorth.cloudapp.azure.com",
-    "http://sas.uaenorth.cloudapp.azure.com:8000",
     "http://localhost:8000",
-    # "https://sas.uaenorth.cloudapp.azure.com",
-    # "http://lot.uaenorth.cloudapp.azure.com",
-    # "http://localhost:8002", 
-    # "http://localhost:8003", 
-    # "http://localhost:8004",
-    # "http://localhost:8005",
     "http://localhost:3000",
-    # "http://localhost:3002",
-    # "http://localhost:3001",
     "https://7103.api.greenapi.com",
-    # "https://sas.uaenorth.cloudapp.azure.com/api/settings",
-    # "https://lotto-bueno-app-tbsd.vercel.app/"
+    "http://lottobueno.store",
+    "https://lottobueno.store"
 ]
 
 app.add_middleware(

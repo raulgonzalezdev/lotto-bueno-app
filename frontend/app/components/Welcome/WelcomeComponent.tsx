@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 
-// components/Welcome/WelcomeComponent.tsx
 import React from 'react';
+import { FaFacebook, FaInstagram, FaTwitter } from 'react-icons/fa';
 
 interface WelcomeComponentProps {
   title: string;
@@ -11,23 +11,36 @@ interface WelcomeComponentProps {
 }
 
 const WelcomeComponent: React.FC<WelcomeComponentProps> = ({ title, subtitle, imageSrc, setCurrentPage }) => {
+  const defaultImageSrc = '/lotto.avif';  // Ruta relativa a la imagen del logo por defecto
+  const logoSrc =  imageSrc  ;
+
   return (
-    <div className="welcome-page p-4 flex flex-col items-center">
-      <img src={imageSrc} width={80} className="flex" alt="Logo" />
-      <h1 className="text-4xl font-bold mb-2 text-center">{title}</h1>
-      <h2 className="text-xl mb-6 text-center">{subtitle}</h2>
-      <div className="flex justify-center">
-        <button 
-          onClick={() => setCurrentPage('REGISTER')} 
-          className="register-button bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Registrarse
-        </button>
+    <div className="welcome-page">
+      <div className="logo-container">
+        <img src={logoSrc} width={120} className="logo" alt="Logo" />
       </div>
-      <footer className="footer footer-center p-4 mt-8 bg-gray-800 text-white w-full">
-        <aside>
-          <p>Build with ♥ and Caltion © 2024</p>
-        </aside>
+      <h1 className="title">{title}</h1>
+      <h2 className="subtitle">{subtitle}</h2>
+      <button 
+        onClick={() => setCurrentPage('REGISTER')} 
+        className="register-button"
+      >
+        Regístrate aquí
+      </button>
+      <div className="social-icons">
+        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+          <FaFacebook size={32} />
+        </a>
+        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+          <FaInstagram size={32} />
+        </a>
+        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
+          <FaTwitter size={32} />
+        </a>
+      </div>
+      <footer className="footer">
+        <p>Ganar premios nunca había sido tan sencillo</p>
+        <img src={logoSrc} width={80} alt="Logo" className="footer-logo" />
       </footer>
     </div>
   );

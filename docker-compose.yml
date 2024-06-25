@@ -54,6 +54,15 @@ services:
     networks:
       - lotto-bueno-network
 
+  certs-copy:
+    image: busybox
+    command: /bin/sh -c "cp -R /etc/letsencrypt/live/applottobueno.com /data && cp -R /etc/letsencrypt/archive/applottobueno.com /data"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - nginx-certs:/data
+    depends_on:
+      - app
+
   nginx:
     image: nginx:latest
     ports:
@@ -64,6 +73,8 @@ services:
       - nginx-certs:/etc/nginx/certs
     networks:
       - lotto-bueno-network
+    depends_on:
+      - certs-copy
 
 volumes:
   pgdata:

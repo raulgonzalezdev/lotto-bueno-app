@@ -106,7 +106,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         {/* Logo, Título, Subtítulo */}
         <div className="flex flex-row items-center gap-5 mb-4">
-          <img src={imageSrc} width={80} className="flex"></img>
+          <img src={imageSrc} width={381} height={162}  className="flex"></img>
           <div className="flex flex-col lg:flex-row lg:items-end justify-center lg:gap-3">
             <p className="sm:text-2xl md:text-3xl text-text-verba">{title}</p>
             <p className="sm:text-sm text-base text-text-alt-verba font-light">

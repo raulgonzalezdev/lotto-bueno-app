@@ -68,7 +68,7 @@ const RecolectorControl: React.FC = () => {
     const secureAPIHost = APIHost.replace("http://", "https://");
   
     try {
-      const response = await fetch(`/recolectores/`);
+      const response = await fetch(`/api/recolectores/`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -79,7 +79,7 @@ const RecolectorControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
-      // const response = await fetch(`http://applottobueno.com:8000/recolectores?${query}`);
+      // const response = await fetch(`http://applottobueno.com:8000/api/recolectores?${query}`);
       // const data = await response.json();
       // setRecolectores(Array.isArray(data) ? data : []);
       // setTotalPages(Math.ceil(data.length / recolectoresPerPage));
@@ -89,8 +89,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleDelete = async () => {
     if (!APIHost || !recolectorToDelete) return;
-    //await fetch(`${APIHost}/recolectores/${recolectorToDelete}`, { method: "DELETE" });
-    await fetch(`/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    //await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    await fetch(`/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
     fetchRecolectores();
@@ -100,8 +100,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleCreate = async () => {
     if (!APIHost) return;
-    //await fetch(`${APIHost}/recolectores`, {
-    await fetch(`https://applottobueno.com/recolectores`, {  
+    //await fetch(`${APIHost}/api/recolectores`, {
+    await fetch(`/api/recolectores`, {  
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -117,8 +117,8 @@ const RecolectorControl: React.FC = () => {
 
   const handleUpdate = async (recolector: Recolector) => {
     if (!APIHost) return;
-    //await fetch(`${APIHost}/recolectores/${recolector.id}`, {
-    await fetch(`/recolectores/${recolector.id}`, {
+    //await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
+    await fetch(`/api/recolectores/${recolector.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
@@ -158,8 +158,8 @@ const RecolectorControl: React.FC = () => {
   };
 
   const fetchEstadisticas = async (recolectorId?: number) => {
-    //let url = `${APIHost}/recolectores/estadisticas/`;
-    let url = `/recolectores/estadisticas/`;
+    //let url = `${APIHost}/api/recolectores/estadisticas/`;
+    let url = `/api/recolectores/estadisticas/`;
     if (recolectorId) {
       url += `?recolector_id=${recolectorId}`;
     }

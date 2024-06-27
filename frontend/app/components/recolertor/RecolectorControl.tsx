@@ -38,7 +38,7 @@ const RecolectorControl: React.FC = () => {
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
   //const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
-  const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
+  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com:8000");
 
   // useEffect(() => {
   //   fetchHost();
@@ -101,7 +101,7 @@ const RecolectorControl: React.FC = () => {
   const handleCreate = async () => {
     if (!APIHost) return;
     //await fetch(`${APIHost}/recolectores`, {
-    await fetch(`/recolectores`, {  
+    await fetch(`https://applottobueno.com/recolectores`, {  
       method: "POST",
       headers: {
         "Content-Type": "application/json"

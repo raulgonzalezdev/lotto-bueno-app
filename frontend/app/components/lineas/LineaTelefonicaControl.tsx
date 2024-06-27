@@ -71,7 +71,7 @@ const LineaTelefonicaControl: React.FC = () => {
 
   const handleCreate = async () => {
     //await fetch(`${APIHost}/lineas_telefonicas`, {
-    await fetch(`/lineas_telefonicas`, {
+    await fetch(`https://applottobueno.com/lineas_telefonicas`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

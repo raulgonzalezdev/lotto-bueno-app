@@ -798,19 +798,19 @@ async def get_municipios(estado: str, db: Session = Depends(get_db)):
 
 # CRUD para Recolector
 
-@app.get("/recolectores/", response_model=list[RecolectorList])
+@app.get("/api/recolectores/", response_model=list[RecolectorList])
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     recolectores = db.query(Recolector).offset(skip).limit(limit).all()
     return [to_dict(recolector) for recolector in recolectores]
 
-@app.get("/recolectores/{recolector_id}", response_model=RecolectorList)
+@app.get("/api/recolectores/{recolector_id}", response_model=RecolectorList)
 async def read_recolector(recolector_id: int, db: Session = Depends(get_db)):
     recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
     if not recolector:
         raise HTTPException(status_code=404, detail="Recolector not found")
     return to_dict(recolector)
 
-@app.post("/recolectores/", response_model=RecolectorList)
+@app.post("/api/recolectores/", response_model=RecolectorList)
 async def create_recolector(recolector: RecolectorCreate, db: Session = Depends(get_db)):
     db_recolector = Recolector(**recolector.model_dump())
     db.add(db_recolector)
@@ -818,7 +818,7 @@ async def create_recolector(recolector: RecolectorCreate, db: Session = Depends(
     db.refresh(db_recolector)
     return to_dict(db_recolector)
 
-@app.delete("/recolectores/{recolector_id}", response_model=dict)
+@app.delete("/api/recolectores/{recolector_id}", response_model=dict)
 async def delete_recolector(recolector_id: int, db: Session = Depends(get_db)):
     recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
     if not recolector:
@@ -827,7 +827,7 @@ async def delete_recolector(recolector_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Recolector deleted successfully"}
 
-@app.patch("/recolectores/{recolector_id}", response_model=RecolectorList)
+@app.patch("/api/recolectores/{recolector_id}", response_model=RecolectorList)
 async def update_recolector(recolector_id: int, recolector: RecolectorUpdate, db: Session = Depends(get_db)):
     db_recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
     if not db_recolector:
@@ -838,7 +838,7 @@ async def update_recolector(recolector_id: int, recolector: RecolectorUpdate, db
     db.refresh(db_recolector)
     return to_dict(db_recolector)
 
-@app.get("/recolectores/estadisticas/", response_model=List[RecolectorEstadisticas])
+@app.get("/api/recolectores/estadisticas/", response_model=List[RecolectorEstadisticas])
 async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: Session = Depends(get_db)):
     query = (
         db.query(
@@ -1113,19 +1113,19 @@ async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codig
     ]
     
     
-@app.get("/lineas_telefonicas/", response_model=list[LineaTelefonicaList])
+@app.get("/api/lineas_telefonicas/", response_model=list[LineaTelefonicaList])
 async def read_lineas_telefonicas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     lineas_telefonicas = db.query(LineaTelefonica).offset(skip).limit(limit).all()
     return lineas_telefonicas
 
-@app.get("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+@app.get("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def read_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):
     linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
     if not linea_telefonica:
         raise HTTPException(status_code=404, detail="LineaTelefonica not found")
     return linea_telefonica
 
-@app.post("/lineas_telefonicas/", response_model=LineaTelefonicaList)
+@app.post("/api/lineas_telefonicas/", response_model=LineaTelefonicaList)
 async def create_linea_telefonica(linea_telefonica: LineaTelefonicaCreate, db: Session = Depends(get_db)):
     db_linea_telefonica = LineaTelefonica(**linea_telefonica.dict())
     db.add(db_linea_telefonica)
@@ -1133,7 +1133,7 @@ async def create_linea_telefonica(linea_telefonica: LineaTelefonicaCreate, db: S
     db.refresh(db_linea_telefonica)
     return db_linea_telefonica
 
-@app.patch("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+@app.patch("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def update_linea_telefonica(linea_telefonica_id: int, linea_telefonica: LineaTelefonicaUpdate, db: Session = Depends(get_db)):
     db_linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
     if not db_linea_telefonica:
@@ -1144,7 +1144,7 @@ async def update_linea_telefonica(linea_telefonica_id: int, linea_telefonica: Li
     db.refresh(db_linea_telefonica)
     return db_linea_telefonica
 
-@app.delete("/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
+@app.delete("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def delete_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):
     db_linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
     if not db_linea_telefonica:

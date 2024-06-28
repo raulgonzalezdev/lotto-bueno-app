@@ -738,7 +738,11 @@ async def get_statistics_from_cache(stat_type: str, db: Session):
 
 # CRUD para Ticket
 
-@app.get("/tickets/", response_model=Dict[str, list[TicketList]])
+class TicketResponse(BaseModel):
+    total: int
+    items: List[TicketList]
+
+@app.get("/tickets/", response_model=TicketResponse)
 async def read_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     total = db.query(Ticket).count()
     tickets = db.query(Ticket).offset(skip).limit(limit).all()
@@ -784,8 +788,11 @@ async def get_municipios(estado: str, db: Session = Depends(get_db)):
     return [municipio[0] for municipio in municipios]
 # CRUD para Recolector
 
-# CRUD para Recolector
-@app.get("/api/recolectores/", response_model=Dict[str, list[RecolectorList]])
+class RecolectorResponse(BaseModel):
+    total: int
+    items: List[RecolectorList]
+
+@app.get("/api/recolectores/", response_model=RecolectorResponse)
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     total = db.query(Recolector).count()
     recolectores = db.query(Recolector).offset(skip).limit(limit).all()
@@ -1102,7 +1109,13 @@ async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codig
     ]
     
     
-@app.get("/api/lineas_telefonicas/", response_model=Dict[str, list[LineaTelefonicaList]])
+
+
+class LineaTelefonicaResponse(BaseModel):
+    total: int
+    items: List[LineaTelefonicaList]
+
+@app.get("/api/lineas_telefonicas/", response_model=LineaTelefonicaResponse)
 async def read_lineas_telefonicas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     total = db.query(LineaTelefonica).count()
     lineas_telefonicas = db.query(LineaTelefonica).offset(skip).limit(limit).all()

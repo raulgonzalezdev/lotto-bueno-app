@@ -58,7 +58,7 @@ https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lot
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
 
 aed5f68d9ee6
-docker cp .env 0b54b36c5d18:/app/app/.env
+docker cp .env 68fca65a418b:/app/app/.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd75fd2984c:/app/app/settings.json
 
 docker exec -i 3c986df28d72 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"

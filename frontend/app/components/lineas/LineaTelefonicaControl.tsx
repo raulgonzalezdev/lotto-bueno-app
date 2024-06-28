@@ -34,7 +34,7 @@ const LineaTelefonicaControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/api/lineas_telefonicas/?${query}`);
+      const response = await fetch(`/api/lineas_telefonicas/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -69,13 +69,13 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`${APIHost}/api/lineas_telefonicas/${id}`, { method: "DELETE" });
+    await fetch(`/api/lineas_telefonicas/${id}`, { method: "DELETE" });
     fetchLineas();
   };
 
   const handleCreate = async () => {
     try {
-      const response = await fetch(`${APIHost}/api/lineas_telefonicas`, {
+      const response = await fetch(`/api/lineas_telefonicas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -89,7 +89,7 @@ const LineaTelefonicaControl: React.FC = () => {
     } catch (error) {
       // Si hay un error, reintentar con https
       try {
-        const response = await fetch(`https://applottobueno.com/api/lineas_telefonicas`, {
+        const response = await fetch(`/api/lineas_telefonicas`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -114,7 +114,7 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleUpdate = async (linea: LineaTelefonica) => {
-    await fetch(`${APIHost}/api/lineas_telefonicas/${linea.id}`, {
+    await fetch(`/api/lineas_telefonicas/${linea.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

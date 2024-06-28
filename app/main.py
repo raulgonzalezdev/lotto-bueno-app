@@ -58,17 +58,9 @@ load_dotenv()
 
 # Definir las posibles URLs de conexión
 DATABASE_URLS = [
-    # "postgresql+psycopg2://lottobueno:lottobueno@localhost:5432/lottobueno",
-    # "postgresql://lottobueno:lottobueno@localhost:5432/lottobueno",
+
     "postgresql+psycopg2://lottobueno:lottobueno@postgres:5432/lottobueno"
-    # "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno",
-    # "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.3:5432/lottobueno",
-    # "postgresql://lottobueno:lottobueno@172.21.0.3:5432/lottobueno",
-    # "postgresql+psycopg2://lottobueno:lottobueno@172.21.0.4:5432/lottobueno",
-    # "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.4:5432/lottobueno",
-    # "postgresql+psycopg2://lottobueno:lottobueno@172.17.0.3:5432/lottobueno",
-    # "postgresql://lottobueno:lottobueno@172.17.0.4:5432/lottobueno",
-    # "postgresql://lottobueno:lottobueno@172.17.0.3:5432/lottobueno"
+ 
 ]
 
 engine = None
@@ -108,7 +100,6 @@ def get_db():
 # Configuración de CORS
 origins = [
     "http://applottobueno.com:8000",
-    
     "http://localhost:3000",
     "https://7103.api.greenapi.com",
     "http://applottobueno.com",

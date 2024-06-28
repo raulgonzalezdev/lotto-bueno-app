@@ -109,7 +109,8 @@ origins = [
     "http://localhost:3000",
     "https://7103.api.greenapi.com",
     "http://applottobueno.com",
-    "https://applottobueno.com"
+    "https://applottobueno.com",
+    "http://34.123.201.135:8000"
 ]
 
 app.add_middleware(

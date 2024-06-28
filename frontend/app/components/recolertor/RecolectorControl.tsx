@@ -79,13 +79,40 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    await fetch(`${APIHost}/api/recolectores`, {  
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(newRecolector)
-    });
+    try {
+      const response = await fetch(`${APIHost}/api/recolectores`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newRecolector)
+      });
+  
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+    } catch (error) {
+      // Si hay un error, reintentar con https
+      try {
+        const response = await fetch(`https://applottobueno.com/api/recolectores`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(newRecolector)
+        });
+  
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+      } catch (retryError) {
+        console.error("Error creating recolector:", retryError);
+        setToastMessage("Error creando recolector");
+        setToastType("error");
+        return;
+      }
+    }
+  
     setNewRecolector({ nombre: "", cedula: "", telefono: "", es_referido: false });
     fetchRecolectores();
     closeModal();

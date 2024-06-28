@@ -49,7 +49,7 @@ const RecolectorControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/api/recolectores/?${query}`);
+      const response = await fetch(`/api/recolectores/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -70,7 +70,7 @@ const RecolectorControl: React.FC = () => {
 
   const handleDelete = async () => {
     if (!recolectorToDelete) return;
-    await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    await fetch(`/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
     fetchRecolectores();
@@ -80,7 +80,7 @@ const RecolectorControl: React.FC = () => {
 
   const handleCreate = async () => {
     try {
-      const response = await fetch(`${APIHost}/api/recolectores`, {
+      const response = await fetch(`/api/recolectores`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -94,7 +94,7 @@ const RecolectorControl: React.FC = () => {
     } catch (error) {
       // Si hay un error, reintentar con https
       try {
-        const response = await fetch(`https://applottobueno.com/api/recolectores`, {
+        const response = await fetch(`/api/recolectores`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -121,7 +121,7 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleUpdate = async (recolector: Recolector) => {
-    await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
+    await fetch(`/api/recolectores/${recolector.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

@@ -60,7 +60,7 @@ const TicketControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/tickets/?${query}`);
+      const response = await fetch(`/tickets/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -126,7 +126,7 @@ const TicketControl: React.FC = () => {
     if (!APIHost || !selectedTicket) return;
 
     try {
-      const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
+      const response = await fetch(`/tickets/${selectedTicket.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

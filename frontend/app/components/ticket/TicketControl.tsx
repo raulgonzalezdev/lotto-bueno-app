@@ -37,8 +37,8 @@ const TicketControl: React.FC = () => {
 
   useEffect(() => {
     fetchTickets();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [APIHost, currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [APIHost, currentPage, searchTerm]);
 
   const fetchHost = async () => {
     try {
@@ -52,19 +52,25 @@ const TicketControl: React.FC = () => {
 
   const fetchTickets = async () => {
     if (!APIHost) return;
-    // @ts-ignore
     const query = new URLSearchParams({
-      skip: (currentPage - 1) * ticketsPerPage,
-      limit: ticketsPerPage,
+      skip: ((currentPage - 1) * ticketsPerPage).toString(),
+      limit: ticketsPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
     }).toString();
 
     try {
-      //const response = await fetch(`${APIHost}/tickets/?${query}`);
-      const response = await fetch(`/tickets/?${query}`);
+      const response = await fetch(`${APIHost}/tickets/?${query}`);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
       const data = await response.json();
-      setTickets(Array.isArray(data) ? data : []);
-      setTotalPages(Math.ceil(data.length / ticketsPerPage));
+      if (Array.isArray(data.items)) {
+        setTickets(data.items);
+        setTotalPages(Math.ceil(data.total / ticketsPerPage));
+      } else {
+        setTickets([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error("Error fetching tickets:", error);
       setTickets([]);
@@ -95,6 +101,7 @@ const TicketControl: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to the first page on search
   };
 
   const paginate = (pageNumber: number) => {
@@ -118,8 +125,7 @@ const TicketControl: React.FC = () => {
     if (!APIHost || !selectedTicket) return;
 
     try {
-      //const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
-      const response = await fetch(`/tickets/${selectedTicket.id}`, {
+      const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

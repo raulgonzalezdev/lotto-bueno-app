@@ -4,7 +4,6 @@
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
-//import { detectHost } from "../../api";
 
 interface Recolector {
   id: number;
@@ -37,59 +36,40 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  //const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
-  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com:8000");
-
-  // useEffect(() => {
-  //   fetchHost();
-  // }, []);
-
-  // const fetchHost = async () => {
-  //   try {
-  //     const host = await detectHost();
-  //     setAPIHost(host || 'http://applottobueno.com:8000');
-  //   } catch (error) {
-  //     console.error("Error detecting host:", error);
-  //     setAPIHost('http://applottobueno.com:8000');
-  //   }
-  // };
 
   useEffect(() => {
     fetchRecolectores();
-   }, [APIHost, currentPage, searchTerm]);
+   }, [currentPage, searchTerm]);
 
-   const fetchRecolectores = async () => {
-    //@ts-ignore
+  const fetchRecolectores = async () => {
     const query = new URLSearchParams({
       skip: ((currentPage - 1) * recolectoresPerPage).toString(),
       limit: recolectoresPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
     }).toString();
-    const secureAPIHost = APIHost.replace("http://", "https://");
-  
+
     try {
-      const response = await fetch(`/api/recolectores/`);
+      const response = await fetch(`/api/recolectores/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setRecolectores(Array.isArray(data) ? data : []);
-      setTotalPages(Math.ceil(data.length / recolectoresPerPage));
+      if (Array.isArray(data.items)) {
+        setRecolectores(data.items);
+        setTotalPages(Math.ceil(data.total / recolectoresPerPage));
+      } else {
+        setRecolectores([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
-      // const response = await fetch(`http://applottobueno.com:8000/api/recolectores?${query}`);
-      // const data = await response.json();
-      // setRecolectores(Array.isArray(data) ? data : []);
-      // setTotalPages(Math.ceil(data.length / recolectoresPerPage));
     }
   };
-  
 
   const handleDelete = async () => {
-    if (!APIHost || !recolectorToDelete) return;
-    //await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    if (!recolectorToDelete) return;
     await fetch(`/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
@@ -99,8 +79,6 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    if (!APIHost) return;
-    //await fetch(`${APIHost}/api/recolectores`, {
     await fetch(`/api/recolectores`, {  
       method: "POST",
       headers: {
@@ -116,8 +94,6 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleUpdate = async (recolector: Recolector) => {
-    if (!APIHost) return;
-    //await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
     await fetch(`/api/recolectores/${recolector.id}`, {
       method: "PATCH",
       headers: {
@@ -144,6 +120,7 @@ const RecolectorControl: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to the first page on search
   };
 
   const paginate = (pageNumber: number) => {
@@ -158,7 +135,6 @@ const RecolectorControl: React.FC = () => {
   };
 
   const fetchEstadisticas = async (recolectorId?: number) => {
-    //let url = `${APIHost}/api/recolectores/estadisticas/`;
     let url = `/api/recolectores/estadisticas/`;
     if (recolectorId) {
       url += `?recolector_id=${recolectorId}`;

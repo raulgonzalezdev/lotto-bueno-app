@@ -36,7 +36,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
       //const response = await fetch(`${APIHost}/recolectores/`);
       const response = await fetch(`/api/recolectores/`);
       const data = await response.json();
-      setReferidos(data);
+      setReferidos(data.items);
     } catch (error) {
       console.error("Error fetching referidos:", error);
     }

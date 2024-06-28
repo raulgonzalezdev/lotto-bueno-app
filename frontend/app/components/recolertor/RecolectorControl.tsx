@@ -40,7 +40,7 @@ const RecolectorControl: React.FC = () => {
 
   useEffect(() => {
     fetchRecolectores();
-   }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm]);
 
   const fetchRecolectores = async () => {
     const query = new URLSearchParams({
@@ -55,13 +55,8 @@ const RecolectorControl: React.FC = () => {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      if (Array.isArray(data.items)) {
-        setRecolectores(data.items);
-        setTotalPages(Math.ceil(data.total / recolectoresPerPage));
-      } else {
-        setRecolectores([]);
-        setTotalPages(1);
-      }
+      setRecolectores(data);  // Aquí asignamos los datos directamente
+      setTotalPages(Math.ceil(data.length / recolectoresPerPage)); // Calculamos el total de páginas basado en la longitud de los datos recibidos
     } catch (error) {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
@@ -71,7 +66,7 @@ const RecolectorControl: React.FC = () => {
 
   const handleDelete = async () => {
     if (!recolectorToDelete) return;
-    await fetch(`/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
     fetchRecolectores();

@@ -28,7 +28,8 @@ const TicketControl: React.FC = () => {
   const [ticketsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string | null>(null);
+  
+  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
 
   useEffect(() => {
@@ -36,7 +37,9 @@ const TicketControl: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchTickets();
+    if (APIHost) {
+      fetchTickets();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [APIHost, currentPage, searchTerm]);
 
@@ -58,13 +61,13 @@ const TicketControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/api/tickets/?${query}`);
+      const response = await fetch(`${APIHost}/tickets/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setTickets(data); // Asignamos directamente el array de tickets
-      setTotalPages(Math.ceil(data.length / ticketsPerPage)); // Calculamos el total de páginas basado en la longitud de los datos recibidos
+      setTickets(data);
+      setTotalPages(Math.ceil(data.length / ticketsPerPage)); 
     } catch (error) {
       console.error("Error fetching tickets:", error);
       setTickets([]);
@@ -95,7 +98,7 @@ const TicketControl: React.FC = () => {
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to the first page on search
+    setCurrentPage(1); 
   };
 
   const paginate = (pageNumber: number) => {
@@ -119,7 +122,7 @@ const TicketControl: React.FC = () => {
     if (!APIHost || !selectedTicket) return;
 
     try {
-      const response = await fetch(`${APIHost}/api/tickets/${selectedTicket.id}`, {
+      const response = await fetch(`${APIHost}/tickets/${selectedTicket.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

@@ -11,7 +11,7 @@ import logging
 import re
 import asyncio
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Any, List
 
 
 from dotenv import load_dotenv
@@ -96,6 +96,8 @@ Base = declarative_base()
 
 app = FastAPI()
 
+def to_dict(obj):
+    return obj.__dict__
 
 def get_db():
     db = SessionLocal()
@@ -251,23 +253,6 @@ def api_send_message(request: MessageRequest):
     
     return {"status": "Mensaje enviado", "data": result.get("data")}
 
-
-
-# @app.post("/verificar_cedula")
-# def verificar_cedula(request: CedulaRequest):
-#     numero_cedula = request.numero_cedula
-#     url = f"{FASTAPI_BASE_URL}/electores/cedula/{numero_cedula}"
-#     try:
-#         response = requests.get(url)
-#         response.raise_for_status()
-#         data = response.json()
-#         if not data["elector"]:
-#             raise HTTPException(status_code=404, detail="Cédula no encontrada")
-#         return data
-#     except requests.exceptions.HTTPError as http_err:
-#         raise HTTPException(status_code=response.status_code, detail=str(http_err))
-#     # except Exception as err:
-#     #     raise HTTPException(status_code=500, detail="Error al conectar con el servicio de verificación de cédulas")
 
 
 
@@ -800,12 +785,12 @@ async def get_municipios(estado: str, db: Session = Depends(get_db)):
 # CRUD para Recolector
 
 # CRUD para Recolector
-
 @app.get("/api/recolectores/", response_model=Dict[str, list[RecolectorList]])
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     total = db.query(Recolector).count()
     recolectores = db.query(Recolector).offset(skip).limit(limit).all()
-    return {"total": total, "items": [to_dict(recolector) for recolectores in recolectores]}
+    return {"total": total, "items": [to_dict(recolector) for recolector in recolectores]}
+
 
 @app.get("/api/recolectores/{recolector_id}", response_model=RecolectorList)
 async def read_recolector(recolector_id: int, db: Session = Depends(get_db)):

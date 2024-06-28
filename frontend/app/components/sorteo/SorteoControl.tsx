@@ -38,7 +38,7 @@ const SorteoControl: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
 
-  const APIHost = 'http://applottobueno.com:8000';
+  const APIHost = 'https://applottobueno.com';
 
   useEffect(() => {
     fetchEstados();

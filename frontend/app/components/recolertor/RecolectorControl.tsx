@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-
 "use client";
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
@@ -55,8 +54,13 @@ const RecolectorControl: React.FC = () => {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setRecolectores(data);  // Aquí asignamos los datos directamente
-      setTotalPages(Math.ceil(data.length / recolectoresPerPage)); // Calculamos el total de páginas basado en la longitud de los datos recibidos
+      if (Array.isArray(data.items)) {
+        setRecolectores(data.items);
+        setTotalPages(Math.ceil(data.total / recolectoresPerPage));
+      } else {
+        setRecolectores(data);
+        setTotalPages(Math.ceil(data.length / recolectoresPerPage));
+      }
     } catch (error) {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);

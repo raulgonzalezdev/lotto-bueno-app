@@ -28,7 +28,6 @@ const TicketControl: React.FC = () => {
   const [ticketsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  
   const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
 
@@ -66,8 +65,13 @@ const TicketControl: React.FC = () => {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setTickets(data);
-      setTotalPages(Math.ceil(data.length / ticketsPerPage)); 
+      if (Array.isArray(data.items)) {
+        setTickets(data.items);
+        setTotalPages(Math.ceil(data.total / ticketsPerPage));
+      } else {
+        setTickets(data);
+        setTotalPages(Math.ceil(data.length / ticketsPerPage));
+      }
     } catch (error) {
       console.error("Error fetching tickets:", error);
       setTickets([]);

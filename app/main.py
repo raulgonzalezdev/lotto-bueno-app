@@ -11,6 +11,7 @@ import logging
 import re
 import asyncio
 from pathlib import Path
+from typing import Dict
 
 
 from dotenv import load_dotenv
@@ -752,10 +753,11 @@ async def get_statistics_from_cache(stat_type: str, db: Session):
 
 # CRUD para Ticket
 
-@app.get("/tickets/", response_model=list[TicketList])
+@app.get("/tickets/", response_model=Dict[str, list[TicketList]])
 async def read_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    total = db.query(Ticket).count()
     tickets = db.query(Ticket).offset(skip).limit(limit).all()
-    return [to_dict(ticket) for ticket in tickets]
+    return {"total": total, "items": [to_dict(ticket) for ticket in tickets]}
 
 @app.get("/tickets/{ticket_id}", response_model=TicketList)
 async def read_ticket(ticket_id: int, db: Session = Depends(get_db)):
@@ -799,10 +801,11 @@ async def get_municipios(estado: str, db: Session = Depends(get_db)):
 
 # CRUD para Recolector
 
-@app.get("/api/recolectores/", response_model=list[RecolectorList])
+@app.get("/api/recolectores/", response_model=Dict[str, list[RecolectorList]])
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    total = db.query(Recolector).count()
     recolectores = db.query(Recolector).offset(skip).limit(limit).all()
-    return [to_dict(recolector) for recolector in recolectores]
+    return {"total": total, "items": [to_dict(recolector) for recolectores in recolectores]}
 
 @app.get("/api/recolectores/{recolector_id}", response_model=RecolectorList)
 async def read_recolector(recolector_id: int, db: Session = Depends(get_db)):
@@ -1114,10 +1117,12 @@ async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codig
     ]
     
     
-@app.get("/api/lineas_telefonicas/", response_model=list[LineaTelefonicaList])
+@app.get("/api/lineas_telefonicas/", response_model=Dict[str, list[LineaTelefonicaList]])
 async def read_lineas_telefonicas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    total = db.query(LineaTelefonica).count()
     lineas_telefonicas = db.query(LineaTelefonica).offset(skip).limit(limit).all()
-    return lineas_telefonicas
+    return {"total": total, "items": lineas_telefonicas}
+
 
 @app.get("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def read_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):

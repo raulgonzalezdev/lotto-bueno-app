@@ -47,7 +47,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
     baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } }
   );
 
-  const [APIHost, setAPIHost] = useState<string | null>('http://applottobueno.com:8000');
+  const [APIHost, setAPIHost] = useState<string | null>('https://applottobueno.com');
   const [availableTemplate, setAvailableTemplate] = useState<string[]>([]);
 
   useEffect(() => {
@@ -68,10 +68,10 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost('http://applottobueno.com:8000');
+      setAPIHost('https://applottobueno.com');
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('http://applottobueno.com:8000');
+      setAPIHost('https://applottobueno.com');
     }
   };
 

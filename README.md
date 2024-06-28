@@ -58,7 +58,7 @@ https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lot
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
 
 aed5f68d9ee6
-docker cp .env 85dee3a3039c:/app/app/.env
+docker cp .env e66652c56f86:/app/app/.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd75fd2984c:/app/app/settings.json
 
 docker exec -i 3c986df28d72 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
@@ -67,6 +67,23 @@ docker exec -it df01a774f33a bash
 
 docker system prune -a -f --volumes
 
+
+
+chmod -R 755 /apps
+chown -R soyrauldev:soyrauldev /apps
+ls -ld /apps
+cd /apps
+
+# Hacer el script ejecutable
+sudo chmod +x /etc/init.d/fix_apps_permissions.sh
+
+# Añadir el script a los scripts de inicio
+sudo update-rc.d fix_apps_permissions.sh defaults
+
+# Reiniciar el sistema
+sudo reboot
+
+# Verificar los permisos y la propiedad después del reinicio
 
 
 ```

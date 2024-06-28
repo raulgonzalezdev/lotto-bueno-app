@@ -25,22 +25,25 @@ const LineaTelefonicaControl: React.FC = () => {
   }, [APIHost, currentPage, searchTerm]);
 
   const fetchLineas = async () => {
-    //@ts-ignore
     const query = new URLSearchParams({
-      skip: (currentPage - 1) * lineasPerPage,
-      limit: lineasPerPage,
+      skip: ((currentPage - 1) * lineasPerPage).toString(),
+      limit: lineasPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
     }).toString();
 
     try {
-      //const response = await fetch(`${APIHost}/api/lineas_telefonicas/?${query}`);
       const response = await fetch(`/api/lineas_telefonicas/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setLineas(Array.isArray(data) ? data : []);
-      setTotalPages(Math.ceil(data.length / lineasPerPage));
+      if (Array.isArray(data.items)) {
+        setLineas(data.items);
+        setTotalPages(Math.ceil(data.total / lineasPerPage));
+      } else {
+        setLineas([]);
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error("Error fetching lineas:", error);
       setLineas([]);
@@ -64,13 +67,11 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    //await fetch(`${APIHost}/api/lineas_telefonicas/${id}`, { method: "DELETE" });
     await fetch(`/api/lineas_telefonicas/${id}`, { method: "DELETE" });
     fetchLineas();
   };
 
   const handleCreate = async () => {
-    //await fetch(`${APIHost}/api/lineas_telefonicas`, {
     await fetch(`/api/lineas_telefonicas`, {
       method: "POST",
       headers: {
@@ -84,7 +85,6 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleUpdate = async (linea: LineaTelefonica) => {
-    //await fetch(`${APIHost}/api/lineas_telefonicas/${linea.id}`, {
     await fetch(`/api/lineas_telefonicas/${linea.id}`, {
       method: "PATCH",
       headers: {

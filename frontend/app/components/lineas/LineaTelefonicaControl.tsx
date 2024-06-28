@@ -17,7 +17,7 @@ const LineaTelefonicaControl: React.FC = () => {
   const [lineasPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string>("http://applottobueno.com:8000");
+  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
   const [newLinea, setNewLinea] = useState({ numero: "", operador: "" });
 
   useEffect(() => {
@@ -32,7 +32,7 @@ const LineaTelefonicaControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`/api/lineas_telefonicas/?${query}`);
+      const response = await fetch(`${APIHost}/api/lineas_telefonicas/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -67,12 +67,12 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/lineas_telefonicas/${id}`, { method: "DELETE" });
+    await fetch(`${APIHost}/api/lineas_telefonicas/${id}`, { method: "DELETE" });
     fetchLineas();
   };
 
   const handleCreate = async () => {
-    await fetch(`/api/lineas_telefonicas`, {
+    await fetch(`${APIHost}/api/lineas_telefonicas`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -85,7 +85,7 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleUpdate = async (linea: LineaTelefonica) => {
-    await fetch(`/api/lineas_telefonicas/${linea.id}`, {
+    await fetch(`${APIHost}/api/lineas_telefonicas/${linea.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

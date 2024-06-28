@@ -36,6 +36,7 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
+  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
 
   useEffect(() => {
     fetchRecolectores();
@@ -49,7 +50,7 @@ const RecolectorControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`/api/recolectores/?${query}`);
+      const response = await fetch(`${APIHost}/api/recolectores/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -79,7 +80,7 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    await fetch(`/api/recolectores`, {  
+    await fetch(`${APIHost}/api/recolectores`, {  
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -94,7 +95,7 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleUpdate = async (recolector: Recolector) => {
-    await fetch(`/api/recolectores/${recolector.id}`, {
+    await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
@@ -135,7 +136,7 @@ const RecolectorControl: React.FC = () => {
   };
 
   const fetchEstadisticas = async (recolectorId?: number) => {
-    let url = `/api/recolectores/estadisticas/`;
+    let url = `${APIHost}/api/recolectores/estadisticas/`;
     if (recolectorId) {
       url += `?recolector_id=${recolectorId}`;
     }

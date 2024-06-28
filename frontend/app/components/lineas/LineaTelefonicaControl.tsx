@@ -1,5 +1,4 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-
 "use client";
 import React, { useState, useEffect } from "react";
 
@@ -22,7 +21,7 @@ const LineaTelefonicaControl: React.FC = () => {
 
   useEffect(() => {
     fetchLineas();
-  }, [APIHost, currentPage, searchTerm]);
+  }, [currentPage, searchTerm]);
 
   const fetchLineas = async () => {
     const query = new URLSearchParams({

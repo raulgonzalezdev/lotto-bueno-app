@@ -41,8 +41,8 @@ const LineaTelefonicaControl: React.FC = () => {
         setLineas(data.items);
         setTotalPages(Math.ceil(data.total / lineasPerPage));
       } else {
-        setLineas([]);
-        setTotalPages(1);
+        setLineas(data);
+        setTotalPages(Math.ceil(data.length / lineasPerPage));
       }
     } catch (error) {
       console.error("Error fetching lineas:", error);
@@ -104,6 +104,7 @@ const LineaTelefonicaControl: React.FC = () => {
     } else {
       setCurrentPage(pageNumber);
     }
+    fetchLineas();
   };
 
   return (

@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import React, { useState, useEffect } from "react";
+import Toast from '../toast/Toast';
 
 interface LineaTelefonica {
   id: number;
@@ -12,6 +13,8 @@ const LineaTelefonicaControl: React.FC = () => {
   const [lineas, setLineas] = useState<LineaTelefonica[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [selectedLinea, setSelectedLinea] = useState<LineaTelefonica | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [currentPage, setCurrentPage] = useState(1);
   const [lineasPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -71,13 +74,40 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleCreate = async () => {
-    await fetch(`${APIHost}/api/lineas_telefonicas`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(newLinea)
-    });
+    try {
+      const response = await fetch(`${APIHost}/api/lineas_telefonicas`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newLinea)
+      });
+  
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+    } catch (error) {
+      // Si hay un error, reintentar con https
+      try {
+        const response = await fetch(`https://applottobueno.com/api/lineas_telefonicas`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(newLinea)
+        });
+  
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+      } catch (retryError) {
+        console.error("Error creating linea telefonica:", retryError);
+        setToastMessage("Error creando línea telefónica");
+        setToastType("error");
+        return;
+      }
+    }
+  
     setNewLinea({ numero: "", operador: "" });
     fetchLineas();
     closeModal();

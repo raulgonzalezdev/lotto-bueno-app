@@ -24,8 +24,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
+  const [ticketMessage, setTicketMessage] = useState("");
+
 
   const APIHost = 'https://applottobueno.com';
+  const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262837784';
 
   useEffect(() => {
     fetchReferidos();
@@ -33,8 +36,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
 
   const fetchReferidos = async () => {
     try {
-      //const response = await fetch(`${APIHost}/recolectores/`);
-      const response = await fetch(`/api/recolectores/`);
+      const response = await fetch(`${APIHost}/api/recolectores/`);
       const data = await response.json();
       setReferidos(data.items);
     } catch (error) {
@@ -92,8 +94,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     }
 
     try {
-      //const response = await fetch(`${APIHost}/generate_ticket`, {
-      const response = await fetch(`/generate_ticket`, {
+      const response = await fetch(`${APIHost}/generate_tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -108,6 +109,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
       const data = await response.json();
       if (response.status === 200) {
         if (data.status === "success") {
+          setTicketMessage(data.message);
           if (data.qr_code) {
             handleOpenQRModal(data.qr_code);
           }
@@ -235,6 +237,14 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
               <h2>Ticket Generado</h2>
               <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" />
               <p>El ticket ha sido generado exitosamente.</p>
+              <a
+                href={`https://wa.me/${companyPhoneContact}?text=/start%0AHola, ${ticketMessage}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 mt-4 inline-block"
+              >
+                Enviar mensaje por WhatsApp
+              </a>
             </div>
           </div>
         )}

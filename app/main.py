@@ -105,7 +105,8 @@ origins = [
     "http://applottobueno.com",
     "https://applottobueno.com",
     "http://34.123.201.135:8000",
-    "http://34.123.201.135"
+    "http://34.123.201.135",
+    "https://wa.me"
 ]
 
 app.add_middleware(
@@ -272,6 +273,110 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
     except Exception as err:
         return {"status": "error", "message": "No se pudo conectar a la API de envío de códigos QR"}
 
+@app.post("/generate_tickets")
+def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
+    # Verificar si el número de WhatsApp es válido
+    whatsapp_check = check_whatsapp(request.telefono)
+    if "status" in whatsapp_check:
+        return {"status": "error", "message": "El número no tiene WhatsApp"}
+
+    # Verificar la cédula usando la función verificar_cedula
+    try:
+        elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=request.cedula), db))
+        if not elector_response.get("elector"):
+            return {"status": "error", "message": "La cédula no es válida"}
+    except HTTPException as e:
+        return {"status": "error", "message": str(e.detail)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+    # Procesar los datos del elector
+    elector_data = elector_response.get("elector")
+    nombre = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
+    elector_geografico = elector_response.get("geografico")
+    estado = elector_geografico['estado']
+    municipio = elector_geografico['municipio']
+    parroquia = elector_geografico['parroquia']
+
+    # Verificar si ya existe un ticket con la cédula o el teléfono proporcionados
+    existing_ticket = db.query(Ticket).filter((Ticket.cedula == request.cedula) | (Ticket.telefono == request.telefono)).first()
+    if existing_ticket:
+        qr_code_base64 = existing_ticket.qr_ticket
+        return {
+            "status": "success",
+            "message": f"{existing_ticket.nombre}, hoy es tu día de suerte! Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket.id} ¡El número ganador!",
+            "ticket_number": existing_ticket.numero_ticket,
+            "qr_code": qr_code_base64
+        }
+
+    ticket_number = generate_ticket_number()
+
+    # Determinar el id del recolector
+    referido_id = request.referido_id if request.referido_id is not None else get_system_recolector_id(db)
+
+    # Incluir datos de la persona y el número de ticket en el QR
+    qr_data = {
+        "ticket_number": ticket_number,
+        "cedula": request.cedula,
+        "nombre": nombre,
+        "telefono": request.telefono,
+        "estado": estado,
+        "municipio": municipio,
+        "parroquia": parroquia,
+        "referido_id": referido_id
+    }
+    qr_data_json = json.dumps(qr_data)
+
+    # Crear código QR
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(qr_data_json)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = BytesIO()
+    img.save(buf)
+    buf.seek(0)
+
+    # Guardar el ticket en la base de datos
+    qr_code_base64 = base64.b64encode(buf.getvalue()).decode()
+    new_ticket = TicketCreate(
+        numero_ticket=ticket_number,
+        qr_ticket=qr_code_base64,
+        cedula=request.cedula,
+        nombre=nombre,
+        telefono=request.telefono,
+        estado=estado,
+        municipio=municipio,
+        parroquia=parroquia,
+        referido_id=referido_id,
+        validado=True,
+        ganador=False,
+        created_at=datetime.now(),  # Establece el momento actual si es necesario
+        updated_at=datetime.now()   #
+    )
+
+    try:
+        db_ticket = Ticket(**new_ticket.dict())
+        db.add(db_ticket)
+        db.commit()
+        db.refresh(db_ticket)
+    except Exception as e:
+        print(f"Error al guardar en la base de datos: {e}")
+        return {"status": "error", "message": "Error interno del servidor no se guardo la tabla ticket"}
+
+    return {
+        "status": "success",
+        "message": f"{db_ticket.nombre}, hoy es tu día de suerte! Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {db_ticket.id} ¡El número ganador!",
+        "ticket_number": ticket_number,
+        "qr_code": qr_code_base64
+    }
+
+
 # Definición de los endpoints y modelos
 @app.post("/generate_ticket")
 def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
@@ -432,10 +537,10 @@ def send_contact(chat_id: int, db: Session = Depends(get_db)):
             phone_contact = random.choice(phone_contacts)[0]
         else:
             # Usar la variable de ambiente si no hay números disponibles
-            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")
+            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262837784")
     except Exception as e:
         # Usar la variable de ambiente en caso de cualquier error
-        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584129476026")
+        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262837784")
 
     contact_request = ContactRequest(
         chat_id=chat_id,

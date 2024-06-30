@@ -25,9 +25,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
   const [ticketMessage, setTicketMessage] = useState("");
+  const [fullnumberMessage, setFullnumberMessage] = useState("");
+  
 
   const APIHost = 'https://applottobueno.com';
-  const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262837784';
+  const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262831867';
 
   useEffect(() => {
     fetchReferidos();
@@ -67,7 +69,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const handleCloseQRModal = () => {
     setIsQRModalVisible(false);
     setQRCode(null);
-    window.location.href = `https://wa.me/${companyPhoneContact}?text=/start%0AHola, soy ${ticketMessage} con cédula ${formData.cedula}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`;
+    window.location.href = `https://wa.me/${companyPhoneContact}?text=/start%0A${formData.cedula}. Hola, soy ${ticketMessage} con cédula ${formData.cedula}. Este es mi numero telefonico número ${fullnumberMessage} para Lotto Bueno.`;
   };
 
   const handleConfirmRegisterAnother = () => {
@@ -85,6 +87,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     setToastMessage(null);
 
     const fullPhoneNumber = `58${formData.operador.slice(1)}${formData.telefono}`;
+    setFullnumberMessage(fullPhoneNumber);
     if (!/^58\d{10}$/.test(fullPhoneNumber)) {
       setToastMessage("El número de teléfono debe tener 10 dígitos después del operador.");
       setToastType('error');
@@ -237,7 +240,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
               <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" />
               <p>El ticket ha sido generado exitosamente.</p>
               <a
-                href={`https://wa.me/${companyPhoneContact}?text=/start%0AHola, soy ${ticketMessage} con cédula ${formData.cedula}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`}
+                href={`https://wa.me/${companyPhoneContact}?text=/start%0A${formData.cedula}. Hola, soy ${ticketMessage} con cédula ${formData.cedula}. Este es mi numero telefonico número ${fullnumberMessage} para Lotto Bueno.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 mt-4 inline-block"

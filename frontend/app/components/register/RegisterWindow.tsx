@@ -26,7 +26,6 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
   const [ticketMessage, setTicketMessage] = useState("");
 
-
   const APIHost = 'https://applottobueno.com';
   const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262837784';
 
@@ -68,7 +67,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const handleCloseQRModal = () => {
     setIsQRModalVisible(false);
     setQRCode(null);
-    setIsConfirmationModalVisible(true);
+    window.location.href = `https://wa.me/${companyPhoneContact}?text=/start%0AHola, soy ${ticketMessage} con cédula ${formData.cedula}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`;
   };
 
   const handleConfirmRegisterAnother = () => {
@@ -238,7 +237,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
               <img src={`data:image/png;base64,${qrCode}`} alt="QR Code" />
               <p>El ticket ha sido generado exitosamente.</p>
               <a
-                href={`https://wa.me/${companyPhoneContact}?text=/start%0AHola, ${ticketMessage}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`}
+                href={`https://wa.me/${companyPhoneContact}?text=/start%0AHola, soy ${ticketMessage} con cédula ${formData.cedula}. Ya tengo mi ticket número ${formData.telefono} para Lotto Bueno.`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 mt-4 inline-block"

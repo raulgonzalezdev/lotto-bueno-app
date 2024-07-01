@@ -36,6 +36,10 @@ def obtener_cedula(notification: Notification) -> None:
     message_data = notification.event.get("messageData", {})
     extended_text_message_data = message_data.get("extendedTextMessageData", {})
     cedula = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
+    
+    print(f"message_data: {message_data}")
+    print(f"extended_text_message_data: {extended_text_message_data}")
+    print(f"cedula: {cedula}")
 
     if not cedula:
         notification.answer("Por favor envíame un número de cédula válido.")

@@ -766,16 +766,16 @@ router = APIRouter()
 #     else:
 #         notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
 
-# def obtener_numero_contacto(db: Session) -> str:
-#     try:
-#         phone_contacts = db.query(LineaTelefonica.numero).all()
-#         if phone_contacts:
-#             phone_contact = random.choice(phone_contacts)[0]
-#         else:
-#             phone_contact = obtener_numero_instancia()
-#         return phone_contact
-#     except Exception as e:
-#         return obtener_numero_instancia()
+def obtener_numero_contacto(db: Session) -> str:
+     try:
+         phone_contacts = db.query(LineaTelefonica.numero).all()
+         if phone_contacts:
+             phone_contact = random.choice(phone_contacts)[0]
+         else:
+             phone_contact = obtener_numero_instancia()
+         return phone_contact
+     except Exception as e:
+         return obtener_numero_instancia()
 
 
 

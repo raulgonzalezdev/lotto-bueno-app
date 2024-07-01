@@ -34,11 +34,12 @@ def message_handler(notification: Notification) -> None:
 def obtener_cedula(notification: Notification) -> None:
     sender = notification.sender
     message_data = notification.event.get("messageData", {})
-    extended_text_message_data = message_data.get("extendedTextMessageData", {})
-    cedula = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
+    text_message_data = message_data.get("textMessageData", {})
+    cedula = text_message_data.get("textMessage")
+
     
     print(f"message_data: {message_data}")
-    print(f"extended_text_message_data: {extended_text_message_data}")
+   
     print(f"cedula: {cedula}")
 
     if not cedula:

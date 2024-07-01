@@ -42,7 +42,7 @@ def obtener_cedula(notification: Notification) -> None:
     print(f"cedula: {cedula}")
 
     if not cedula:
-        notification.answer("Por favor envíame un número de cédula válido." {message_data})
+        notification.answer("Por favor envíame un número de cédula válido. {message_data} ")
         return
 
     print(f"Procesando cédula: {cedula}")

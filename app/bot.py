@@ -1,9 +1,16 @@
 import os
+import sys
+from pathlib import Path
 import random
 import base64
 import json
 import asyncio
 from io import BytesIO
+
+
+# Añadir el directorio donde se encuentra whatsapp_chatbot_python al PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from whatsapp_chatbot_python import GreenAPIBot, Notification
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session

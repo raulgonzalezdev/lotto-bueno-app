@@ -117,17 +117,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-API_URL_BASE = os.getenv("API_URL_BASE")
-API_INSTANCE = os.getenv("API_INSTANCE") 
-API_TOKEN = os.getenv("API_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL" )
+# Asignar valores por defecto si las variables de entorno no están definidas
+POSTGRES_DB = os.getenv("POSTGRES_DB", "lottobueno")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "lottobueno")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "lottobueno")
+DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}")
+
+API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
+API_URL_BASE = os.getenv("API_URL_BASE", f"https://7103.api.greenapi.com/waInstance{API_INSTANCE}")
+API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "https://applottobueno.com")
+COMPANY_PHONE_CONTACT = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
 SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
+# Verificar que las variables requeridas están presentes
+if not API_INSTANCE or not API_TOKEN:
+    raise ValueError("API_INSTANCE y API_TOKEN deben estar definidos en las variables de entorno")
+
+# Inicializar el bot con los valores obtenidos
 bot = GreenAPIBot(
-            API_INSTANCE, API_TOKEN
-        )
+    API_INSTANCE, API_TOKEN
+)
 
 
 

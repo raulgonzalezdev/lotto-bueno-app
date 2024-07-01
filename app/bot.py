@@ -41,6 +41,7 @@ def obtener_cedula(notification: Notification) -> None:
         notification.answer("Por favor envíame un número de cédula válido.")
         return
 
+    print(f"Procesando cédula: {cedula}")
     db = next(get_db())
     elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=cedula), db))
 
@@ -54,6 +55,7 @@ def obtener_cedula(notification: Notification) -> None:
             response = requests.get(f"{FASTAPI_BASE_URL}/tickets/cedula/{cedula}")
             response.raise_for_status()
             existing_ticket = response.json()
+            print(f"Ticket encontrado: {existing_ticket}")
 
             qr_code_base64 = existing_ticket["qr_ticket"]
             qr_buf = BytesIO(base64.b64decode(qr_code_base64))
@@ -69,16 +71,20 @@ def obtener_cedula(notification: Notification) -> None:
             send_qr_code(chat_id, qr_buf)
 
             phone_contact = obtener_numero_contacto(db)
+            print(f"phone_contact: {phone_contact}")
             if phone_contact:
                 enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
 
             notification.answer("Gracias por registrarte. ¡Hasta pronto!")
             notification.state_manager.delete_state(sender)
         except requests.HTTPError as http_err:
+            print(f"HTTP error: {http_err}")
             notification.answer(f"Error al obtener ticket: {http_err}")
         except Exception as err:
+            print(f"Unexpected error: {err}")
             notification.answer(f"Error inesperado: {err}")
     else:
+        print("Cédula no registrada.")
         notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
 
 if __name__ == "__main__":

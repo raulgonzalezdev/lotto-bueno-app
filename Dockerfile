@@ -22,7 +22,11 @@ COPY . /app
 # Crear el archivo .env directamente en el contenedor
 RUN echo "POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql://lottobueno:lottobueno@postgres:5432/lottobueno\nREDIS_URL=redis://localhost:6380/0" > /app/.env
 
+# Make the start script executable
+RUN chmod +x /app/start.sh
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+#CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+CMD ["/app/start.sh"]

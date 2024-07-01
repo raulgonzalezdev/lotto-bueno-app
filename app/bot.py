@@ -48,7 +48,7 @@ def obtener_cedula(notification: Notification) -> None:
     if elector_response.get("elector"):
         elector_data = elector_response.get("elector")
         nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
-        chat_id = notification.event["senderData"]["chatId"]
+        
 
         # Llamada a la API para obtener el ticket por cédula
         try:
@@ -56,6 +56,7 @@ def obtener_cedula(notification: Notification) -> None:
             response.raise_for_status()
             existing_ticket = response.json()
             print(f"Ticket encontrado: {existing_ticket}")
+            chat_id = existing_ticket["telefono"]
 
             qr_code_base64 = existing_ticket["qr_ticket"]
             qr_buf = BytesIO(base64.b64decode(qr_code_base64))

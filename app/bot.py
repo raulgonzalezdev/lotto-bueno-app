@@ -12,10 +12,9 @@ import requests
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from whatsapp_chatbot_python import GreenAPIBot, Notification
-from fastapi import HTTPException, Depends
-from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from app.schemas import CedulaRequest
-from app.main import get_db, send_message, send_qr_code, verificar_cedula, obtener_numero_contacto, enviar_contacto
+from app.main import get_db, send_message, send_qr_code, obtener_numero_contacto, enviar_contacto, verificar_cedula
 
 API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
@@ -51,9 +50,11 @@ def obtener_cedula(notification: Notification) -> None:
         chat_id = notification.event["senderData"]["chatId"]
 
         # Llamada a la API para obtener el ticket por cédula
-        response = requests.get(f"{FASTAPI_BASE_URL}/tickets/cedula/{cedula}")
-        if response.status_code == 200:
+        try:
+            response = requests.get(f"{FASTAPI_BASE_URL}/tickets/cedula/{cedula}")
+            response.raise_for_status()
             existing_ticket = response.json()
+
             qr_code_base64 = existing_ticket["qr_ticket"]
             qr_buf = BytesIO(base64.b64decode(qr_code_base64))
 
@@ -70,10 +71,13 @@ def obtener_cedula(notification: Notification) -> None:
             phone_contact = obtener_numero_contacto(db)
             if phone_contact:
                 enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
+
             notification.answer("Gracias por registrarte. ¡Hasta pronto!")
             notification.state_manager.delete_state(sender)
-        else:
-            notification.answer("No se encontró un ticket asociado a la cédula proporcionada.")
+        except requests.HTTPError as http_err:
+            notification.answer(f"Error al obtener ticket: {http_err}")
+        except Exception as err:
+            notification.answer(f"Error inesperado: {err}")
     else:
         notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
 

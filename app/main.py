@@ -22,6 +22,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
+import uvicorn
+import threading
+
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1390,12 +1393,9 @@ if __name__ == "__main__":
     import threading
 
     def start_bot():
-        bot = GreenAPIBot(
-            API_INSTANCE, API_TOKEN
-        )
+        bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
         bot.run_forever()
 
+    uvicorn.run(app, host="0.0.0.0", port=8000)
     bot_thread = threading.Thread(target=start_bot)
     bot_thread.start()
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -934,6 +934,14 @@ async def read_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(ge
     tickets = db.query(Ticket).offset(skip).limit(limit).all()
     return {"total": total, "items": [to_dict(ticket) for ticket in tickets]}
 
+
+@app.get("/tickets/cedula/{cedula}", response_model=TicketList)
+async def read_ticket_by_cedula(cedula: str, db: Session = Depends(get_db)):
+    ticket = db.query(Ticket).filter(Ticket.cedula == cedula).first()
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    return ticket
+
 @app.get("/tickets/{ticket_id}", response_model=TicketList)
 async def read_ticket(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()

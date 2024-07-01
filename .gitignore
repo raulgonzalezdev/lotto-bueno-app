@@ -1,5 +1,5 @@
 # Excluir archivos y carpetas específicos
-
+data/
 .env
 __pycache__/
 .DS_Store

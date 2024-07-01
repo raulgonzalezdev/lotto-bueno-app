@@ -55,7 +55,7 @@ ALGORITHM=HS256' > /.env
    docker exec -it 8fd75fd2984c /bin/bash
 
 https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lottos.png
-docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/main.py aed5f68d9ee6:/app/app/main.py
+docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/split_csv.py ad3218d05788:/app/app/split_csv.py
 
 aed5f68d9ee6
 docker cp .env 215274748a33:/app/app/.env
@@ -63,7 +63,7 @@ docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd
 
 docker exec -i 3c986df28d72 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
-docker exec -it df01a774f33a bash
+docker exec -it ad3218d05788 bash
 
 docker system prune -a -f --volumes
 

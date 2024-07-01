@@ -6,7 +6,7 @@ import base64
 import json
 import asyncio
 from io import BytesIO
-
+import requests
 
 # Añadir el directorio donde se encuentra whatsapp_chatbot_python al PYTHONPATH
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -14,12 +14,12 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from whatsapp_chatbot_python import GreenAPIBot, Notification
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
-from app.models import Ticket, LineaTelefonica, Recolector
 from app.schemas import CedulaRequest
 from app.main import get_db, send_message, send_qr_code, verificar_cedula, obtener_numero_contacto, enviar_contacto
 
 API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "https://applottobueno.com")
 
 bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
 
@@ -50,13 +50,15 @@ def obtener_cedula(notification: Notification) -> None:
         nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
         chat_id = notification.event["senderData"]["chatId"]
 
-        existing_ticket = db.query(Ticket).filter((Ticket.cedula == cedula) | (Ticket.telefono == sender)).first()
-        if existing_ticket:
-            qr_code_base64 = existing_ticket.qr_ticket
+        # Llamada a la API para obtener el ticket por cédula
+        response = requests.get(f"{FASTAPI_BASE_URL}/tickets/cedula/{cedula}")
+        if response.status_code == 200:
+            existing_ticket = response.json()
+            qr_code_base64 = existing_ticket["qr_ticket"]
             qr_buf = BytesIO(base64.b64decode(qr_code_base64))
 
             message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
-                      f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket.id} ¡El número ganador!\n\n" \
+                      f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket['id']} ¡El número ganador!\n\n" \
                       f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
                       f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
                       f"¡Mucha suerte!\n" \

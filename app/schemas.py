@@ -158,3 +158,6 @@ class LineaTelefonicaList(LineaTelefonicaBase):
 
     class Config:
         orm_mode = True
+        
+class CedulaRequest(BaseModel):
+    numero_cedula: str

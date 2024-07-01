@@ -31,8 +31,8 @@ def split_csv_file(input_file, output_dir, lines_per_file):
         output_file.close()
 
 # Configuración
-input_file_path ='/home/soyrauldev/proyectos/Brito/lotto-bueno-app/data/re20240416_pp.txt'
-output_directory = '/home/soyrauldev/proyectos/Brito/lotto-bueno-app/data/split_files'
+input_file_path ='/app/app/data/re20240416_pp.txt'
+output_directory = '/app/app/data/split_files'
 lines_per_file = 100000  # Ajusta el número de líneas por archivo según tus necesidades
 
 # Dividir el archivo

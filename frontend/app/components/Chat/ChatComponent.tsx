@@ -233,6 +233,32 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     fetchElectores();
   };
 
+  const handleDownload = async (type: string, format: string) => {
+    const query = new URLSearchParams({
+      ...(codigoEstado && { codigo_estado: codigoEstado }),
+      ...(codigoMunicipio && { codigo_municipio: codigoMunicipio }),
+    }).toString();
+
+    let url = '';
+    if (type === 'electores') {
+      url = format === 'excel' ? `/download/excel/electores?${query}` : `/download/txt/electores?${query}`;
+    }
+
+    let part = 1;
+    while (true) {
+      const link = document.createElement('a');
+      link.href = `${url}&part=${part}`;
+      link.download = `${type}_part${part}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      const response = await fetch(`${url}&part=${part}`, { method: 'HEAD' });
+      if (!response.ok) break;
+      part++;
+    }
+  };
+
   return (
     <div className="p-4">
       <h2>Control de Electores</h2>
@@ -315,6 +341,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             className="input input-bordered w-full"
           />
         </div>
+      </div>
+      <div className="mb-4">
+        <button onClick={() => handleDownload('electores', 'excel')} className="btn btn-secondary mr-2">Descargar Electores Excel</button>
+        <button onClick={() => handleDownload('electores', 'txt')} className="btn btn-secondary">Descargar Electores TXT</button>
       </div>
       <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>

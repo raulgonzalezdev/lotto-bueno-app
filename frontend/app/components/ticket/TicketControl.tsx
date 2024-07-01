@@ -145,6 +145,31 @@ const TicketControl: React.FC = () => {
     }
   };
 
+  const handleDownload = async (type: string, format: string) => {
+    const query = new URLSearchParams({
+      ...(searchTerm && { search: searchTerm }),
+    }).toString();
+
+    let url = '';
+    if (type === 'tickets') {
+      url = format === 'excel' ? `/download/excel/tickets?${query}` : `/download/txt/tickets?${query}`;
+    }
+
+    let part = 1;
+    while (true) {
+      const link = document.createElement('a');
+      link.href = `${url}&part=${part}`;
+      link.download = `${type}_part${part}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      const response = await fetch(`${url}&part=${part}`, { method: 'HEAD' });
+      if (!response.ok) break;
+      part++;
+    }
+  };
+
   return (
     <div className="p-4">
       <h2>Control de Tickets</h2>
@@ -155,6 +180,10 @@ const TicketControl: React.FC = () => {
         onChange={handleSearchChange}
         className="input input-bordered mb-4"
       />
+       <div className="mb-4">
+        <button onClick={() => handleDownload('tickets', 'excel')} className="btn btn-secondary mr-2">Descargar Tickets Excel</button>
+        <button onClick={() => handleDownload('tickets', 'txt')} className="btn btn-secondary">Descargar Tickets TXT</button>
+      </div>
       <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
         <button onClick={() => paginate(currentPage - 1)} className="btn btn-primary mr-1">{"<"}</button>

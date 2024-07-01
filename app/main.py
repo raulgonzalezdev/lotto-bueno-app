@@ -140,9 +140,9 @@ if not API_INSTANCE or not API_TOKEN:
     raise ValueError("API_INSTANCE y API_TOKEN deben estar definidos en las variables de entorno")
 
 # Inicializar el bot con los valores obtenidos
-bot = GreenAPIBot(
-    API_INSTANCE, API_TOKEN
-)
+# bot = GreenAPIBot(
+#     API_INSTANCE, API_TOKEN
+# )
 
 
 
@@ -555,10 +555,10 @@ def send_contact(chat_id: int, db: Session = Depends(get_db)):
             phone_contact = random.choice(phone_contacts)[0]
         else:
             # Usar la variable de ambiente si no hay números disponibles
-            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262837784")
+            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
     except Exception as e:
         # Usar la variable de ambiente en caso de cualquier error
-        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262837784")
+        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
 
     contact_request = ContactRequest(
         chat_id=chat_id,
@@ -709,73 +709,73 @@ def custom_serializer(obj):
 
 router = APIRouter()
 
-@bot.router.message(command="start")
-def message_handler(notification: Notification) -> None:
-    sender_data = notification.event["senderData"]
-    sender_name = sender_data["senderName"]
+# @bot.router.message(command="start")
+# def message_handler(notification: Notification) -> None:
+#     sender_data = notification.event["senderData"]
+#     sender_name = sender_data["senderName"]
 
-    notification.answer(
-        (
-            f"👋 Hola, {sender_name}. Para validar tu registro, por favor envíame tu número de cédula."
-        )
-    )
+#     notification.answer(
+#         (
+#             f"👋 Hola, {sender_name}. Para validar tu registro, por favor envíame tu número de cédula."
+#         )
+#     )
 
-@bot.router.message()
-def obtener_cedula(notification: Notification) -> None:
-    sender = notification.sender
-    message_data = notification.event.get("messageData", {})
-    extended_text_message_data = message_data.get("extendedTextMessageData", {})
-    cedula = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
+# @bot.router.message()
+# def obtener_cedula(notification: Notification) -> None:
+#     sender = notification.sender
+#     message_data = notification.event.get("messageData", {})
+#     extended_text_message_data = message_data.get("extendedTextMessageData", {})
+#     cedula = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
 
-    if not cedula:
-        notification.answer("Por favor envíame un número de cédula válido.")
-        return
+#     if not cedula:
+#         notification.answer("Por favor envíame un número de cédula válido.")
+#         return
 
-    db = next(get_db())
-    elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=cedula), db))
+#     db = next(get_db())
+#     elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=cedula), db))
 
-    if elector_response.get("elector"):
-        elector_data = elector_response.get("elector")
-        nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
-        chat_id = notification.event["senderData"]["chatId"]
+#     if elector_response.get("elector"):
+#         elector_data = elector_response.get("elector")
+#         nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
+#         chat_id = notification.event["senderData"]["chatId"]
 
-        existing_ticket = db.query(Ticket).filter((Ticket.cedula == cedula) | (Ticket.telefono == sender)).first()
-        if existing_ticket:
-            qr_code_base64 = existing_ticket.qr_ticket
-            qr_buf = BytesIO(base64.b64decode(qr_code_base64))
+#         existing_ticket = db.query(Ticket).filter((Ticket.cedula == cedula) | (Ticket.telefono == sender)).first()
+#         if existing_ticket:
+#             qr_code_base64 = existing_ticket.qr_ticket
+#             qr_buf = BytesIO(base64.b64decode(qr_code_base64))
 
-            message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
-                      f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket.id} ¡El número ganador!\n\n" \
-                      f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
-                      f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
-                      f"¡Mucha suerte!\n" \
-                      f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+#             message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
+#                       f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket.id} ¡El número ganador!\n\n" \
+#                       f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
+#                       f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+#                       f"¡Mucha suerte!\n" \
+#                       f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
 
-            send_message(chat_id, message)
-            send_qr_code(chat_id, qr_buf)
+#             send_message(chat_id, message)
+#             send_qr_code(chat_id, qr_buf)
 
-            # Seleccionar un número de contacto aleatorio
-            phone_contact = obtener_numero_contacto(db)
+#             # Seleccionar un número de contacto aleatorio
+#             phone_contact = obtener_numero_contacto(db)
 
-            if phone_contact:
-                enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
-            notification.answer("Gracias por registrarte. ¡Hasta pronto!")
-            notification.state_manager.delete_state(sender)
-        else:
-            notification.answer("No se encontró un ticket asociado a la cédula proporcionada.")
-    else:
-        notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
+#             if phone_contact:
+#                 enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
+#             notification.answer("Gracias por registrarte. ¡Hasta pronto!")
+#             notification.state_manager.delete_state(sender)
+#         else:
+#             notification.answer("No se encontró un ticket asociado a la cédula proporcionada.")
+#     else:
+#         notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
 
-def obtener_numero_contacto(db: Session) -> str:
-    try:
-        phone_contacts = db.query(LineaTelefonica.numero).all()
-        if phone_contacts:
-            phone_contact = random.choice(phone_contacts)[0]
-        else:
-            phone_contact = obtener_numero_instancia()
-        return phone_contact
-    except Exception as e:
-        return obtener_numero_instancia()
+# def obtener_numero_contacto(db: Session) -> str:
+#     try:
+#         phone_contacts = db.query(LineaTelefonica.numero).all()
+#         if phone_contacts:
+#             phone_contact = random.choice(phone_contacts)[0]
+#         else:
+#             phone_contact = obtener_numero_instancia()
+#         return phone_contact
+#     except Exception as e:
+#         return obtener_numero_instancia()
 
 
 
@@ -1398,12 +1398,12 @@ app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn
-    import threading
+    # import threading
 
-    def start_bot():
-        bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
-        bot.run_forever()
+    # def start_bot():
+    #     bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
+    #     bot.run_forever()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    bot_thread = threading.Thread(target=start_bot)
-    bot_thread.start()
+    # bot_thread = threading.Thread(target=start_bot)
+    # bot_thread.start()

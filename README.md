@@ -192,3 +192,19 @@ docker system prune -a -f --volumes
 
 
 
+# hacer un restore local
+```
+docker cp /apps/lotto-bueno-app/lottobueno_backup.dump 4b7569f1f0e4:/tmp/lottobueno_backup.dump
+
+
+
+
+
+
+docker exec -it 4b7569f1f0e4 psql -U lottobueno -d lottobueno -c "DROP TABLE IF EXISTS electores CASCADE;"
+docker exec -it 4b7569f1f0e4 psql -U lottobueno -d lottobueno -c "DROP TABLE IF EXISTS centros_votacion CASCADE;"
+docker exec -it 4b7569f1f0e4 psql -U lottobueno -d lottobueno -c "DROP TABLE IF EXISTS geograficos CASCADE;"
+
+docker exec -i 4b7569f1f0e4 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -t electores -t centros_votacion -t geograficos -v /tmp/lottobueno_backup.dump"
+
+```

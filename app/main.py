@@ -234,109 +234,6 @@ def generate_file_responses(data, file_type, base_filename):
             file_responses.append(output)
     return file_responses
 
-@app.get("/download/excel/electores")
-async def download_excel_electores(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Elector)
-    if codigo_estado:
-        query = query.filter(Elector.codigo_estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Elector.codigo_municipio == codigo_municipio)
-
-    electores = query.all()
-    data = [to_dict(elector) for elector in electores]
-    
-    if len(data) <= CHUNK_SIZE:
-        df = pd.DataFrame(data)
-        output = BytesIO()
-        writer = pd.ExcelWriter(output, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Electores')
-        writer.save()
-        output.seek(0)
-        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=electores.xlsx"})
-    
-    file_responses = generate_file_responses(data, 'excel', 'electores')
-    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=electores_part1.xlsx"})
-
-@app.get("/download/txt/electores")
-async def download_txt_electores(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Elector)
-    if codigo_estado:
-        query = query.filter(Elector.codigo_estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Elector.codigo_municipio == codigo_municipio)
-
-    electores = query.all()
-    data = [to_dict(elector) for elector in electores]
-    
-    if len(data) <= CHUNK_SIZE:
-        output = StringIO()
-        for elector in data:
-            output.write(f"{elector}\n")
-        output.seek(0)
-        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=electores.txt"})
-    
-    file_responses = generate_file_responses(data, 'txt', 'electores')
-    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=electores_part1.txt"})
-
-@app.get("/download/excel/tickets")
-async def download_excel_tickets(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Ticket)
-    if codigo_estado:
-        query = query.filter(Ticket.estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Ticket.municipio == codigo_municipio)
-
-    tickets = query.all()
-    data = [to_dict(ticket) for ticket in tickets]
-    
-    if len(data) <= CHUNK_SIZE:
-        df = pd.DataFrame(data)
-        output = BytesIO()
-        writer = pd.ExcelWriter(output, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Tickets')
-        writer.save()
-        output.seek(0)
-        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=tickets.xlsx"})
-    
-    file_responses = generate_file_responses(data, 'excel', 'tickets')
-    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=tickets_part1.xlsx"})
-
-@app.get("/download/txt/tickets")
-async def download_txt_tickets(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Ticket)
-    if codigo_estado:
-        query = query.filter(Ticket.estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Ticket.municipio == codigo_municipio)
-
-    tickets = query.all()
-    data = [to_dict(ticket) for ticket in tickets]
-    
-    if len(data) <= CHUNK_SIZE:
-        output = StringIO()
-        for ticket in data:
-            output.write(f"{ticket}\n")
-        output.seek(0)
-        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=tickets.txt"})
-    
-    file_responses = generate_file_responses(data, 'txt', 'tickets')
-    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=tickets_part1.txt"})
 
 
 app.mount(
@@ -734,6 +631,113 @@ def verificar_numero_whatsapp(phone_number):
         return {"status": "Error", "detail": str(http_err)}
     except Exception as err:
         return {"status": "Error", "detail": str(err)}
+
+
+@app.get("/download/excel/electores")
+async def download_excel_electores(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Elector)
+    if codigo_estado:
+        query = query.filter(Elector.codigo_estado == codigo_estado)
+    if codigo_municipio:
+        query = query.filter(Elector.codigo_municipio == codigo_municipio)
+
+    electores = query.all()
+    data = [to_dict(elector) for elector in electores]
+    
+    if len(data) <= CHUNK_SIZE:
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        writer = pd.ExcelWriter(output, engine='openpyxl')
+        df.to_excel(writer, index=False, sheet_name='Electores')
+        writer.save()
+        output.seek(0)
+        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=electores.xlsx"})
+    
+    file_responses = generate_file_responses(data, 'excel', 'electores')
+    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=electores_part1.xlsx"})
+
+@app.get("/download/txt/electores")
+async def download_txt_electores(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Elector)
+    if codigo_estado:
+        query = query.filter(Elector.codigo_estado == codigo_estado)
+    if codigo_municipio:
+        query = query.filter(Elector.codigo_municipio == codigo_municipio)
+
+    electores = query.all()
+    data = [to_dict(elector) for elector in electores]
+    
+    if len(data) <= CHUNK_SIZE:
+        output = StringIO()
+        for elector in data:
+            output.write(f"{elector}\n")
+        output.seek(0)
+        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=electores.txt"})
+    
+    file_responses = generate_file_responses(data, 'txt', 'electores')
+    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=electores_part1.txt"})
+
+@app.get("/download/excel/tickets")
+async def download_excel_tickets(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Ticket)
+    if codigo_estado:
+        query = query.filter(Ticket.estado == codigo_estado)
+    if codigo_municipio:
+        query = query.filter(Ticket.municipio == codigo_municipio)
+
+    tickets = query.all()
+    data = [to_dict(ticket) for ticket in tickets]
+    
+    if len(data) <= CHUNK_SIZE:
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        writer = pd.ExcelWriter(output, engine='openpyxl')
+        df.to_excel(writer, index=False, sheet_name='Tickets')
+        writer.save()
+        output.seek(0)
+        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=tickets.xlsx"})
+    
+    file_responses = generate_file_responses(data, 'excel', 'tickets')
+    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=tickets_part1.xlsx"})
+
+@app.get("/download/txt/tickets")
+async def download_txt_tickets(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Ticket)
+    if codigo_estado:
+        query = query.filter(Ticket.estado == codigo_estado)
+    if codigo_municipio:
+        query = query.filter(Ticket.municipio == codigo_municipio)
+
+    tickets = query.all()
+    data = [to_dict(ticket) for ticket in tickets]
+    
+    if len(data) <= CHUNK_SIZE:
+        output = StringIO()
+        for ticket in data:
+            output.write(f"{ticket}\n")
+        output.seek(0)
+        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=tickets.txt"})
+    
+    file_responses = generate_file_responses(data, 'txt', 'tickets')
+    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=tickets_part1.txt"})
+
+
 
 @app.post("/enviar_contacto")
 def api_enviar_contacto(request: ContactRequest):

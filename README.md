@@ -63,7 +63,7 @@ docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd
 
 docker exec -i 3c986df28d72 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
-docker exec -it ad3218d05788 bash
+docker exec -it 4b7569f1f0e4 bash
 
 docker system prune -a -f --volumes
 

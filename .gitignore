@@ -18,6 +18,7 @@ test.py
 cache.txt
 .ruff_cache/
 *_secrets.json
+lottobueno_backup.dump
 
 
 

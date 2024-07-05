@@ -320,8 +320,12 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
 def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
     whatsapp_check = check_whatsapp(request.telefono)
-    if "status" in whatsapp_check:
+    if whatsapp_check.get("existsWhatsapp") == False:
+        # Procesar cuando no existe WhatsApp
         return {"status": "error", "message": "El número no tiene WhatsApp"}
+    elif "existsWhatsapp" not in whatsapp_check:
+        # Manejar otros errores posibles o falta de la clave "existsWhatsapp"
+        return {"status": "error", "message": "No se pudo verificar el estado de WhatsApp"}
 
     # Verificar la cédula usando la función verificar_cedula
     try:

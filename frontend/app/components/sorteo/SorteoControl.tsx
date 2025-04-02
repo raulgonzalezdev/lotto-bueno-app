@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
+import { detectHost } from "../../api";
 
 interface Ticket {
   id: number;
@@ -37,10 +38,10 @@ const SorteoControl: React.FC = () => {
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
-
-  const APIHost = 'https://applottobueno.com';
+  const [APIHost, setAPIHost] = useState<string | null>(null);
 
   useEffect(() => {
+    fetchHost();
     fetchEstados();
   }, []);
 
@@ -54,10 +55,19 @@ const SorteoControl: React.FC = () => {
     }
   }, [estado]);
 
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
+    }
+  };
+
   const fetchEstados = async () => {
     try {
       const response = await fetch(`/estados/`);
-      //const response = await fetch(`${APIHost}/estados`);
       const data = await response.json();
       setEstados(data);
     } catch (error) {
@@ -68,7 +78,6 @@ const SorteoControl: React.FC = () => {
 
   const fetchMunicipios = async (codigoEstado: string) => {
     try {
-      //const response = await fetch(`${APIHost}/municipios/${encodeURIComponent(codigoEstado)}`);
       const response = await fetch(`/municipios/${encodeURIComponent(codigoEstado)}`);
       const data = await response.json();
       setMunicipios(data.length > 0 ? data : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
@@ -80,21 +89,17 @@ const SorteoControl: React.FC = () => {
 
   const handleSorteo = async () => {
     try {
-        // Buscar descripciones de estado y municipio basados en los códigos seleccionados
         const estadoDesc = estados.find(e => e.codigo_estado.toString() === estado.toString())?.estado || "";
         const municipioDesc = municipios.find(m => m.codigo_municipio.toString() === municipio.toString())?.municipio || "";
 
-        // Verificar si se ha seleccionado una opción inválida y ajustar el cuerpo de la solicitud
         const body = JSON.stringify({
             cantidad_ganadores: cantidadGanadores,
             estado: estado !== "" && estado !== "Seleccionar Estado" ? estadoDesc : "",
             municipio: municipio !== "" && municipio !== "Seleccionar Municipio" ? municipioDesc : ""
         });
 
-        console.log('body:', body); // Agregar un console.log para depuración
+        console.log('body:', body);
 
-        // Hacer la solicitud al servidor
-        //const response = await fetch(`${APIHost}/sorteo/ganadores`, {
         const response = await fetch(`/sorteo/ganadores`, {
             method: "POST",
             headers: {
@@ -103,7 +108,6 @@ const SorteoControl: React.FC = () => {
             body: body
         });
 
-        // Manejar la respuesta del servidor
         if (!response.ok) {
             const errorData = await response.json();
             setToastMessage(errorData.message || "Error realizando el sorteo. Por favor, intenta de nuevo.");
@@ -111,7 +115,6 @@ const SorteoControl: React.FC = () => {
             return;
         }
 
-        // Actualizar el estado con los datos recibidos
         const data: Ticket[] = await response.json();
         setGanadores(Array.isArray(data) ? data : []);
         setToastMessage("Sorteo realizado exitosamente");
@@ -124,14 +127,9 @@ const SorteoControl: React.FC = () => {
     }
 };
 
-
-
-
-
   const handleQuitarGanadores = async () => {
     try {
       const response = await fetch(`/sorteo/quitar_ganadores`, {
-      //const response = await fetch(`${APIHost}/sorteo/quitar_ganadores`, {
         method: "POST"
       });
 

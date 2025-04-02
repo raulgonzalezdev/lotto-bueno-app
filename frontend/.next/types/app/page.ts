@@ -1,4 +1,4 @@
-// File: /home/soyrauldev/proyectos/Brito/lotto-bueno-app/frontend/app/page.tsx
+// File: D:\lotto-bueno-app\frontend\app\page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

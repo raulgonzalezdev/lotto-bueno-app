@@ -61,7 +61,7 @@ aed5f68d9ee6
 docker cp .env 215274748a33:/app/app/.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd75fd2984c:/app/app/settings.json
 
-docker exec -i 3c986df28d72 sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
+docker exec -i ce8fbdc6e7fe sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
 docker exec -it 4b7569f1f0e4 bash
 

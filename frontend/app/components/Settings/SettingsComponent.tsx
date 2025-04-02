@@ -47,31 +47,23 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
     baseSetting[settingTemplate] ?? { Customization: { title: "", description: "", settings: {} }, Chat: { title: "", description: "", settings: {} } }
   );
 
-  const [APIHost, setAPIHost] = useState<string | null>('https://applottobueno.com');
+  const [APIHost, setAPIHost] = useState<string | null>(null);
   const [availableTemplate, setAvailableTemplate] = useState<string[]>([]);
 
   useEffect(() => {
     const templates = Object.keys(baseSetting)
       .filter((key) => key !== "currentTemplate" && !["selectedTheme", "themes"].includes(key));
     setAvailableTemplate(templates);
-  }, [baseSetting]);
-
-  useEffect(() => {
-    fetchCurrentSettings();
-  }, []);
-
-
-  useEffect(() => {
     fetchHost();
-  }, []);
+  }, [baseSetting]);
 
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost('https://applottobueno.com');
+      setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('https://applottobueno.com');
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 

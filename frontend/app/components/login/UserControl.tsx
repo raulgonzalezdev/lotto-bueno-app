@@ -39,10 +39,10 @@ const UserControl: React.FC = () => {
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host || 'https://applottobueno.com');
+      setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('https://applottobueno.com');
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 

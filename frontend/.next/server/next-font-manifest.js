@@ -1,1 +1,1 @@
-self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{"/home/soyrauldev/proyectos/Brito/lotto-bueno-app/frontend/app/page":["static/media/c9a5bc6a7c948fb0-s.p.woff2","static/media/3d9ea938b6afa941-s.p.woff2","static/media/4049f3f580e14086-s.p.woff2","static/media/2b3f1035ed87a788-s.p.woff2"]},"appUsingSizeAdjust":true,"pagesUsingSizeAdjust":false}';
+self.__NEXT_FONT_MANIFEST='{"pages":{},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}';

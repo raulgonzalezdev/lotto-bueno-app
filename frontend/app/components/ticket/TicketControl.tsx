@@ -28,7 +28,7 @@ const TicketControl: React.FC = () => {
   const [ticketsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
+  const [APIHost, setAPIHost] = useState<string | null>(null);
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
 
   useEffect(() => {
@@ -45,10 +45,10 @@ const TicketControl: React.FC = () => {
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host || 'https://applottobueno.com');
+      setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost('https://applottobueno.com');
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 

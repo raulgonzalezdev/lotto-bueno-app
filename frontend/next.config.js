@@ -10,7 +10,10 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  "output": "export"
+  "output": "export",
+  env: {
+    HOST: process.env.HOST
+  }
 };
 
 // Set assetPrefix only in production/export mode

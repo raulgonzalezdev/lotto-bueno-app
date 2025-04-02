@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
+import { detectHost } from "../../api";
 
 interface Recolector {
   id: number;
@@ -35,10 +36,11 @@ const RecolectorControl: React.FC = () => {
   const [recolectorToDelete, setRecolectorToDelete] = useState<number | null>(null);
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
-  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
+  const [APIHost, setAPIHost] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecolectores();
+    fetchHost();
   }, [currentPage, searchTerm]);
 
   const fetchRecolectores = async () => {
@@ -65,6 +67,16 @@ const RecolectorControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
       setRecolectores([]);
       setTotalPages(1);
+    }
+  };
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 

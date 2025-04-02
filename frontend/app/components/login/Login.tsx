@@ -1,7 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 /* eslint-disable jsx-a11y/alt-text */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Toast from '../toast/Toast'; // Asegúrate de importar tu componente Toast
+import { detectHost } from "../../api";
 
 interface LoginModalProps {
   isVisible: boolean;
@@ -11,7 +12,6 @@ interface LoginModalProps {
   title: string;
   subtitle: string;
   imageSrc: string;
-  APIHost: string | null;
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({
@@ -22,7 +22,6 @@ const LoginModal: React.FC<LoginModalProps> = ({
   title,
   subtitle,
   imageSrc,
-  APIHost,
 }) => {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [username, setUsername] = useState('');
@@ -30,6 +29,21 @@ const LoginModal: React.FC<LoginModalProps> = ({
   const [email, setEmail] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
+  const [APIHost, setAPIHost] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchHost();
+  }, []);
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
+    }
+  };
 
   const handleLogin = async () => {
     const apiHost = APIHost || 'https://applottobueno.com';

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import LoginModal from '../login/Login';
 import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
+import { detectHost } from "../../api";
 
 interface RegisterWindowProps {
   title: string;
@@ -26,13 +27,14 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
   const [ticketMessage, setTicketMessage] = useState("");
   const [fullnumberMessage, setFullnumberMessage] = useState("");
+  const [APIHost, setAPIHost] = useState<string | null>(null);
   
 
-  const APIHost = 'https://applottobueno.com';
   const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262831867';
 
   useEffect(() => {
     fetchReferidos();
+    fetchHost();
   }, []);
 
   const fetchReferidos = async () => {
@@ -42,6 +44,16 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
       setReferidos(data.items);
     } catch (error) {
       console.error("Error fetching referidos:", error);
+    }
+  };
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 
@@ -230,7 +242,6 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
           title={title}
           subtitle={subtitle}
           imageSrc={imageSrc}
-          APIHost={APIHost}
         />
         {isQRModalVisible && qrCode && (
           <div className="modal-overlay" onClick={handleCloseQRModal}>

@@ -106,13 +106,13 @@ def get_db():
         db.close()
 # Configuración de CORS
 origins = [
-    "http://applottobueno.com:8000",
+    "http://localhost:8000",
     "http://localhost:3000",
     "https://7103.api.greenapi.com",
-    "http://applottobueno.com",
-    "https://applottobueno.com",
-    "http://34.123.201.135:8000",
-    "http://34.123.201.135",
+    "http://localhost",
+    "https://localhost",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1",
     "https://wa.me"
 ]
 
@@ -134,7 +134,7 @@ API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_URL_BASE = os.getenv("API_URL_BASE", f"https://7103.api.greenapi.com/waInstance{API_INSTANCE}")
 API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "https://applottobueno.com")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
 COMPANY_PHONE_CONTACT = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
 SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")

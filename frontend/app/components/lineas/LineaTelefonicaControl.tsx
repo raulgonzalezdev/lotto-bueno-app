@@ -2,6 +2,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
+import { detectHost } from "../../api";
 
 interface LineaTelefonica {
   id: number;
@@ -19,11 +20,12 @@ const LineaTelefonicaControl: React.FC = () => {
   const [lineasPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string>("https://applottobueno.com");
+  const [APIHost, setAPIHost] = useState<string | null>(null);
   const [newLinea, setNewLinea] = useState({ numero: "", operador: "" });
 
   useEffect(() => {
     fetchLineas();
+    fetchHost();
   }, [currentPage, searchTerm]);
 
   const fetchLineas = async () => {
@@ -50,6 +52,16 @@ const LineaTelefonicaControl: React.FC = () => {
       console.error("Error fetching lineas:", error);
       setLineas([]);
       setTotalPages(1);
+    }
+  };
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'http://localhost:8000');
     }
   };
 

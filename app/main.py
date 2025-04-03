@@ -215,24 +215,25 @@ def check_whatsapp(phone_number: str):
 
 
 def generate_file_responses(data, file_type, base_filename):
-    file_responses = []
-    for i in range(0, len(data), CHUNK_SIZE):
-        chunk = data[i:i + CHUNK_SIZE]
+    try:
         if file_type == 'excel':
             output = BytesIO()
-            df = pd.DataFrame(chunk)
-            writer = pd.ExcelWriter(output, engine='openpyxl')
-            df.to_excel(writer, index=False, sheet_name=f'{base_filename}_{i // CHUNK_SIZE + 1}')
-            writer.save()
+            df = pd.DataFrame(data)
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name=base_filename)
             output.seek(0)
-            file_responses.append(output)
+            return [output]
         elif file_type == 'txt':
             output = StringIO()
-            for row in chunk:
+            for row in data:
                 output.write(f"{row}\n")
             output.seek(0)
-            file_responses.append(output)
-    return file_responses
+            return [output]
+        else:
+            raise ValueError(f"Tipo de archivo no soportado: {file_type}")
+    except Exception as e:
+        print(f"Error en generate_file_responses: {str(e)}")
+        raise
 
 
 
@@ -643,49 +644,53 @@ async def download_excel_electores(
     codigo_municipio: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Elector)
-    nombre_estado = "todos"
-    nombre_municipio = "todos"
+    try:
+        query = db.query(Elector)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
 
-    if codigo_estado:
-        query = query.filter(Elector.codigo_estado == codigo_estado)
-        estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
-        if estado:
-            nombre_estado = estado[0]
+        if codigo_estado:
+            query = query.filter(Elector.codigo_estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
 
-    if codigo_municipio:
-        query = query.filter(Elector.codigo_municipio == codigo_municipio)
-        municipio = db.query(Geografico.municipio).filter(
-            Geografico.codigo_estado == codigo_estado,
-            Geografico.codigo_municipio == codigo_municipio
-        ).first()
-        if municipio:
-            nombre_municipio = municipio[0]
+        if codigo_municipio:
+            query = query.filter(Elector.codigo_municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
 
-    electores = query.all()
-    data = [to_dict(elector) for elector in electores]
-    
-    filename = f"electores_{nombre_estado}_{nombre_municipio}"
-    
-    if len(data) <= CHUNK_SIZE:
+        electores = query.all()
+        data = [to_dict(elector) for elector in electores]
+        
+        filename = f"electores_{nombre_estado}_{nombre_municipio}"
+        
+        # Crear el DataFrame y el archivo Excel
         df = pd.DataFrame(data)
         output = BytesIO()
-        writer = pd.ExcelWriter(output, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Electores')
-        writer.save()
+        
+        # Usar ExcelWriter con el motor openpyxl
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Electores')
+        
         output.seek(0)
+        
+        # Devolver la respuesta con el archivo
         return StreamingResponse(
-            output, 
+            output,
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": f"attachment;filename={filename}.xlsx"}
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.xlsx"',
+                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
         )
-    
-    file_responses = generate_file_responses(data, 'excel', filename)
-    return StreamingResponse(
-        file_responses[0],
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={"Content-Disposition": f"attachment;filename={filename}_part1.xlsx"}
-    )
+    except Exception as e:
+        print(f"Error generando Excel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
 
 @app.get("/download/txt/electores")
 async def download_txt_electores(
@@ -741,26 +746,53 @@ async def download_excel_tickets(
     codigo_municipio: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Ticket)
-    if codigo_estado:
-        query = query.filter(Ticket.estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Ticket.municipio == codigo_municipio)
+    try:
+        query = db.query(Ticket)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
 
-    tickets = query.all()
-    data = [to_dict(ticket) for ticket in tickets]
-    
-    if len(data) <= CHUNK_SIZE:
+        if codigo_estado:
+            query = query.filter(Ticket.estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
+
+        if codigo_municipio:
+            query = query.filter(Ticket.municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
+
+        tickets = query.all()
+        data = [to_dict(ticket) for ticket in tickets]
+        
+        filename = f"tickets_{nombre_estado}_{nombre_municipio}"
+        
+        # Crear el DataFrame y el archivo Excel
         df = pd.DataFrame(data)
         output = BytesIO()
-        writer = pd.ExcelWriter(output, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Tickets')
-        writer.save()
+        
+        # Usar ExcelWriter con el motor openpyxl
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Tickets')
+        
         output.seek(0)
-        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=tickets.xlsx"})
-    
-    file_responses = generate_file_responses(data, 'excel', 'tickets')
-    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=tickets_part1.xlsx"})
+        
+        # Devolver la respuesta con el archivo
+        return StreamingResponse(
+            output,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.xlsx"',
+                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }
+        )
+    except Exception as e:
+        print(f"Error generando Excel de tickets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel de tickets: {str(e)}")
 
 @app.get("/download/txt/tickets")
 async def download_txt_tickets(
@@ -768,24 +800,48 @@ async def download_txt_tickets(
     codigo_municipio: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Ticket)
-    if codigo_estado:
-        query = query.filter(Ticket.estado == codigo_estado)
-    if codigo_municipio:
-        query = query.filter(Ticket.municipio == codigo_municipio)
+    try:
+        query = db.query(Ticket)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
 
-    tickets = query.all()
-    data = [to_dict(ticket) for ticket in tickets]
-    
-    if len(data) <= CHUNK_SIZE:
+        if codigo_estado:
+            query = query.filter(Ticket.estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
+
+        if codigo_municipio:
+            query = query.filter(Ticket.municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
+
+        tickets = query.all()
+        data = [to_dict(ticket) for ticket in tickets]
+        
+        filename = f"tickets_{nombre_estado}_{nombre_municipio}"
+        
+        # Crear el archivo de texto
         output = StringIO()
         for ticket in data:
             output.write(f"{ticket}\n")
         output.seek(0)
-        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=tickets.txt"})
-    
-    file_responses = generate_file_responses(data, 'txt', 'tickets')
-    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=tickets_part1.txt"})
+        
+        # Devolver la respuesta con el archivo
+        return StreamingResponse(
+            output,
+            media_type='text/plain',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.txt"'
+            }
+        )
+    except Exception as e:
+        print(f"Error generando TXT de tickets: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando TXT de tickets: {str(e)}")
 
 
 

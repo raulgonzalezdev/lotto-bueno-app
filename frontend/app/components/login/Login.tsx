@@ -46,10 +46,8 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleLogin = async () => {
-    const apiHost = APIHost || 'http://localhost:8000';
     try {
-     //const response = await fetch(`${apiHost}/api/login`, {
-      const response = await fetch(`/api/login`, {
+      const response = await fetch(`${APIHost}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -62,7 +60,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
       const data = await response.json();
       if (response.ok && data.isAdmin) {
         onAdminLogin(true);
-        setCurrentPage('ELECTORES'); // Cambia la página a CHAT después de iniciar sesión
+        setCurrentPage('ELECTORES');
         setToastMessage("Inicio de sesión exitoso");
         setToastType("success");
         onClose();

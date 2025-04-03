@@ -33,13 +33,18 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262831867';
 
   useEffect(() => {
-    fetchReferidos();
     fetchHost();
   }, []);
 
+  useEffect(() => {
+    if (APIHost) {
+      fetchReferidos();
+    }
+  }, [APIHost]);
+
   const fetchReferidos = async () => {
     try {
-      const response = await fetch(`${APIHost}/api/recolectores/`);
+      const response = await fetch(`${APIHost}/api/recolectores`);
       const data = await response.json();
       setReferidos(data.items);
     } catch (error) {

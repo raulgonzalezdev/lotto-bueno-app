@@ -17,8 +17,9 @@ from typing import Dict, Any, List
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 from io import StringIO, BytesIO
-from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter, Request
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from sse_starlette.sse import EventSourceResponse
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -51,6 +52,7 @@ from app.models import Elector, Geografico, CentroVotacion, Ticket, Recolector, 
 from app.schemas import LineaTelefonicaList, LineaTelefonicaCreate, LineaTelefonicaUpdate, RecolectorEstadisticas,ElectorList,UserCreate, UserList, GeograficoList, CentroVotacionList,TicketUpdate,TicketUpdate, TicketUpdate, ElectorCreate, GeograficoCreate, CentroVotacionCreate, ElectorDetail, TicketCreate, TicketList, RecolectorCreate, RecolectorList, RecolectorUpdate
 from dotenv import load_dotenv
 from whatsapp_chatbot_python import GreenAPIBot, Notification
+import zipfile
 
 load_dotenv()
 
@@ -214,23 +216,53 @@ def check_whatsapp(phone_number: str):
         return {"status": "error", "message": "No se pudo conectar a la API de verificación de WhatsApp"}
 
 
+def compress_file(file_bytes: BytesIO, filename: str) -> BytesIO:
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
+        zip_file.writestr(filename, file_bytes.getvalue())
+    zip_buffer.seek(0)
+    return zip_buffer
+
 def generate_file_responses(data, file_type, base_filename):
     try:
         if file_type == 'excel':
-            output = BytesIO()
+            excel_buffer = BytesIO()
+            workbook = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
             df = pd.DataFrame(data)
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name=base_filename)
-            output.seek(0)
-            return [output]
+            df.to_excel(workbook, sheet_name=base_filename, index=False)
+            
+            # Obtener el objeto worksheet para dar formato
+            worksheet = workbook.sheets[base_filename]
+            
+            # Ajustar el ancho de las columnas automáticamente
+            for idx, col in enumerate(df.columns):
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(str(col))
+                )
+                worksheet.set_column(idx, idx, max_length + 2)
+            
+            workbook.close()
+            excel_buffer.seek(0)
+            
+            # Comprimir el archivo Excel
+            filename = f"{base_filename}.xlsx"
+            zip_buffer = compress_file(excel_buffer, filename)
+            return [zip_buffer]
+            
         elif file_type == 'txt':
+            # Convertir a DataFrame y luego a texto con tabulaciones
+            df = pd.DataFrame(data)
             output = StringIO()
-            for row in data:
-                output.write(f"{row}\n")
+            df.to_csv(output, sep='\t', index=False, encoding='utf-8')
             output.seek(0)
-            return [output]
-        else:
-            raise ValueError(f"Tipo de archivo no soportado: {file_type}")
+            
+            # Comprimir el archivo de texto
+            txt_buffer = BytesIO(output.getvalue().encode('utf-8'))
+            filename = f"{base_filename}.txt"
+            zip_buffer = compress_file(txt_buffer, filename)
+            return [zip_buffer]
+            
     except Exception as e:
         print(f"Error en generate_file_responses: {str(e)}")
         raise
@@ -642,12 +674,16 @@ def verificar_numero_whatsapp(phone_number):
 async def download_excel_electores(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     try:
         query = db.query(Elector)
         nombre_estado = "todos"
         nombre_municipio = "todos"
+        nombre_parroquia = "todos"
+        nombre_centro = "todos"
 
         if codigo_estado:
             query = query.filter(Elector.codigo_estado == codigo_estado)
@@ -664,146 +700,365 @@ async def download_excel_electores(
             if municipio:
                 nombre_municipio = municipio[0]
 
+        if codigo_parroquia:
+            query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
+            parroquia = db.query(Geografico.parroquia).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio,
+                Geografico.codigo_parroquia == codigo_parroquia
+            ).first()
+            if parroquia:
+                nombre_parroquia = parroquia[0]
+
+        if codigo_centro_votacion:
+            query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
+            centro = db.query(CentroVotacion.nombre_cv).filter(
+                CentroVotacion.codificacion_nueva_cv == codigo_centro_votacion
+            ).first()
+            if centro:
+                nombre_centro = centro[0]
+
+        # Obtener el total de registros
+        total_records = query.count()
+        
+        # Si hay menos de 100,000 registros, procesar normalmente
+        if total_records <= 100000:
+            electores = query.all()
+            data = [to_dict(elector) for elector in electores]
+            df = pd.DataFrame(data)
+            
+            # Crear un único archivo Excel
+            excel_buffer = BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                df.to_excel(writer, sheet_name='Electores', index=False)
+                worksheet = writer.sheets['Electores']
+                
+                for idx, col in enumerate(df.columns):
+                    max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                    worksheet.set_column(idx, idx, max_length + 2)
+
+            excel_buffer.seek(0)
+            filename = f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}.xlsx"
+            zip_buffer = compress_file(excel_buffer, filename)
+            
+            return StreamingResponse(
+                zip_buffer,
+                media_type='application/zip',
+                headers={
+                    "Content-Disposition": f'attachment; filename="{filename}.zip"'
+                }
+            )
+        
+        # Para grandes conjuntos de datos, dividir en múltiples archivos
+        batch_size = 100000
+        num_batches = (total_records + batch_size - 1) // batch_size
+        
+        # Crear un archivo ZIP que contendrá todos los archivos Excel
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
+            for batch_num in range(num_batches):
+                offset = batch_num * batch_size
+                
+                # Obtener el lote actual de registros
+                batch_electores = query.offset(offset).limit(batch_size).all()
+                data = [to_dict(elector) for elector in batch_electores]
+                df = pd.DataFrame(data)
+                
+                # Crear archivo Excel para este lote
+                batch_buffer = BytesIO()
+                with pd.ExcelWriter(batch_buffer, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, sheet_name='Electores', index=False)
+                    worksheet = writer.sheets['Electores']
+                    
+                    for idx, col in enumerate(df.columns):
+                        max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                        worksheet.set_column(idx, idx, max_length + 2)
+                
+                batch_buffer.seek(0)
+                
+                # Agregar el archivo Excel al ZIP
+                batch_filename = f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}_parte_{batch_num + 1}.xlsx"
+                zip_file.writestr(batch_filename, batch_buffer.getvalue())
+        
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}_completo.zip"'
+            }
+        )
+
+    except Exception as e:
+        print(f"Error generando Excel: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
+
+@app.get("/download/excel/centros-por-estado/{codigo_estado}")
+async def download_excel_centros_por_estado(
+    codigo_estado: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Obtener información del estado
+        estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+        if not estado:
+            raise HTTPException(status_code=404, detail="Estado no encontrado")
+        nombre_estado = estado[0]
+
+        # Obtener todos los centros de votación del estado con su información geográfica
+        centros_query = (
+            db.query(
+                CentroVotacion.codificacion_nueva_cv,
+                CentroVotacion.nombre_cv,
+                CentroVotacion.direccion_cv,
+                Geografico.estado,
+                Geografico.municipio,
+                Geografico.parroquia,
+                func.count(Elector.id).label('total_electores')
+            )
+            .join(Geografico, 
+                (CentroVotacion.codigo_estado == Geografico.codigo_estado) &
+                (CentroVotacion.codigo_municipio == Geografico.codigo_municipio) &
+                (CentroVotacion.codigo_parroquia == Geografico.codigo_parroquia)
+            )
+            .join(Elector, CentroVotacion.codificacion_nueva_cv == Elector.codigo_centro_votacion)
+            .filter(CentroVotacion.codigo_estado == codigo_estado)
+            .group_by(
+                CentroVotacion.codificacion_nueva_cv,
+                CentroVotacion.nombre_cv,
+                CentroVotacion.direccion_cv,
+                Geografico.estado,
+                Geografico.municipio,
+                Geografico.parroquia
+            )
+            .order_by(Geografico.municipio, Geografico.parroquia, CentroVotacion.nombre_cv)
+        )
+
+        centros = centros_query.all()
+        
+        if not centros:
+            raise HTTPException(status_code=404, detail="No se encontraron centros de votación para este estado")
+
+        # Crear DataFrame con la información
+        data = [{
+            'Código Centro': centro[0],
+            'Centro de Votación': centro[1],
+            'Dirección': centro[2],
+            'Estado': centro[3],
+            'Municipio': centro[4],
+            'Parroquia': centro[5],
+            'Total Electores': centro[6]
+        } for centro in centros]
+
+        df = pd.DataFrame(data)
+
+        # Crear archivo Excel
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name='Centros', index=False)
+            worksheet = writer.sheets['Centros']
+            
+            # Ajustar el ancho de las columnas
+            for idx, col in enumerate(df.columns):
+                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                worksheet.set_column(idx, idx, max_length + 2)
+
+        excel_buffer.seek(0)
+        filename = f"centros_electorales_{nombre_estado}.xlsx"
+        zip_buffer = compress_file(excel_buffer, filename)
+        
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.zip"'
+            }
+        )
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error generando Excel de centros: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel de centros: {str(e)}")
+
+@app.get("/download/txt/electores")
+async def download_txt_electores(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(Elector)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
+        nombre_parroquia = "todos"
+        nombre_centro = "todos"
+
+        if codigo_estado:
+            query = query.filter(Elector.codigo_estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
+
+        if codigo_municipio:
+            query = query.filter(Elector.codigo_municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
+
+        if codigo_parroquia:
+            query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
+            parroquia = db.query(Geografico.parroquia).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio,
+                Geografico.codigo_parroquia == codigo_parroquia
+            ).first()
+            if parroquia:
+                nombre_parroquia = parroquia[0]
+
+        if codigo_centro_votacion:
+            query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
+            centro = db.query(CentroVotacion.nombre_cv).filter(
+                CentroVotacion.codificacion_nueva_cv == codigo_centro_votacion
+            ).first()
+            if centro:
+                nombre_centro = centro[0]
+
         electores = query.all()
         data = [to_dict(elector) for elector in electores]
         
-        filename = f"electores_{nombre_estado}_{nombre_municipio}"
+        filename = f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}"
         
-        # Crear el DataFrame y el archivo Excel
+        # Convertir a DataFrame y luego a texto con tabulaciones
         df = pd.DataFrame(data)
-        output = BytesIO()
-        
-        # Usar ExcelWriter con el motor openpyxl
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Electores')
-        
+        output = StringIO()
+        df.to_csv(output, sep='\t', index=False, encoding='utf-8')
         output.seek(0)
         
-        # Devolver la respuesta con el archivo
+        # Comprimir el archivo
+        txt_buffer = BytesIO(output.getvalue().encode('utf-8'))
+        zip_buffer = compress_file(txt_buffer, f"{filename}.txt")
+        
         return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            zip_buffer,
+            media_type='application/zip',
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}.xlsx"',
-                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                "Content-Disposition": f'attachment; filename="{filename}.txt.zip"'
+            }
+        )
+    except Exception as e:
+        print(f"Error generando TXT: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando TXT: {str(e)}")
+
+@app.get("/download/excel/tickets")
+async def download_excel_tickets(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(Ticket)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
+        nombre_parroquia = "todos"
+        nombre_centro = "todos"
+
+        if codigo_estado:
+            query = query.filter(Ticket.estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
+
+        if codigo_municipio:
+            query = query.filter(Ticket.municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
+
+        if codigo_parroquia:
+            query = query.filter(Ticket.parroquia == codigo_parroquia)
+            parroquia = db.query(Geografico.parroquia).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio,
+                Geografico.codigo_parroquia == codigo_parroquia
+            ).first()
+            if parroquia:
+                nombre_parroquia = parroquia[0]
+
+        if codigo_centro_votacion:
+            query = query.filter(Ticket.centro_votacion == codigo_centro_votacion)
+            centro = db.query(CentroVotacion.nombre_cv).filter(
+                CentroVotacion.codificacion_nueva_cv == codigo_centro_votacion
+            ).first()
+            if centro:
+                nombre_centro = centro[0]
+
+        tickets = query.all()
+        data = [to_dict(ticket) for ticket in tickets]
+        
+        filename = f"tickets_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}.xlsx"
+        
+        # Crear el archivo Excel en memoria
+        excel_buffer = BytesIO()
+        workbook = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
+        
+        # Convertir los datos a DataFrame y escribir directamente
+        df = pd.DataFrame(data)
+        df.to_excel(workbook, sheet_name='Tickets', index=False)
+        
+        # Obtener el objeto worksheet para dar formato
+        worksheet = workbook.sheets['Tickets']
+        
+        # Ajustar el ancho de las columnas automáticamente
+        for idx, col in enumerate(df.columns):
+            max_length = max(
+                df[col].astype(str).apply(len).max(),
+                len(str(col))
+            )
+            worksheet.set_column(idx, idx, max_length + 2)
+        
+        # Cerrar el writer y obtener los bytes
+        workbook.close()
+        excel_buffer.seek(0)
+        
+        # Comprimir el archivo Excel
+        zip_buffer = compress_file(excel_buffer, filename)
+        
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.zip"'
             }
         )
     except Exception as e:
         print(f"Error generando Excel: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
 
-@app.get("/download/txt/electores")
-async def download_txt_electores(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    query = db.query(Elector)
-    nombre_estado = "todos"
-    nombre_municipio = "todos"
-
-    if codigo_estado:
-        query = query.filter(Elector.codigo_estado == codigo_estado)
-        estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
-        if estado:
-            nombre_estado = estado[0]
-
-    if codigo_municipio:
-        query = query.filter(Elector.codigo_municipio == codigo_municipio)
-        municipio = db.query(Geografico.municipio).filter(
-            Geografico.codigo_estado == codigo_estado,
-            Geografico.codigo_municipio == codigo_municipio
-        ).first()
-        if municipio:
-            nombre_municipio = municipio[0]
-
-    electores = query.all()
-    data = [to_dict(elector) for elector in electores]
-    
-    filename = f"electores_{nombre_estado}_{nombre_municipio}"
-    
-    if len(data) <= CHUNK_SIZE:
-        output = StringIO()
-        for elector in data:
-            output.write(f"{elector}\n")
-        output.seek(0)
-        return StreamingResponse(
-            output,
-            media_type='text/plain',
-            headers={"Content-Disposition": f"attachment;filename={filename}.txt"}
-        )
-    
-    file_responses = generate_file_responses(data, 'txt', filename)
-    return StreamingResponse(
-        file_responses[0],
-        media_type='text/plain',
-        headers={"Content-Disposition": f"attachment;filename={filename}_part1.txt"}
-    )
-
-@app.get("/download/excel/tickets")
-async def download_excel_tickets(
-    codigo_estado: Optional[str] = Query(None),
-    codigo_municipio: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    try:
-        query = db.query(Ticket)
-        nombre_estado = "todos"
-        nombre_municipio = "todos"
-
-        if codigo_estado:
-            query = query.filter(Ticket.estado == codigo_estado)
-            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
-            if estado:
-                nombre_estado = estado[0]
-
-        if codigo_municipio:
-            query = query.filter(Ticket.municipio == codigo_municipio)
-            municipio = db.query(Geografico.municipio).filter(
-                Geografico.codigo_estado == codigo_estado,
-                Geografico.codigo_municipio == codigo_municipio
-            ).first()
-            if municipio:
-                nombre_municipio = municipio[0]
-
-        tickets = query.all()
-        data = [to_dict(ticket) for ticket in tickets]
-        
-        filename = f"tickets_{nombre_estado}_{nombre_municipio}"
-        
-        # Crear el DataFrame y el archivo Excel
-        df = pd.DataFrame(data)
-        output = BytesIO()
-        
-        # Usar ExcelWriter con el motor openpyxl
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Tickets')
-        
-        output.seek(0)
-        
-        # Devolver la respuesta con el archivo
-        return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}.xlsx"',
-                "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            }
-        )
-    except Exception as e:
-        print(f"Error generando Excel de tickets: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generando Excel de tickets: {str(e)}")
-
 @app.get("/download/txt/tickets")
 async def download_txt_tickets(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     try:
         query = db.query(Ticket)
         nombre_estado = "todos"
         nombre_municipio = "todos"
+        nombre_parroquia = "todos"
+        nombre_centro = "todos"
 
         if codigo_estado:
             query = query.filter(Ticket.estado == codigo_estado)
@@ -820,28 +1075,49 @@ async def download_txt_tickets(
             if municipio:
                 nombre_municipio = municipio[0]
 
+        if codigo_parroquia:
+            query = query.filter(Ticket.parroquia == codigo_parroquia)
+            parroquia = db.query(Geografico.parroquia).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio,
+                Geografico.codigo_parroquia == codigo_parroquia
+            ).first()
+            if parroquia:
+                nombre_parroquia = parroquia[0]
+
+        if codigo_centro_votacion:
+            query = query.filter(Ticket.centro_votacion == codigo_centro_votacion)
+            centro = db.query(CentroVotacion.nombre_cv).filter(
+                CentroVotacion.codificacion_nueva_cv == codigo_centro_votacion
+            ).first()
+            if centro:
+                nombre_centro = centro[0]
+
         tickets = query.all()
         data = [to_dict(ticket) for ticket in tickets]
         
-        filename = f"tickets_{nombre_estado}_{nombre_municipio}"
+        filename = f"tickets_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}"
         
-        # Crear el archivo de texto
+        # Convertir a DataFrame y luego a texto con tabulaciones
+        df = pd.DataFrame(data)
         output = StringIO()
-        for ticket in data:
-            output.write(f"{ticket}\n")
+        df.to_csv(output, sep='\t', index=False, encoding='utf-8')
         output.seek(0)
         
-        # Devolver la respuesta con el archivo
+        # Comprimir el archivo
+        txt_buffer = BytesIO(output.getvalue().encode('utf-8'))
+        zip_buffer = compress_file(txt_buffer, f"{filename}.txt")
+        
         return StreamingResponse(
-            output,
-            media_type='text/plain',
+            zip_buffer,
+            media_type='application/zip',
             headers={
-                "Content-Disposition": f'attachment; filename="{filename}.txt"'
+                "Content-Disposition": f'attachment; filename="{filename}.txt.zip"'
             }
         )
     except Exception as e:
-        print(f"Error generando TXT de tickets: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generando TXT de tickets: {str(e)}")
+        print(f"Error generando TXT: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando TXT: {str(e)}")
 
 
 
@@ -1633,6 +1909,153 @@ async def quitar_ganadores(db: Session = Depends(get_db)):
     return {"message": "Marca de ganadores eliminada de todos los tickets"}
 
 app.include_router(router)
+
+@app.get("/download/excel/electores/info")
+async def get_electores_download_info(
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(Elector)
+        if codigo_estado:
+            query = query.filter(Elector.codigo_estado == codigo_estado)
+        if codigo_municipio:
+            query = query.filter(Elector.codigo_municipio == codigo_municipio)
+        if codigo_parroquia:
+            query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
+        if codigo_centro_votacion:
+            query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
+
+        total_records = query.count()
+        batch_size = 100000
+        num_batches = (total_records + batch_size - 1) // batch_size
+
+        return JSONResponse({
+            "total_records": total_records,
+            "num_batches": num_batches,
+            "batch_size": batch_size
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/download/excel/electores/batch/{batch_number}")
+async def download_excel_electores_batch(
+    batch_number: int,
+    codigo_estado: Optional[str] = Query(None),
+    codigo_municipio: Optional[str] = Query(None),
+    codigo_parroquia: Optional[str] = Query(None),
+    codigo_centro_votacion: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        query = db.query(Elector)
+        nombre_estado = "todos"
+        nombre_municipio = "todos"
+        nombre_parroquia = "todos"
+        nombre_centro = "todos"
+
+        if codigo_estado:
+            query = query.filter(Elector.codigo_estado == codigo_estado)
+            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            if estado:
+                nombre_estado = estado[0]
+
+        if codigo_municipio:
+            query = query.filter(Elector.codigo_municipio == codigo_municipio)
+            municipio = db.query(Geografico.municipio).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio
+            ).first()
+            if municipio:
+                nombre_municipio = municipio[0]
+
+        if codigo_parroquia:
+            query = query.filter(Elector.codigo_parroquia == codigo_parroquia)
+            parroquia = db.query(Geografico.parroquia).filter(
+                Geografico.codigo_estado == codigo_estado,
+                Geografico.codigo_municipio == codigo_municipio,
+                Geografico.codigo_parroquia == codigo_parroquia
+            ).first()
+            if parroquia:
+                nombre_parroquia = parroquia[0]
+
+        if codigo_centro_votacion:
+            query = query.filter(Elector.codigo_centro_votacion == codigo_centro_votacion)
+            centro = db.query(CentroVotacion.nombre_cv).filter(
+                CentroVotacion.codificacion_nueva_cv == codigo_centro_votacion
+            ).first()
+            if centro:
+                nombre_centro = centro[0]
+
+        batch_size = 100000
+        offset = (batch_number - 1) * batch_size
+
+        # Obtener el lote actual de registros
+        batch_electores = query.offset(offset).limit(batch_size).all()
+        
+        if not batch_electores:
+            raise HTTPException(status_code=404, detail="No hay más registros")
+
+        data = [to_dict(elector) for elector in batch_electores]
+        df = pd.DataFrame(data)
+
+        # Crear archivo Excel para este lote
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name='Electores', index=False)
+            worksheet = writer.sheets['Electores']
+            
+            for idx, col in enumerate(df.columns):
+                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                worksheet.set_column(idx, idx, max_length + 2)
+
+        excel_buffer.seek(0)
+        
+        # Comprimir el archivo
+        filename = f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}_parte_{batch_number}.xlsx"
+        zip_buffer = compress_file(excel_buffer, filename)
+
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.zip"'
+            }
+        )
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error generando Excel batch {batch_number}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generando Excel batch {batch_number}: {str(e)}")
+
+@app.get("/download/excel/electores/progress")
+async def get_download_progress(request: Request):
+    async def event_generator():
+        try:
+            progress_key = request.headers.get("X-Progress-Key", "default")
+            progress = 0
+            while progress < 100:
+                # Aquí podrías obtener el progreso real desde Redis o algún otro almacenamiento
+                progress = await redis.get(f"download_progress:{progress_key}") or 0
+                if isinstance(progress, str):
+                    progress = float(progress)
+                
+                yield {
+                    "event": "progress",
+                    "data": json.dumps({"progress": progress})
+                }
+                await asyncio.sleep(1)
+        except Exception as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"error": str(e)})
+            }
+
+    return EventSourceResponse(event_generator())
 
 if __name__ == "__main__":
     import uvicorn

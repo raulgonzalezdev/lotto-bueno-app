@@ -158,22 +158,35 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setCodigoEstado(value);
     setCodigoMunicipio("");
     setCodigoParroquia("");
+    setCodigoCentroVotacion("");
+    setMunicipios([]);
+    setParroquias([]);
     setCentrosVotacion([]);
-    fetchMunicipios(value);
+    if (value) {
+      fetchMunicipios(value);
+    }
   };
 
   const handleMunicipioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoMunicipio(value);
     setCodigoParroquia("");
+    setCodigoCentroVotacion("");
+    setParroquias([]);
     setCentrosVotacion([]);
-    fetchParroquias(codigoEstado, value);
+    if (value) {
+      fetchParroquias(codigoEstado, value);
+    }
   };
 
   const handleParroquiaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoParroquia(value);
-    fetchCentrosVotacion(codigoEstado, codigoMunicipio, value);
+    setCodigoCentroVotacion("");
+    setCentrosVotacion([]);
+    if (value) {
+      fetchCentrosVotacion(codigoEstado, codigoMunicipio, value);
+    }
   };
 
   const handleCentroVotacionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -234,28 +247,49 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   };
 
   const handleDownload = async (type: string, format: string) => {
-    const query = new URLSearchParams({
-      ...(codigoEstado && { codigo_estado: codigoEstado }),
-      ...(codigoMunicipio && { codigo_municipio: codigoMunicipio }),
-    }).toString();
+    try {
+      const query = new URLSearchParams();
+      
+      if (codigoEstado) query.append('codigo_estado', codigoEstado);
+      if (codigoMunicipio && codigoMunicipio !== "") query.append('codigo_municipio', codigoMunicipio);
 
-    let url = '';
-    if (type === 'electores') {
-      url = format === 'excel' ? `/download/excel/electores?${query}` : `/download/txt/electores?${query}`;
-    }
+      let url = '';
+      if (type === 'electores') {
+        url = format === 'excel' ? `/download/excel/electores?${query}` : `/download/txt/electores?${query}`;
+      } else if (type === 'tickets') {
+        url = format === 'excel' ? `/download/excel/tickets?${query}` : `/download/txt/tickets?${query}`;
+      }
 
-    let part = 1;
-    while (true) {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Error al descargar: ${response.statusText}`);
+      }
+
+      // Obtener el nombre del archivo del header Content-Disposition
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = '';
+      if (contentDisposition && contentDisposition.includes('filename=')) {
+        filename = contentDisposition.split('filename=')[1].replace(/["']/g, '');
+      } else {
+        // Fallback si no se encuentra el nombre en el header
+        const estadoSeleccionado = estados.find(e => e.codigo_estado === codigoEstado)?.estado || 'todos';
+        const municipioSeleccionado = municipios.find(m => m.codigo_municipio === codigoMunicipio)?.municipio || 'todos';
+        filename = `${type}_${estadoSeleccionado}_${municipioSeleccionado}.${format === 'excel' ? 'xlsx' : 'txt'}`;
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = `${url}&part=${part}`;
-      link.download = `${type}_part${part}.${format}`;
+      link.href = downloadUrl;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      const response = await fetch(`${url}&part=${part}`, { method: 'HEAD' });
-      if (!response.ok) break;
-      part++;
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error en la descarga:', error);
+      alert('Hubo un error al descargar el archivo. Por favor, inténtelo de nuevo.');
     }
   };
 

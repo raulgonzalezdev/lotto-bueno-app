@@ -42,18 +42,23 @@ const SorteoControl: React.FC = () => {
 
   useEffect(() => {
     fetchHost();
-    fetchEstados();
   }, []);
 
   useEffect(() => {
-    if (estado) {
+    if (APIHost) {
+      fetchEstados();
+    }
+  }, [APIHost]);
+
+  useEffect(() => {
+    if (APIHost && estado) {
       fetchMunicipios(estado);
     } else {
       setMunicipios([]);
       setMunicipio("");
       setMunicipioDescripcion("");
     }
-  }, [estado]);
+  }, [APIHost, estado]);
 
   const fetchHost = async () => {
     try {
@@ -66,8 +71,13 @@ const SorteoControl: React.FC = () => {
   };
 
   const fetchEstados = async () => {
+    if (!APIHost) return;
+    
     try {
-      const response = await fetch(`/estados/`);
+      const response = await fetch(`${APIHost}/estados`);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
       const data = await response.json();
       setEstados(data);
     } catch (error) {
@@ -77,8 +87,13 @@ const SorteoControl: React.FC = () => {
   };
 
   const fetchMunicipios = async (codigoEstado: string) => {
+    if (!APIHost) return;
+    
     try {
-      const response = await fetch(`/municipios/${encodeURIComponent(codigoEstado)}`);
+      const response = await fetch(`${APIHost}/municipios/${encodeURIComponent(codigoEstado)}`);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
       const data = await response.json();
       setMunicipios(data.length > 0 ? data : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
     } catch (error) {
@@ -88,48 +103,50 @@ const SorteoControl: React.FC = () => {
   };
 
   const handleSorteo = async () => {
+    if (!APIHost) return;
+    
     try {
-        const estadoDesc = estados.find(e => e.codigo_estado.toString() === estado.toString())?.estado || "";
-        const municipioDesc = municipios.find(m => m.codigo_municipio.toString() === municipio.toString())?.municipio || "";
+      const estadoDesc = estados.find(e => e.codigo_estado.toString() === estado.toString())?.estado || "";
+      const municipioDesc = municipios.find(m => m.codigo_municipio.toString() === municipio.toString())?.municipio || "";
 
-        const body = JSON.stringify({
-            cantidad_ganadores: cantidadGanadores,
-            estado: estado !== "" && estado !== "Seleccionar Estado" ? estadoDesc : "",
-            municipio: municipio !== "" && municipio !== "Seleccionar Municipio" ? municipioDesc : ""
-        });
+      const body = JSON.stringify({
+        cantidad_ganadores: cantidadGanadores,
+        estado: estado !== "" && estado !== "Seleccionar Estado" ? estadoDesc : "",
+        municipio: municipio !== "" && municipio !== "Seleccionar Municipio" ? municipioDesc : ""
+      });
 
-        console.log('body:', body);
+      const response = await fetch(`${APIHost}/sorteo/ganadores`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: body
+      });
 
-        const response = await fetch(`/sorteo/ganadores`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: body
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            setToastMessage(errorData.message || "Error realizando el sorteo. Por favor, intenta de nuevo.");
-            setToastType("error");
-            return;
-        }
-
-        const data: Ticket[] = await response.json();
-        setGanadores(Array.isArray(data) ? data : []);
-        setToastMessage("Sorteo realizado exitosamente");
-        setToastType("success");
-    } catch (error) {
-        console.error("Error realizando el sorteo:", error);
-        setGanadores([]);
-        setToastMessage("Error realizando el sorteo. Por favor, intenta de nuevo.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        setToastMessage(errorData.message || "Error realizando el sorteo. Por favor, intenta de nuevo.");
         setToastType("error");
+        return;
+      }
+
+      const data: Ticket[] = await response.json();
+      setGanadores(Array.isArray(data) ? data : []);
+      setToastMessage("Sorteo realizado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error realizando el sorteo:", error);
+      setGanadores([]);
+      setToastMessage("Error realizando el sorteo. Por favor, intenta de nuevo.");
+      setToastType("error");
     }
-};
+  };
 
   const handleQuitarGanadores = async () => {
+    if (!APIHost) return;
+    
     try {
-      const response = await fetch(`/sorteo/quitar_ganadores`, {
+      const response = await fetch(`${APIHost}/sorteo/quitar_ganadores`, {
         method: "POST"
       });
 

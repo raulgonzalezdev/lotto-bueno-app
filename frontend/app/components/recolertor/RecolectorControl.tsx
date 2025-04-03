@@ -39,11 +39,18 @@ const RecolectorControl: React.FC = () => {
   const [APIHost, setAPIHost] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRecolectores();
     fetchHost();
-  }, [currentPage, searchTerm]);
+  }, []);
+
+  useEffect(() => {
+    if (APIHost) {
+      fetchRecolectores();
+    }
+  }, [APIHost, currentPage, searchTerm]);
 
   const fetchRecolectores = async () => {
+    if (!APIHost) return;
+    
     const query = new URLSearchParams({
       skip: ((currentPage - 1) * recolectoresPerPage).toString(),
       limit: recolectoresPerPage.toString(),
@@ -51,7 +58,7 @@ const RecolectorControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`/api/recolectores/?${query}`);
+      const response = await fetch(`${APIHost}/api/recolectores/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -81,8 +88,8 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!recolectorToDelete) return;
-    await fetch(`/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
+    if (!recolectorToDelete || !APIHost) return;
+    await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
     setRecolectorToDelete(null);
     setIsConfirmationModalVisible(false);
     fetchRecolectores();
@@ -91,8 +98,10 @@ const RecolectorControl: React.FC = () => {
   };
 
   const handleCreate = async () => {
+    if (!APIHost) return;
+    
     try {
-      const response = await fetch(`/api/recolectores`, {
+      const response = await fetch(`${APIHost}/api/recolectores`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -103,47 +112,44 @@ const RecolectorControl: React.FC = () => {
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
+      
+      setNewRecolector({ nombre: "", cedula: "", telefono: "", es_referido: false });
+      fetchRecolectores();
+      closeModal();
+      setToastMessage("Recolector creado exitosamente");
+      setToastType("success");
     } catch (error) {
-      // Si hay un error, reintentar con https
-      try {
-        const response = await fetch(`/api/recolectores`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(newRecolector)
-        });
-  
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-      } catch (retryError) {
-        console.error("Error creating recolector:", retryError);
-        setToastMessage("Error creando recolector");
-        setToastType("error");
-        return;
-      }
+      console.error("Error creating recolector:", error);
+      setToastMessage("Error creando recolector");
+      setToastType("error");
     }
-  
-    setNewRecolector({ nombre: "", cedula: "", telefono: "", es_referido: false });
-    fetchRecolectores();
-    closeModal();
-    setToastMessage("Recolector creado exitosamente");
-    setToastType("success");
   };
 
   const handleUpdate = async (recolector: Recolector) => {
-    await fetch(`/api/recolectores/${recolector.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(recolector)
-    });
-    fetchRecolectores();
-    closeModal();
-    setToastMessage("Recolector actualizado exitosamente");
-    setToastType("success");
+    if (!APIHost) return;
+    
+    try {
+      const response = await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(recolector)
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      fetchRecolectores();
+      closeModal();
+      setToastMessage("Recolector actualizado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error updating recolector:", error);
+      setToastMessage("Error actualizando recolector");
+      setToastType("error");
+    }
   };
 
   const openModal = (recolector: Recolector | null = null) => {

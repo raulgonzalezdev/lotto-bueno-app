@@ -36,7 +36,7 @@ const LineaTelefonicaControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`/api/lineas_telefonicas/?${query}`);
+      const response = await fetch(`${APIHost}/api/lineas_telefonicas/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mkdir -p ../app/frontend/out && cp -r ./out/* ../app/frontend/out/",
+    "build": "next build && (if not exist ..\\app\\frontend\\out mkdir ..\\app\\frontend\\out) && xcopy /E /I /Y .\\out\\* ..\\app\\frontend\\out\\",
     "start": "next start -p 3000",
     "lint": "next lint"
   },

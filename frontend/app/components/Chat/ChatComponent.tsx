@@ -49,6 +49,13 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [codigoParroquia, setCodigoParroquia] = useState("");
   const [codigoCentroVotacion, setCodigoCentroVotacion] = useState("");
 
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
+  const [downloadType, setDownloadType] = useState<{type: string, format: string} | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [totalBatches, setTotalBatches] = useState(0);
+  const [currentBatch, setCurrentBatch] = useState(0);
+
   useEffect(() => {
     fetchEstados();
     fetchElectores();
@@ -57,8 +64,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchEstados = async () => {
     try {
-      //const response = await fetch(`${APIHost}/estados/`);
-      const response = await fetch(`/estados/`);
+      const response = await fetch(`${APIHost}/estados`);
       const data: Estado[] = await response.json();
       const uniqueEstados = Array.from(new Set(data.map((item: Estado) => item.estado)))
         .map(estado => data.find((item: Estado) => item.estado === estado));
@@ -70,8 +76,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchMunicipios = async (codigoEstado: string) => {
     try {
-      //const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
-      const response = await fetch(`/municipios/${codigoEstado}`);
+      const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
       const data: Municipio[] = await response.json();
       setMunicipios(data);
     } catch (error) {
@@ -81,8 +86,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchParroquias = async (codigoEstado: string, codigoMunicipio: string) => {
     try {
-      //const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
-      const response = await fetch(`/parroquias/${codigoEstado}/${codigoMunicipio}`);
+      const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
       const data: Parroquia[] = await response.json();
       setParroquias(data);
     } catch (error) {
@@ -92,8 +96,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const fetchCentrosVotacion = async (codigoEstado: string, codigoMunicipio: string, codigoParroquia: string) => {
     try {
-      //const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
-      const response = await fetch(`/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
+      const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
       const data: CentroVotacion[] = await response.json();
       setCentrosVotacion(data);
     } catch (error) {
@@ -112,8 +115,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      //const response = await fetch(`${APIHost}/electores/?${query}`);
-      const response = await fetch(`/electores/?${query}`);
+      const response = await fetch(`${APIHost}/electores/?${query}`);
       const data: Elector[] = await response.json();
       setElectores(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -131,8 +133,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      //const response = await fetch(`${APIHost}/total/electores?${query}`);
-      const response = await fetch(`/total/electores?${query}`);
+      const response = await fetch(`${APIHost}/total/electores?${query}`);
       const total = await response.json();
       setTotalPages(Math.ceil(total / electoresPerPage));
     } catch (error) {
@@ -144,8 +145,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const fetchElectorDetail = async (numero_cedula: string) => {
     if (!APIHost) return;
     try {
-      //const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
-      const response = await fetch(`/electores/cedula/${numero_cedula}`);
+      const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
       const data: Elector = await response.json();
       setSelectedElector(data);
     } catch (error) {
@@ -200,8 +200,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const handleCedulaSearch = async () => {
     if (cedulaSearch) {
       try {
-        //const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
-        const response = await fetch(`/electores/cedula/${cedulaSearch}`);
+        const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
         if (response.status === 404) {
           setSearchError("Cédula no encontrada");
           setSelectedElector(null);
@@ -246,39 +245,86 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     fetchElectores();
   };
 
-  const handleDownload = async (type: string, format: string) => {
+  const initiateDownload = (type: string, format: string) => {
+    setDownloadType({ type, format });
+    setShowDownloadDialog(true);
+  };
+
+  const startSequentialDownload = async () => {
+    if (!downloadType) return;
+    
+    setShowDownloadDialog(false);
+    setIsDownloading(true);
+    setDownloadProgress(0);
+    setCurrentBatch(0);
+
     try {
       const query = new URLSearchParams();
-      
       if (codigoEstado) query.append('codigo_estado', codigoEstado);
       if (codigoMunicipio && codigoMunicipio !== "") query.append('codigo_municipio', codigoMunicipio);
+      if (codigoParroquia && codigoParroquia !== "") query.append('codigo_parroquia', codigoParroquia);
+      if (codigoCentroVotacion && codigoCentroVotacion !== "") query.append('codigo_centro_votacion', codigoCentroVotacion);
 
-      let url = '';
-      if (type === 'electores') {
-        url = format === 'excel' ? `/download/excel/electores?${query}` : `/download/txt/electores?${query}`;
-      } else if (type === 'tickets') {
-        url = format === 'excel' ? `/download/excel/tickets?${query}` : `/download/txt/tickets?${query}`;
+      const infoResponse = await fetch(`${APIHost}/download/excel/electores/info?${query}`);
+      const info = await infoResponse.json();
+      setTotalBatches(info.num_batches);
+
+      for (let batchNumber = 1; batchNumber <= info.num_batches; batchNumber++) {
+        setCurrentBatch(batchNumber);
+        setDownloadProgress((batchNumber - 1) / info.num_batches * 100);
+
+        const url = `${APIHost}/download/excel/electores/batch/${batchNumber}?${query}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          throw new Error(`Error al descargar el lote ${batchNumber}: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
+                        `electores_parte_${batchNumber}.xlsx.zip`;
+
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      const response = await fetch(url);
+      setDownloadProgress(100);
+    } catch (error) {
+      console.error('Error en la descarga:', error);
+      alert('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsDownloading(false);
+      setCurrentBatch(0);
+      setDownloadProgress(0);
+    }
+  };
+
+  const downloadCentrosPorEstado = async () => {
+    if (!codigoEstado) {
+      alert('Por favor, seleccione un estado primero');
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      const response = await fetch(`${APIHost}/download/excel/centros-por-estado/${codigoEstado}`);
       
       if (!response.ok) {
-        throw new Error(`Error al descargar: ${response.statusText}`);
-      }
-
-      // Obtener el nombre del archivo del header Content-Disposition
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = '';
-      if (contentDisposition && contentDisposition.includes('filename=')) {
-        filename = contentDisposition.split('filename=')[1].replace(/["']/g, '');
-      } else {
-        // Fallback si no se encuentra el nombre en el header
-        const estadoSeleccionado = estados.find(e => e.codigo_estado === codigoEstado)?.estado || 'todos';
-        const municipioSeleccionado = municipios.find(m => m.codigo_municipio === codigoMunicipio)?.municipio || 'todos';
-        filename = `${type}_${estadoSeleccionado}_${municipioSeleccionado}.${format === 'excel' ? 'xlsx' : 'txt'}`;
+        throw new Error(`Error al descargar los centros: ${response.statusText}`);
       }
 
       const blob = await response.blob();
+      const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
+                      'centros_electorales.xlsx.zip';
+
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -290,6 +336,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     } catch (error) {
       console.error('Error en la descarga:', error);
       alert('Hubo un error al descargar el archivo. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -376,9 +424,21 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
           />
         </div>
       </div>
-      <div className="mb-4">
-        <button onClick={() => handleDownload('electores', 'excel')} className="btn btn-secondary mr-2">Descargar Electores Excel</button>
-        <button onClick={() => handleDownload('electores', 'txt')} className="btn btn-secondary">Descargar Electores TXT</button>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button 
+          onClick={() => initiateDownload('electores', 'excel')} 
+          className="btn btn-secondary"
+          disabled={isDownloading}
+        >
+          {isDownloading ? 'Descargando...' : 'Descargar Electores Excel'}
+        </button>
+        <button 
+          onClick={downloadCentrosPorEstado} 
+          className="btn btn-primary"
+          disabled={isDownloading || !codigoEstado}
+        >
+          {isDownloading ? 'Descargando...' : 'Descargar Centros del Estado'}
+        </button>
       </div>
       <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
@@ -433,6 +493,51 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
                 <p><strong>Dirección Centro de Votación:</strong> {selectedElector.centro_votacion.direccion_cv}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showDownloadDialog && (
+        <div className="modal-overlay" onClick={() => setShowDownloadDialog(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Información de Descarga</h3>
+            <p className="mb-4">
+              Los archivos se descargarán en partes para mayor eficiencia.
+              Cada parte se descargará automáticamente tan pronto como esté lista.
+              Puede continuar trabajando mientras se completan las descargas.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setShowDownloadDialog(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={startSequentialDownload}
+              >
+                Comenzar descargas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDownloading && (
+        <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg">
+          <h4 className="font-bold mb-2">Descargando archivos</h4>
+          <div className="mb-2">
+            Parte actual: {currentBatch} de {totalBatches}
+          </div>
+          <div className="w-64 h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-full bg-blue-500 rounded-full transition-all duration-300"
+              style={{ width: `${downloadProgress}%` }}
+            />
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            {Math.round(downloadProgress)}% completado
           </div>
         </div>
       )}

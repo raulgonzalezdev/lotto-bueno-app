@@ -56,11 +56,9 @@ const Home = () => {
 
   const fetchCurrentSettings = async (apiHost: string) => {
     try {
-      const response = await fetch(`/api/settings`);
-      //const response = await fetch(`${apiHost}/api/settings`);
+      const response = await fetch(`${apiHost}/api/settings`);
       if (response.ok) {
         const data = await response.json();
-        //console.log("Fetched settings data:", data, data.currentTemplate); // Agregar console.log para verificar los datos
         setBaseSetting(data);
         setSettingTemplate(data.currentTemplate);
       } else {
@@ -77,7 +75,7 @@ const Home = () => {
     try {
       const host = await detectHost();
       setAPIHost(host);
-      await fetchCurrentSettings(host); // Fetch the current settings using the new endpoint
+      await fetchCurrentSettings(host);
     } catch (error) {
       console.error("Error detecting host:", error);
       setAPIHost(null);
@@ -97,9 +95,7 @@ const Home = () => {
           SETTING: { selectedTheme: settingTemplate, themes: baseSetting },
         },
       };
-      //console.log('payload', payload)
-      //await fetch(`${APIHost}/api/settings`, {
-      await fetch(`/api/settings`, {
+      await fetch(`${APIHost}/api/settings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

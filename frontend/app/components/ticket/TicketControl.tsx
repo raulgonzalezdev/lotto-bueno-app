@@ -60,7 +60,7 @@ const TicketControl: React.FC = () => {
     }).toString();
 
     try {
-      const response = await fetch(`/tickets/?${query}`);
+      const response = await fetch(`${APIHost}/tickets/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }

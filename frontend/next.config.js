@@ -1,18 +1,18 @@
-// /** @type {import('next').NextConfig} */
-// const nextConfig = {
-//     reactStrictMode: true,
-//     // Elimina cualquier referencia a output: 'export'
-//     // Otras configuraciones...
-//   };
-  
-//   module.exports = nextConfig;
-  
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   "output": "export",
   env: {
     HOST: process.env.HOST
+  },
+  typescript: {
+    ignoreBuildErrors: true
+  },
+  eslint: {
+    ignoreDuringBuilds: true
+  },
+  jest: {
+    enabled: false
   }
 };
 

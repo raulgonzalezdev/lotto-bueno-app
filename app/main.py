@@ -644,13 +644,28 @@ async def download_excel_electores(
     db: Session = Depends(get_db)
 ):
     query = db.query(Elector)
+    nombre_estado = "todos"
+    nombre_municipio = "todos"
+
     if codigo_estado:
         query = query.filter(Elector.codigo_estado == codigo_estado)
+        estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+        if estado:
+            nombre_estado = estado[0]
+
     if codigo_municipio:
         query = query.filter(Elector.codigo_municipio == codigo_municipio)
+        municipio = db.query(Geografico.municipio).filter(
+            Geografico.codigo_estado == codigo_estado,
+            Geografico.codigo_municipio == codigo_municipio
+        ).first()
+        if municipio:
+            nombre_municipio = municipio[0]
 
     electores = query.all()
     data = [to_dict(elector) for elector in electores]
+    
+    filename = f"electores_{nombre_estado}_{nombre_municipio}"
     
     if len(data) <= CHUNK_SIZE:
         df = pd.DataFrame(data)
@@ -659,10 +674,18 @@ async def download_excel_electores(
         df.to_excel(writer, index=False, sheet_name='Electores')
         writer.save()
         output.seek(0)
-        return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": "attachment;filename=electores.xlsx"})
+        return StreamingResponse(
+            output, 
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={"Content-Disposition": f"attachment;filename={filename}.xlsx"}
+        )
     
-    file_responses = generate_file_responses(data, 'excel', 'electores')
-    return StreamingResponse(file_responses[0], media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={"Content-Disposition": f"attachment;filename=electores_part1.xlsx"})
+    file_responses = generate_file_responses(data, 'excel', filename)
+    return StreamingResponse(
+        file_responses[0],
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": f"attachment;filename={filename}_part1.xlsx"}
+    )
 
 @app.get("/download/txt/electores")
 async def download_txt_electores(
@@ -671,23 +694,46 @@ async def download_txt_electores(
     db: Session = Depends(get_db)
 ):
     query = db.query(Elector)
+    nombre_estado = "todos"
+    nombre_municipio = "todos"
+
     if codigo_estado:
         query = query.filter(Elector.codigo_estado == codigo_estado)
+        estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+        if estado:
+            nombre_estado = estado[0]
+
     if codigo_municipio:
         query = query.filter(Elector.codigo_municipio == codigo_municipio)
+        municipio = db.query(Geografico.municipio).filter(
+            Geografico.codigo_estado == codigo_estado,
+            Geografico.codigo_municipio == codigo_municipio
+        ).first()
+        if municipio:
+            nombre_municipio = municipio[0]
 
     electores = query.all()
     data = [to_dict(elector) for elector in electores]
+    
+    filename = f"electores_{nombre_estado}_{nombre_municipio}"
     
     if len(data) <= CHUNK_SIZE:
         output = StringIO()
         for elector in data:
             output.write(f"{elector}\n")
         output.seek(0)
-        return StreamingResponse(output, media_type='text/plain', headers={"Content-Disposition": "attachment;filename=electores.txt"})
+        return StreamingResponse(
+            output,
+            media_type='text/plain',
+            headers={"Content-Disposition": f"attachment;filename={filename}.txt"}
+        )
     
-    file_responses = generate_file_responses(data, 'txt', 'electores')
-    return StreamingResponse(file_responses[0], media_type='text/plain', headers={"Content-Disposition": f"attachment;filename=electores_part1.txt"})
+    file_responses = generate_file_responses(data, 'txt', filename)
+    return StreamingResponse(
+        file_responses[0],
+        media_type='text/plain',
+        headers={"Content-Disposition": f"attachment;filename={filename}_part1.txt"}
+    )
 
 @app.get("/download/excel/tickets")
 async def download_excel_tickets(
@@ -833,7 +879,7 @@ async def get_elector_by_cedula_from_cache(numero_cedula: int, db: Session):
         return None
 
 def to_dict(obj):
-    if obj is None:
+    if not obj:
         return None
     return {c.key: getattr(obj, c.key) for c in obj.__table__.columns}
 

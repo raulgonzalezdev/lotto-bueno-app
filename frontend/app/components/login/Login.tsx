@@ -46,7 +46,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleLogin = async () => {
-    const apiHost = APIHost || 'https://applottobueno.com';
+    const apiHost = APIHost || 'http://localhost:8000';
     try {
      //const response = await fetch(`${apiHost}/api/login`, {
       const response = await fetch(`/api/login`, {
@@ -81,7 +81,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleRegister = async () => {
-    const apiHost = APIHost || 'https://applottobueno.com';
+    const apiHost = APIHost || 'http://localhost:8000';
     try {
       //const response = await fetch(`${apiHost}/api/register`, {
       const response = await fetch(`/api/register`, {

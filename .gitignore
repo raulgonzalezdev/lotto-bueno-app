@@ -20,9 +20,14 @@ cache.txt
 .ruff_cache/
 *_secrets.json
 lottobueno_backup.dump
+
+# Next.js specific
 frontend/.next/
-
-
+frontend/.next/**/*
+frontend/.next/cache/
+frontend/.next/**/*.pack
+**/frontend/.next/cache/
+**/frontend/.next/**/*.pack
 
 data/re20240416_pp.txt
 data/geo20240416_pp.txt

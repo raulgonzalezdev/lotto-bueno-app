@@ -124,7 +124,7 @@ sudo usermod -aG docker azureuser
 Reinicia tu sesión para que los cambios surtan efecto:
 
 bash
-Copiar código
+Copiar código cambaid
 su - azureuser
 3. Asegurar que Docker y Docker Compose se levanten automáticamente
 Habilitar el servicio Docker para que inicie automáticamente:

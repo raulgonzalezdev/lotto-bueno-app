@@ -13,6 +13,7 @@ build/
 
 .local/
 .cache/
+.next
 .vscode/
 test.py
 cache.txt

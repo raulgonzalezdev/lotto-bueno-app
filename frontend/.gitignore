@@ -16,6 +16,10 @@
 # production
 /build
 
+# Agregar específicamente la carpeta de caché de Next.js
+.next/cache/
+.next/**/*.pack
+
 # misc
 .DS_Store
 *.pem

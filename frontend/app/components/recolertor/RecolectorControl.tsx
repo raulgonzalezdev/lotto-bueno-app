@@ -19,6 +19,31 @@ interface EstadisticasRecolector {
   tickets_count: number;
 }
 
+interface Referido {
+  id: number;
+  cedula: string;
+  nombre: string;
+  telefono: string;
+  estado: string;
+  municipio: string;
+  parroquia: string;
+  fecha_registro: string;
+}
+
+interface ReferidosData {
+  recolector: {
+    id: number;
+    nombre: string;
+    total_referidos: number;
+  };
+  referidos: Referido[];
+}
+
+interface Estado {
+  codigo_estado: string;
+  estado: string;
+}
+
 const RecolectorControl: React.FC = () => {
   const [recolectores, setRecolectores] = useState<Recolector[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -37,6 +62,11 @@ const RecolectorControl: React.FC = () => {
   const [estadisticas, setEstadisticas] = useState<EstadisticasRecolector[]>([]);
   const [isEstadisticasModalOpen, setIsEstadisticasModalOpen] = useState(false);
   const [APIHost, setAPIHost] = useState<string | null>(null);
+  const [selectedRecolectorId, setSelectedRecolectorId] = useState<number | null>(null);
+  const [referidosData, setReferidosData] = useState<ReferidosData | null>(null);
+  const [estadoFiltro, setEstadoFiltro] = useState<string>("");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [estados, setEstados] = useState<Estado[]>([]);
 
   useEffect(() => {
     fetchHost();
@@ -45,6 +75,7 @@ const RecolectorControl: React.FC = () => {
   useEffect(() => {
     if (APIHost) {
       fetchRecolectores();
+      fetchEstados();
     }
   }, [APIHost, currentPage, searchTerm]);
 
@@ -84,6 +115,22 @@ const RecolectorControl: React.FC = () => {
     } catch (error) {
       console.error("Error detecting host:", error);
       setAPIHost(process.env.HOST || 'http://localhost:8000');
+    }
+  };
+
+  const fetchEstados = async () => {
+    if (!APIHost) return;
+    try {
+      const response = await fetch(`${APIHost}/api/estados`);
+      if (!response.ok) {
+        throw new Error('Error fetching estados');
+      }
+      const data = await response.json();
+      setEstados(data);
+    } catch (error) {
+      console.error("Error fetching estados:", error);
+      setToastMessage("Error obteniendo estados");
+      setToastType("error");
     }
   };
 
@@ -184,16 +231,85 @@ const RecolectorControl: React.FC = () => {
     if (recolectorId) {
       url += `?recolector_id=${recolectorId}`;
     }
+    if (estadoFiltro) {
+      url += `${recolectorId ? '&' : '?'}codigo_estado=${estadoFiltro}`;
+    }
 
     try {
       const response = await fetch(url);
       const data: EstadisticasRecolector[] = await response.json();
       setEstadisticas(data);
       setIsEstadisticasModalOpen(true);
+      
+      if (recolectorId) {
+        setSelectedRecolectorId(recolectorId);
+        await fetchReferidos(recolectorId);
+      } else {
+        setSelectedRecolectorId(null);
+        setReferidosData(null);
+      }
     } catch (error) {
       console.error("Error fetching estadísticas:", error);
       setToastMessage("Error obteniendo estadísticas");
       setToastType("error");
+    }
+  };
+
+  const fetchReferidos = async (recolectorId: number) => {
+    try {
+      let url = `${APIHost}/api/recolectores/${recolectorId}/referidos`;
+      if (estadoFiltro) {
+        url += `?codigo_estado=${estadoFiltro}`;
+      }
+      const response = await fetch(url);
+      const data: ReferidosData = await response.json();
+      setReferidosData(data);
+    } catch (error) {
+      console.error("Error fetching referidos:", error);
+      setToastMessage("Error obteniendo referidos");
+      setToastType("error");
+    }
+  };
+
+  const handleEstadoFiltroChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newEstado = e.target.value;
+    setEstadoFiltro(newEstado);
+    await fetchEstadisticas(selectedRecolectorId || undefined);
+  };
+
+  const downloadReferidosExcel = async (recolectorId: number) => {
+    if (!APIHost) return;
+    
+    try {
+      setIsDownloading(true);
+      let url = `${APIHost}/download/excel/recolector-referidos/${recolectorId}`;
+      if (estadoFiltro) {
+        url += `?codigo_estado=${estadoFiltro}`;
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Error al descargar el archivo');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `referidos_${recolectorId}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      setToastMessage("Archivo descargado exitosamente");
+      setToastType("success");
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      setToastMessage("Error al descargar el archivo");
+      setToastType("error");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -329,27 +445,101 @@ const RecolectorControl: React.FC = () => {
       )}
       {isEstadisticasModalOpen && (
         <div className="modal-overlay" onClick={closeEstadisticasModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content max-w-7xl w-full p-6" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-button" onClick={closeEstadisticasModal}>×</button>
-            <h2>Estadísticas de Recolectores</h2>
-            <table className="table-auto w-full mb-4">
-              <thead>
-                <tr>
-                  <th>ID Recolector</th>
-                  <th>Nombre</th>
-                  <th>Cantidad de Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {estadisticas.map((stat) => (
-                  <tr key={stat.recolector_id}>
-                    <td>{stat.recolector_id}</td>
-                    <td>{stat.nombre}</td>
-                    <td>{stat.tickets_count}</td>
-                  </tr>
+            <h2 className="text-xl font-bold mb-4">Estadísticas de Recolectores</h2>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Filtrar por Estado:</label>
+              <select
+                value={estadoFiltro}
+                onChange={handleEstadoFiltroChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              >
+                <option value="">Todos los estados</option>
+                {estados.map(estado => (
+                  <option key={estado.codigo_estado} value={estado.codigo_estado}>
+                    {estado.estado}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="table-auto w-full mb-4">
+                <thead>
+                  <tr>
+                    <th>ID Recolector</th>
+                    <th>Nombre</th>
+                    <th>Cantidad de Tickets</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {estadisticas.map((stat) => (
+                    <tr key={stat.recolector_id} className={selectedRecolectorId === stat.recolector_id ? 'bg-blue-100' : ''}>
+                      <td>{stat.recolector_id}</td>
+                      <td>{stat.nombre}</td>
+                      <td>{stat.tickets_count}</td>
+                      <td>
+                        <button 
+                          onClick={() => fetchEstadisticas(stat.recolector_id)}
+                          className="btn btn-sm btn-primary mr-2"
+                        >
+                          Ver Referidos
+                        </button>
+                        <button
+                          onClick={() => downloadReferidosExcel(stat.recolector_id)}
+                          className="btn btn-sm btn-secondary"
+                          disabled={isDownloading}
+                        >
+                          {isDownloading ? 'Descargando...' : 'Descargar Excel'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {referidosData && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-3">
+                  Referidos de {referidosData.recolector.nombre}
+                  <span className="text-sm text-gray-600 ml-2">
+                    (Total: {referidosData.recolector.total_referidos})
+                  </span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="table-auto w-full">
+                    <thead>
+                      <tr>
+                        <th>Cédula</th>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Estado</th>
+                        <th>Municipio</th>
+                        <th>Parroquia</th>
+                        <th>Fecha Registro</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {referidosData.referidos.map((referido) => (
+                        <tr key={referido.id}>
+                          <td>{referido.cedula}</td>
+                          <td>{referido.nombre}</td>
+                          <td>{referido.telefono}</td>
+                          <td>{referido.estado}</td>
+                          <td>{referido.municipio}</td>
+                          <td>{referido.parroquia}</td>
+                          <td>{new Date(referido.fecha_registro).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

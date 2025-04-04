@@ -28,6 +28,9 @@ chmod 600 ~/.ssh/id_rsa_1.pem
 ssh -i ~/.ssh/id_rsa_1.pem azureuser@20.233.251.22
 
 
+ssh -i C:\Users\Dell\.ssh\gcp_lottobueno gqraulpay@34.134.166.180
+
+
 git clone https://github.com/raulgonzalezdev/lotto-bueno-app.git
 
 git lfs clone https://github.com/raulgonzalezdev/lotto-bueno-app.git

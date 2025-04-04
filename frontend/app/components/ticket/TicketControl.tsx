@@ -19,6 +19,16 @@ interface Ticket {
   created_at: string;
 }
 
+interface Estado {
+  codigo_estado: string;
+  estado: string;
+}
+
+interface Recolector {
+  id: number;
+  nombre: string;
+}
+
 const TicketControl: React.FC = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -30,6 +40,10 @@ const TicketControl: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [APIHost, setAPIHost] = useState<string | null>(null);
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [recolectores, setRecolectores] = useState<Recolector[]>([]);
+  const [estadoFiltro, setEstadoFiltro] = useState<string>("");
+  const [recolectorFiltro, setRecolectorFiltro] = useState<string>("");
 
   useEffect(() => {
     fetchHost();
@@ -38,9 +52,10 @@ const TicketControl: React.FC = () => {
   useEffect(() => {
     if (APIHost) {
       fetchTickets();
+      fetchEstados();
+      fetchRecolectores();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [APIHost, currentPage, searchTerm]);
+  }, [APIHost, currentPage, searchTerm, estadoFiltro, recolectorFiltro]);
 
   const fetchHost = async () => {
     try {
@@ -52,15 +67,45 @@ const TicketControl: React.FC = () => {
     }
   };
 
+  const fetchEstados = async () => {
+    if (!APIHost) return;
+    try {
+      const response = await fetch(`${APIHost}/api/estados`);
+      if (!response.ok) {
+        throw new Error('Error fetching estados');
+      }
+      const data = await response.json();
+      setEstados(data);
+    } catch (error) {
+      console.error("Error fetching estados:", error);
+    }
+  };
+
+  const fetchRecolectores = async () => {
+    if (!APIHost) return;
+    try {
+      const response = await fetch(`${APIHost}/api/recolectores`);
+      if (!response.ok) {
+        throw new Error('Error fetching recolectores');
+      }
+      const data = await response.json();
+      setRecolectores(data.items || data);
+    } catch (error) {
+      console.error("Error fetching recolectores:", error);
+    }
+  };
+
   const fetchTickets = async () => {
     const query = new URLSearchParams({
       skip: ((currentPage - 1) * ticketsPerPage).toString(),
       limit: ticketsPerPage.toString(),
       ...(searchTerm && { search: searchTerm }),
+      ...(estadoFiltro && { codigo_estado: estadoFiltro }),
+      ...(recolectorFiltro && { referido_id: recolectorFiltro }),
     }).toString();
 
     try {
-      const response = await fetch(`${APIHost}/tickets/?${query}`);
+      const response = await fetch(`${APIHost}/api/tickets/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
@@ -148,11 +193,13 @@ const TicketControl: React.FC = () => {
   const handleDownload = async (type: string, format: string) => {
     const query = new URLSearchParams({
       ...(searchTerm && { search: searchTerm }),
+      ...(estadoFiltro && { codigo_estado: estadoFiltro }),
+      ...(recolectorFiltro && { referido_id: recolectorFiltro }),
     }).toString();
 
     let url = '';
     if (type === 'tickets') {
-      url = format === 'excel' ? `/download/excel/tickets?${query}` : `/download/txt/tickets?${query}`;
+      url = format === 'excel' ? `/api/download/excel/tickets?${query}` : `/api/download/txt/tickets?${query}`;
     }
 
     let part = 1;
@@ -173,14 +220,40 @@ const TicketControl: React.FC = () => {
   return (
     <div className="p-4">
       <h2>Control de Tickets</h2>
-      <input
-        type="text"
-        placeholder="Buscar..."
-        value={searchTerm}
-        onChange={handleSearchChange}
-        className="input input-bordered mb-4"
-      />
-       <div className="mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <input
+          type="text"
+          placeholder="Buscar..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          className="input input-bordered"
+        />
+        <select
+          value={estadoFiltro}
+          onChange={(e) => setEstadoFiltro(e.target.value)}
+          className="select select-bordered"
+        >
+          <option value="">Todos los estados</option>
+          {estados.map(estado => (
+            <option key={estado.codigo_estado} value={estado.codigo_estado}>
+              {estado.estado}
+            </option>
+          ))}
+        </select>
+        <select
+          value={recolectorFiltro}
+          onChange={(e) => setRecolectorFiltro(e.target.value)}
+          className="select select-bordered"
+        >
+          <option value="">Todos los recolectores</option>
+          {recolectores.map(recolector => (
+            <option key={recolector.id} value={recolector.id}>
+              {recolector.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mb-4">
         <button onClick={() => handleDownload('tickets', 'excel')} className="btn btn-secondary mr-2">Descargar Tickets Excel</button>
         <button onClick={() => handleDownload('tickets', 'txt')} className="btn btn-secondary">Descargar Tickets TXT</button>
       </div>

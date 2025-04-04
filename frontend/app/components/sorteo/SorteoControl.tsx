@@ -74,12 +74,15 @@ const SorteoControl: React.FC = () => {
     if (!APIHost) return;
     
     try {
-      const response = await fetch(`${APIHost}/estados`);
+      const response = await fetch(`${APIHost}/api/estados`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setEstados(data);
+      const estadosOrdenados = data.sort((a: Estado, b: Estado) => 
+        a.estado.localeCompare(b.estado, 'es', { sensitivity: 'base' })
+      );
+      setEstados(estadosOrdenados);
     } catch (error) {
       console.error("Error fetching estados:", error);
       setEstados([{ codigo_estado: "", estado: "No hay estados disponibles" }]);
@@ -90,12 +93,15 @@ const SorteoControl: React.FC = () => {
     if (!APIHost) return;
     
     try {
-      const response = await fetch(`${APIHost}/municipios/${encodeURIComponent(codigoEstado)}`);
+      const response = await fetch(`${APIHost}/api/municipios/${encodeURIComponent(codigoEstado)}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      setMunicipios(data.length > 0 ? data : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
+      const municipiosOrdenados = data.sort((a: Municipio, b: Municipio) => 
+        a.municipio.localeCompare(b.municipio, 'es', { sensitivity: 'base' })
+      );
+      setMunicipios(municipiosOrdenados.length > 0 ? municipiosOrdenados : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
     } catch (error) {
       console.error("Error fetching municipios:", error);
       setMunicipios([{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
@@ -115,7 +121,7 @@ const SorteoControl: React.FC = () => {
         municipio: municipio !== "" && municipio !== "Seleccionar Municipio" ? municipioDesc : ""
       });
 
-      const response = await fetch(`${APIHost}/sorteo/ganadores`, {
+      const response = await fetch(`${APIHost}/api/sorteo/ganadores`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -146,7 +152,7 @@ const SorteoControl: React.FC = () => {
     if (!APIHost) return;
     
     try {
-      const response = await fetch(`${APIHost}/sorteo/quitar_ganadores`, {
+      const response = await fetch(`${APIHost}/api/sorteo/quitar_ganadores`, {
         method: "POST"
       });
 

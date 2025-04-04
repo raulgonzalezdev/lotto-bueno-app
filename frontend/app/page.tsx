@@ -44,13 +44,41 @@ const Home = () => {
     }
   };
 
+  // Verificar sesión al cargar la página
+  useEffect(() => {
+    const session = localStorage.getItem('session');
+    if (session) {
+      const sessionData = JSON.parse(session);
+      setIsAdmin(sessionData.isAdmin);
+      setCurrentPage(sessionData.lastPage || "ELECTORES");
+    }
+  }, []);
 
+  // Guardar estado de la sesión cuando cambia
+  useEffect(() => {
+    if (isAdmin) {
+      localStorage.setItem('session', JSON.stringify({
+        isAdmin,
+        lastPage: currentPage
+      }));
+    }
+  }, [isAdmin, currentPage]);
+
+  const handleLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('session');
+    setCurrentPage("WELCOME");
+  };
 
   const handleAdminChange = (value: string | boolean): void => {
     if (typeof value === "string" && value === "1234") {
-      setIsAdmin(!isAdmin);
+      setIsAdmin(true);
+      setCurrentPage("ELECTORES");
     } else if (typeof value === "boolean") {
       setIsAdmin(value);
+      if (value) {
+        setCurrentPage("ELECTORES");
+      }
     }
   };
 
@@ -201,11 +229,8 @@ const Home = () => {
         {gtag !== "" && <GoogleAnalytics gaId={gtag} />}
 
         <div>
-
-        {currentPage === "WELCOME" && (
+          {!isAdmin && currentPage === "WELCOME" && (
             <WelcomeComponent 
-              // title={baseSetting[settingTemplate]?.Customization.settings.title.text} 
-              // subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
               title="Completa tu registro y gana fabulosos premios" 
               subtitle="En tan solo 3 simples pasos podrás convertirte en el ganador o ganadora de #LottoBueno"
               imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
@@ -213,84 +238,67 @@ const Home = () => {
             />
           )}
 
-        {currentPage === "REGISTER" && (
+          {!isAdmin && currentPage === "REGISTER" && (
             <RegisterWindow 
               title={baseSetting[settingTemplate]?.Customization.settings.title.text} 
               subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
               imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
-              setCurrentPage={setCurrentPage} // Pasamos setCurrentPage como prop
-              onAdminLogin={handleAdminChange} // Pasamos handleAdminChange como prop
+              setCurrentPage={setCurrentPage}
+              onAdminLogin={handleAdminChange}
             />
           )}
-          
 
           {isAdmin && (
-            <Navbar
-              APIHost={APIHost}
-              production={production}
-              title={baseSetting[settingTemplate]?.Customization.settings.title.text}
-              subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
-              imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
-              version="v1.0.1"
-              currentPage={currentPage}
-              setCurrentPage={setCurrentPage}
-            />
-          )}
-          {isAdmin && currentPage === "ELECTORES" && (
-              // @ts-ignore
-               <ChatComponent
-               production={production}
-               settingConfig={baseSetting[settingTemplate]}
-               APIHost={APIHost}
-               RAGConfig={RAGConfig}
-               
-               isAdmin={isAdmin}
-              
-               title={baseSetting[settingTemplate]?.Customization.settings.title.text}
-               subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
-               imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
-             />
-            )}
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <Navbar
+                  APIHost={APIHost}
+                  production={production}
+                  title={baseSetting[settingTemplate]?.Customization.settings.title.text}
+                  subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
+                  imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+                  version="v1.0.1"
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                />
+                <button 
+                  onClick={handleLogout}
+                  className="btn btn-error btn-sm"
+                >
+                  Cerrar Sesión
+                </button>
+              </div>
 
-          {isAdmin && currentPage === "STATUS" && (
-            // <StatusComponent
-            //   fetchHost={fetchHost}
-            //   settingConfig={baseSetting[settingTemplate]}
-            //   APIHost={APIHost}
-            // />
-            <SorteoControl />
-          )}
+              {currentPage === "ELECTORES" && (
+                <ChatComponent
+                  production={production}
+                  settingConfig={baseSetting[settingTemplate]}
+                  APIHost={APIHost}
+                  RAGConfig={RAGConfig}
+                  isAdmin={isAdmin}
+                  title={baseSetting[settingTemplate]?.Customization.settings.title.text}
+                  subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
+                  imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+                />
+              )}
 
-          {isAdmin && currentPage === "SETTINGS" && !production && (
-            <SettingsComponent
-              settingTemplate={settingTemplate}
-              setSettingTemplate={setSettingTemplate}
-              baseSetting={baseSetting}
-              setBaseSetting={setBaseSetting}
-            />
+              {currentPage === "STATUS" && <SorteoControl />}
+              {currentPage === "SETTINGS" && !production && (
+                <SettingsComponent
+                  settingTemplate={settingTemplate}
+                  setSettingTemplate={setSettingTemplate}
+                  baseSetting={baseSetting}
+                  setBaseSetting={setBaseSetting}
+                />
+              )}
+              {currentPage === "USERS" && !production && <UserControl />}
+              {currentPage === "TICKETS" && !production && <TicketControl />}
+              {currentPage === "RECOLECTORES" && !production && <RecolectorControl />}
+              {currentPage === "ADD" && !production && <LineaTelefonicaControl />}
+            </>
           )}
-          {isAdmin && currentPage === "USERS" && !production && (
-            <UserControl />
-          )}
-           {isAdmin && currentPage === "TICKETS" && !production && (
-            <TicketControl />
-          )}
-          {isAdmin && currentPage === "RECOLECTORES" && ! production && (
-            <RecolectorControl />
-          )}
-           {isAdmin && currentPage === "ADD" && ! production && (
-            <LineaTelefonicaControl />
-          )}
-          {/* {isAdmin && (
-            <footer className="footer footer-center p-4 mt-8 bg-bg-verba text-text-alt-verba">
-              <aside>
-                <p>Build with ♥ and Caltion © 2024</p>
-              </aside>
-            </footer>
-          )} */}
         </div>
       </main>
-     
     </div>
   );
 };

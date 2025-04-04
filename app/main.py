@@ -13,9 +13,8 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any, List
 
-
 from dotenv import load_dotenv
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from io import StringIO, BytesIO
 from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter, Request
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
@@ -35,10 +34,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
-from sqlalchemy import distinct
-from datetime import datetime, date
+from sqlalchemy import distinct, case, Integer
 from redis.asyncio import Redis
-
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -46,28 +43,46 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 
-
-
-from app.models import Elector, Geografico, CentroVotacion, Ticket, Recolector, Users, LineaTelefonica
-from app.schemas import LineaTelefonicaList, LineaTelefonicaCreate, LineaTelefonicaUpdate, RecolectorEstadisticas,ElectorList,UserCreate, UserList, GeograficoList, CentroVotacionList,TicketUpdate,TicketUpdate, TicketUpdate, ElectorCreate, GeograficoCreate, CentroVotacionCreate, ElectorDetail, TicketCreate, TicketList, RecolectorCreate, RecolectorList, RecolectorUpdate
+from app.models import (
+    Elector,
+    Geografico,
+    CentroVotacion,
+    Ticket,
+    Recolector,
+    Users,
+    LineaTelefonica
+)
+from app.schemas import (
+    LineaTelefonicaList,
+    LineaTelefonicaCreate,
+    LineaTelefonicaUpdate,
+    RecolectorEstadisticas,
+    ElectorList,
+    UserCreate,
+    UserList,
+    GeograficoList,
+    CentroVotacionList,
+    TicketUpdate,
+    TicketCreate,
+    TicketList,
+    RecolectorCreate,
+    RecolectorList,
+    RecolectorUpdate,
+    ElectorCreate,
+    GeograficoCreate,
+    CentroVotacionCreate,
+    ElectorDetail
+)
 from dotenv import load_dotenv
 from whatsapp_chatbot_python import GreenAPIBot, Notification
 import zipfile
+import math
 
 load_dotenv()
 
-
-
-
-
-
-
-
 # Definir las posibles URLs de conexión
 DATABASE_URLS = [
-
     "postgresql+psycopg2://lottobueno:lottobueno@postgres:5432/lottobueno"
- 
 ]
 
 CHUNK_SIZE = 100000  # Tamaño del lote
@@ -92,13 +107,14 @@ else:
     os._exit(1)
 
 # Base declarativa para los modelos
-
 Base = declarative_base()
 
 app = FastAPI()
 
+
 def to_dict(obj):
     return obj.__dict__
+
 
 def get_db():
     db = SessionLocal()
@@ -106,6 +122,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
 # Configuración de CORS
 origins = [
     "http://localhost:8000",
@@ -130,7 +148,10 @@ app.add_middleware(
 POSTGRES_DB = os.getenv("POSTGRES_DB", "lottobueno")
 POSTGRES_USER = os.getenv("POSTGRES_USER", "lottobueno")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "lottobueno")
-DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}"
+)
 
 API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_URL_BASE = os.getenv("API_URL_BASE", f"https://7103.api.greenapi.com/waInstance{API_INSTANCE}")
@@ -145,28 +166,23 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 if not API_INSTANCE or not API_TOKEN:
     raise ValueError("API_INSTANCE y API_TOKEN deben estar definidos en las variables de entorno")
 
-# Inicializar el bot con los valores obtenidos
-# bot = GreenAPIBot(
-#     API_INSTANCE, API_TOKEN
-# )
-
-
-
 BASE_DIR = Path(__file__).resolve().parent
-
-
 
 redis = Redis.from_url(REDIS_URL, decode_responses=True)
 
+
 class PhoneNumberRequest(BaseModel):
     phone_number: str
+
 
 class MessageRequest(BaseModel):
     chat_id: str
     message: str
 
+
 class CedulaRequest(BaseModel):
     numero_cedula: str
+
 
 class ContactRequest(BaseModel):
     chat_id: str
@@ -175,16 +191,16 @@ class ContactRequest(BaseModel):
     last_name: str
     company: str
 
+
 class TicketRequest(BaseModel):
     cedula: str
     telefono: str
     referido_id: Optional[int] = None
     
+    
 class Estado(BaseModel):
     codigo_estado: int
     estado: str
-    
-
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
@@ -223,6 +239,7 @@ def compress_file(file_bytes: BytesIO, filename: str) -> BytesIO:
     zip_buffer.seek(0)
     return zip_buffer
 
+
 def generate_file_responses(data, file_type, base_filename):
     try:
         if file_type == 'excel':
@@ -230,10 +247,10 @@ def generate_file_responses(data, file_type, base_filename):
             workbook = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
             df = pd.DataFrame(data)
             df.to_excel(workbook, sheet_name=base_filename, index=False)
-            
+
             # Obtener el objeto worksheet para dar formato
             worksheet = workbook.sheets[base_filename]
-            
+
             # Ajustar el ancho de las columnas automáticamente
             for idx, col in enumerate(df.columns):
                 max_length = max(
@@ -241,32 +258,31 @@ def generate_file_responses(data, file_type, base_filename):
                     len(str(col))
                 )
                 worksheet.set_column(idx, idx, max_length + 2)
-            
+
             workbook.close()
             excel_buffer.seek(0)
-            
+
             # Comprimir el archivo Excel
             filename = f"{base_filename}.xlsx"
             zip_buffer = compress_file(excel_buffer, filename)
             return [zip_buffer]
-            
+
         elif file_type == 'txt':
             # Convertir a DataFrame y luego a texto con tabulaciones
             df = pd.DataFrame(data)
             output = StringIO()
             df.to_csv(output, sep='\t', index=False, encoding='utf-8')
             output.seek(0)
-            
+
             # Comprimir el archivo de texto
             txt_buffer = BytesIO(output.getvalue().encode('utf-8'))
             filename = f"{base_filename}.txt"
             zip_buffer = compress_file(txt_buffer, filename)
             return [zip_buffer]
-            
+
     except Exception as e:
         print(f"Error en generate_file_responses: {str(e)}")
         raise
-
 
 
 app.mount(
@@ -277,19 +293,28 @@ app.mount(
 
 app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend/out"), name="app")
 
+
 @app.get("/")
 @app.head("/")
 async def serve_frontend():
     return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
 
-@app.post("/check_whatsapp")
+
+@app.post("/api/check_whatsapp")
 def api_check_whatsapp(request: PhoneNumberRequest):
     result = check_whatsapp(request.phone_number)
     if result.get("status") == "api":
-        return {"status": "api", "message": "El servicio de verificación de WhatsApp no está disponible en este momento. Por favor, inténtalo más tarde."}
+        return {
+            "status": "api",
+            "message": "El servicio de verificación de WhatsApp no está disponible en este momento. Por favor, inténtalo más tarde."
+        }
     if not result.get("existsWhatsapp"):
-        raise HTTPException(status_code=400, detail="El número no tiene WhatsApp:" + request.phone_number )
+        raise HTTPException(
+            status_code=400,
+            detail="El número no tiene WhatsApp:" + request.phone_number
+        )
     return {"status": "Número válido"}
+
 
 def send_message(chat_id: str, message: str):
     url = f"{API_URL_BASE}/sendMessage/{API_TOKEN}"
@@ -308,13 +333,24 @@ def send_message(chat_id: str, message: str):
         if "idMessage" in response_data:
             return {"status": "success", "data": response_data}
         else:
-            return {"status": "error", "message": "La API respondió pero no indicó éxito", "data": response_data}
+            return {
+                "status": "error",
+                "message": "La API respondió pero no indicó éxito",
+                "data": response_data
+            }
     except requests.exceptions.HTTPError as http_err:
-        return {"status": "error", "message": f"Error de HTTP al enviar el mensaje: {http_err}"}
+        return {
+            "status": "error",
+            "message": f"Error de HTTP al enviar el mensaje: {http_err}"
+        }
     except Exception as err:
-        return {"status": "error", "message": f"No se pudo conectar a la API de envío de mensajes: {err}"}
+        return {
+            "status": "error",
+            "message": f"No se pudo conectar a la API de envío de mensajes: {err}"
+        }
 
-@app.post("/send_message")
+
+@app.post("/api/send_message")
 def api_send_message(request: MessageRequest):
     result = send_message(request.chat_id, request.message)
     if result.get("status") == "error":
@@ -323,12 +359,11 @@ def api_send_message(request: MessageRequest):
     return {"status": "Mensaje enviado", "data": result.get("data")}
 
 
-
-
 def generate_ticket_number():
     characters = string.ascii_letters + string.digits
     ticket_number = ''.join(random.choice(characters) for _ in range(12))
     return ticket_number
+
 
 def send_qr_code(chat_id: str, qr_buf: BytesIO):
     url = f"{API_URL_BASE}/sendFileByUpload/{API_TOKEN}"
@@ -349,7 +384,8 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
     except Exception as err:
         return {"status": "error", "message": "No se pudo conectar a la API de envío de códigos QR"}
 
-@app.post("/generate_tickets")
+
+@app.post("/api/generate_tickets")
 def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
     whatsapp_check = check_whatsapp(request.telefono)
@@ -379,7 +415,9 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     parroquia = elector_geografico['parroquia']
 
     # Verificar si ya existe un ticket con la cédula o el teléfono proporcionados
-    existing_ticket = db.query(Ticket).filter((Ticket.cedula == request.cedula) | (Ticket.telefono == request.telefono)).first()
+    existing_ticket = db.query(Ticket).filter(
+        (Ticket.cedula == request.cedula) | (Ticket.telefono == request.telefono)
+    ).first()
     if existing_ticket:
         qr_code_base64 = existing_ticket.qr_ticket
         return {
@@ -436,8 +474,8 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
         referido_id=referido_id,
         validado=True,
         ganador=False,
-        created_at=datetime.now(),  # Establece el momento actual si es necesario
-        updated_at=datetime.now()   #
+        created_at=datetime.now(),
+        updated_at=datetime.now()
     )
 
     try:
@@ -447,7 +485,10 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
         db.refresh(db_ticket)
     except Exception as e:
         print(f"Error al guardar en la base de datos: {e}")
-        return {"status": "error", "message": "Error interno del servidor no se guardo la tabla ticket"}
+        return {
+            "status": "error",
+            "message": "Error interno del servidor no se guardo la tabla ticket"
+        }
 
     return {
         "status": "success",
@@ -457,8 +498,7 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     }
 
 
-# Definición de los endpoints y modelos
-@app.post("/generate_ticket")
+@app.post("/api/generate_ticket")
 def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
     whatsapp_check = check_whatsapp(request.telefono)
@@ -467,15 +507,12 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
 
     # Verificar la cédula usando la función verificar_cedula
     try:
-        #elector_response = verificar_cedula(request.cedula)
         elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=request.cedula), db))
         if not elector_response.get("elector"):
-            # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
             message = "La cédula proporcionada no es válida para participar en Lotto Bueno."
             send_message(request.telefono, message)
             return {"status": "error", "message": "La cédula no es válida"}
     except HTTPException as e:
-        # Enviar mensaje de texto por WhatsApp indicando que la cédula no es válida
         message = "La cédula proporcionada no es válida para participar en Lotto Bueno."
         send_message(request.telefono, message)
         return {"status": "error", "message": str(e.detail)}
@@ -506,7 +543,6 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         # Enviar contacto de la empresa
         send_contact(request.telefono)
         
-        # Enviar código QR por WhatsApp
         qr_code_base64 = existing_ticket.qr_ticket
         qr_buf = BytesIO(base64.b64decode(qr_code_base64))
         send_qr_code(request.telefono, qr_buf)
@@ -519,11 +555,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         }
 
     ticket_number = generate_ticket_number()
-
-    # Determinar el id del recolector
     referido_id = request.referido_id if request.referido_id is not None else get_system_recolector_id(db)
 
-    # Incluir datos de la persona y el número de ticket en el QR
     qr_data = {
         "ticket_number": ticket_number,
         "cedula": request.cedula,
@@ -533,11 +566,9 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         "municipio": municipio,
         "parroquia": parroquia,
         "referido_id": referido_id
-        
     }
     qr_data_json = json.dumps(qr_data)
 
-    # Crear código QR
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -552,12 +583,10 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     img.save(buf)
     buf.seek(0)
 
-    # Enviar código QR por WhatsApp
     send_result = send_qr_code(request.telefono, buf)
     if send_result.get("status") == "error":
         return {"status": "error", "message": send_result["message"]}
 
-    # Guardar el ticket en la base de datos
     qr_code_base64 = base64.b64encode(buf.getvalue()).decode()
     new_ticket = TicketCreate(
         numero_ticket=ticket_number,
@@ -571,8 +600,8 @@ def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
         referido_id=referido_id,
         validado=False,
         ganador=False,
-        created_at=datetime.now(),  # Establece el momento actual si es necesario
-        updated_at=datetime.now()   #
+        created_at=datetime.now(),
+        updated_at=datetime.now()
     )
     
     try:
@@ -655,6 +684,7 @@ def obtener_numero_instancia():
     except Exception as err:
         return None
 
+
 def verificar_numero_whatsapp(phone_number):
     url = f"{FASTAPI_BASE_URL}/check_whatsapp"
     payload = {"phone_number": phone_number}
@@ -670,7 +700,7 @@ def verificar_numero_whatsapp(phone_number):
         return {"status": "Error", "detail": str(err)}
 
 
-@app.get("/download/excel/electores")
+@app.get("/api/download/excel/electores")
 async def download_excel_electores(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
@@ -790,10 +820,11 @@ async def download_excel_electores(
         )
 
     except Exception as e:
-        print(f"Error generando Excel: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
+        print(f"Error en download_excel_electores: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/download/excel/centros-por-estado/{codigo_estado}")
+
+@app.get("/api/download/excel/centros-por-estado/{codigo_estado}")
 async def download_excel_centros_por_estado(
     codigo_estado: str,
     db: Session = Depends(get_db)
@@ -805,7 +836,6 @@ async def download_excel_centros_por_estado(
             raise HTTPException(status_code=404, detail="Estado no encontrado")
         nombre_estado = estado[0]
 
-        # Obtener todos los centros de votación del estado con su información geográfica
         centros_query = (
             db.query(
                 CentroVotacion.codificacion_nueva_cv,
@@ -835,11 +865,12 @@ async def download_excel_centros_por_estado(
         )
 
         centros = centros_query.all()
-        
         if not centros:
-            raise HTTPException(status_code=404, detail="No se encontraron centros de votación para este estado")
+            raise HTTPException(
+                status_code=404,
+                detail="No se encontraron centros de votación para este estado"
+            )
 
-        # Crear DataFrame con la información
         data = [{
             'Código Centro': centro[0],
             'Centro de Votación': centro[1],
@@ -852,21 +883,22 @@ async def download_excel_centros_por_estado(
 
         df = pd.DataFrame(data)
 
-        # Crear archivo Excel
         excel_buffer = BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Centros', index=False)
             worksheet = writer.sheets['Centros']
-            
-            # Ajustar el ancho de las columnas
+
             for idx, col in enumerate(df.columns):
-                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                max_length = max(
+                    df[col].astype(str).apply(len).max(),
+                    len(str(col))
+                )
                 worksheet.set_column(idx, idx, max_length + 2)
 
         excel_buffer.seek(0)
         filename = f"centros_electorales_{nombre_estado}.xlsx"
         zip_buffer = compress_file(excel_buffer, filename)
-        
+
         return StreamingResponse(
             zip_buffer,
             media_type='application/zip',
@@ -881,7 +913,8 @@ async def download_excel_centros_por_estado(
         print(f"Error generando Excel de centros: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generando Excel de centros: {str(e)}")
 
-@app.get("/download/txt/electores")
+
+@app.get("/api/download/txt/electores")
 async def download_txt_electores(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
@@ -955,7 +988,8 @@ async def download_txt_electores(
         print(f"Error generando TXT: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generando TXT: {str(e)}")
 
-@app.get("/download/excel/tickets")
+
+@app.get("/api/download/excel/tickets")
 async def download_excel_tickets(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
@@ -1007,33 +1041,25 @@ async def download_excel_tickets(
         data = [to_dict(ticket) for ticket in tickets]
         
         filename = f"tickets_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}.xlsx"
-        
-        # Crear el archivo Excel en memoria
+
         excel_buffer = BytesIO()
         workbook = pd.ExcelWriter(excel_buffer, engine='xlsxwriter')
-        
-        # Convertir los datos a DataFrame y escribir directamente
         df = pd.DataFrame(data)
         df.to_excel(workbook, sheet_name='Tickets', index=False)
-        
-        # Obtener el objeto worksheet para dar formato
+
         worksheet = workbook.sheets['Tickets']
-        
-        # Ajustar el ancho de las columnas automáticamente
         for idx, col in enumerate(df.columns):
             max_length = max(
                 df[col].astype(str).apply(len).max(),
                 len(str(col))
             )
             worksheet.set_column(idx, idx, max_length + 2)
-        
-        # Cerrar el writer y obtener los bytes
+
         workbook.close()
         excel_buffer.seek(0)
-        
-        # Comprimir el archivo Excel
+
         zip_buffer = compress_file(excel_buffer, filename)
-        
+
         return StreamingResponse(
             zip_buffer,
             media_type='application/zip',
@@ -1045,7 +1071,8 @@ async def download_excel_tickets(
         print(f"Error generando Excel: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generando Excel: {str(e)}")
 
-@app.get("/download/txt/tickets")
+
+@app.get("/api/download/txt/tickets")
 async def download_txt_tickets(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
@@ -1097,17 +1124,15 @@ async def download_txt_tickets(
         data = [to_dict(ticket) for ticket in tickets]
         
         filename = f"tickets_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}"
-        
-        # Convertir a DataFrame y luego a texto con tabulaciones
+
         df = pd.DataFrame(data)
         output = StringIO()
         df.to_csv(output, sep='\t', index=False, encoding='utf-8')
         output.seek(0)
-        
-        # Comprimir el archivo
+
         txt_buffer = BytesIO(output.getvalue().encode('utf-8'))
         zip_buffer = compress_file(txt_buffer, f"{filename}.txt")
-        
+
         return StreamingResponse(
             zip_buffer,
             media_type='application/zip',
@@ -1120,13 +1145,19 @@ async def download_txt_tickets(
         raise HTTPException(status_code=500, detail=f"Error generando TXT: {str(e)}")
 
 
-
-@app.post("/enviar_contacto")
+@app.post("/api/enviar_contacto")
 def api_enviar_contacto(request: ContactRequest):
-    result = enviar_contacto(request.chat_id, request.phone_contact, request.first_name, request.last_name, request.company)
+    result = enviar_contacto(
+        request.chat_id,
+        request.phone_contact,
+        request.first_name,
+        request.last_name,
+        request.company
+    )
     if result.get("status") == "Error":
         raise HTTPException(status_code=500, detail=result["detail"])
     return {"status": "Contacto enviado"}
+
 
 def enviar_contacto(chat_id, phone_contact, first_name, last_name, company):
     url = f"{API_URL_BASE}/sendContact/{API_TOKEN}"
@@ -1152,13 +1183,15 @@ def enviar_contacto(chat_id, phone_contact, first_name, last_name, company):
     except Exception as err:
         return {"status": "Error", "detail": str(err)}
 
-@app.post("/reboot_instance")
+
+@app.post("/api/reboot_instance")
 def api_reboot_instance():
     try:
         reboot_instance()
         return {"status": "Instancia reiniciada"}
     except Exception as err:
         raise HTTPException(status_code=500, detail=str(err))
+
 
 def reboot_instance():
     url = f"{API_URL_BASE}/reboot/{API_TOKEN}"
@@ -1176,6 +1209,7 @@ def reboot_instance():
         print(f"Other error occurred: {err}")
         raise
 
+
 async def get_elector_from_cache(elector_id: int, db: Session):
     cache_key = f"elector:{elector_id}"
     elector = await redis.get(cache_key)
@@ -1184,8 +1218,13 @@ async def get_elector_from_cache(elector_id: int, db: Session):
     else:
         db_elector = db.query(Elector).filter(Elector.id == elector_id).first()
         if db_elector:
-            await redis.set(cache_key, json.dumps(to_dict(db_elector), default=custom_serializer), ex=60*60)
+            await redis.set(
+                cache_key,
+                json.dumps(to_dict(db_elector), default=custom_serializer),
+                ex=60 * 60
+            )
         return to_dict(db_elector)
+
 
 async def get_elector_by_cedula_from_cache(numero_cedula: int, db: Session):
     cache_key = f"elector:cedula:{numero_cedula}"
@@ -1300,7 +1339,8 @@ async def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)
     response = await read_elector_by_cedula_no_cache(numero_cedula, db)
     return response
 
-@router.get("/total/electores", response_model=int)
+
+@router.get("/total/api/electores", response_model=int)
 def get_total_electores(
     codigo_estado: Optional[int] = None,
     codigo_municipio: Optional[int] = None,
@@ -1309,7 +1349,6 @@ def get_total_electores(
     db: Session = Depends(get_db)
 ):
     query = db.query(Elector)
-    
     if codigo_estado is not None:
         query = query.filter(Elector.codigo_estado == codigo_estado)
     if codigo_municipio is not None:
@@ -1322,7 +1361,8 @@ def get_total_electores(
     total = query.count()
     return total
 
-@app.get("/electores/", response_model=List[ElectorList])
+
+@app.get("/api/electores/", response_model=List[ElectorList])
 async def read_electores(
     skip: int = 0,
     limit: int = 100,
@@ -1345,14 +1385,16 @@ async def read_electores(
     electores = query.offset(skip).limit(limit).all()
     return [elector for elector in electores]
 
-@app.get("/electores/{elector_id}", response_model=ElectorList)
+
+@app.get("/api/electores/{elector_id}", response_model=ElectorList)
 async def read_elector(elector_id: int, db: Session = Depends(get_db)):
     elector = db.query(Elector).filter(Elector.id == elector_id).first()
     if not elector:
         raise HTTPException(status_code=404, detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno")
     return elector
 
-@app.get("/electores/cedula/{numero_cedula}", response_model=ElectorDetail)
+
+@app.get("/api/electores/cedula/{numero_cedula}", response_model=ElectorDetail)
 async def read_elector_by_cedula(numero_cedula: int, db: Session = Depends(get_db)):
     result = await get_elector_by_cedula_from_cache(numero_cedula, db)
     if not result:
@@ -1381,14 +1423,19 @@ async def read_elector_by_cedula_no_cache(numero_cedula: int, db: Session = Depe
         }
         return result
     else:
-        raise HTTPException(status_code=404, detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno")
+        raise HTTPException(
+            status_code=404,
+            detail="Esta cedula no esta Autorizada para el registro en Lotto Bueno"
+        )
 
-@app.get("/geograficos/", response_model=list[GeograficoList])
+
+@app.get("/api/geograficos/", response_model=list[GeograficoList])
 async def read_geograficos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     geograficos = db.query(Geografico).offset(skip).limit(limit).all()
     return [to_dict(geografico) for geografico in geograficos]
 
-@app.post("/geograficos/", response_model=GeograficoList)
+
+@app.post("/api/geograficos/", response_model=GeograficoList)
 async def create_geografico(geografico: GeograficoCreate, db: Session = Depends(get_db)):
     db_geografico = Geografico(**geografico.model_dump())
     db.add(db_geografico)
@@ -1396,12 +1443,14 @@ async def create_geografico(geografico: GeograficoCreate, db: Session = Depends(
     db.refresh(db_geografico)
     return to_dict(db_geografico)
 
-@app.get("/centros_votacion/", response_model=list[CentroVotacionList])
+
+@app.get("/api/centros_votacion/", response_model=list[CentroVotacionList])
 async def read_centros_votacion(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     centros = db.query(CentroVotacion).offset(skip).limit(limit).all()
     return [to_dict(centro) for centro in centros]
 
-@app.post("/centros_votacion/", response_model=CentroVotacionList)
+
+@app.post("/api/centros_votacion/", response_model=CentroVotacionList)
 async def create_centro_votacion(centro: CentroVotacionCreate, db: Session = Depends(get_db)):
     db_centro = CentroVotacion(**centro.model_dump())
     db.add(db_centro)
@@ -1409,13 +1458,15 @@ async def create_centro_votacion(centro: CentroVotacionCreate, db: Session = Dep
     db.refresh(db_centro)
     return to_dict(db_centro)
 
-@app.get("/stats/{stat_type}")
+
+@app.get("/api/stats/{stat_type}")
 async def get_statistics(stat_type: str, db: Session = Depends(get_db)):
     valid_stats = ["estado", "municipio", "parroquia", "centro_votacion"]
     if stat_type not in valid_stats:
         raise HTTPException(status_code=400, detail="Invalid statistics type")
     stats = await get_statistics_from_cache(stat_type, db)
     return stats
+
 
 async def get_statistics_from_cache(stat_type: str, db: Session):
     cache_key = f"stats:{stat_type}"
@@ -1436,34 +1487,36 @@ async def get_statistics_from_cache(stat_type: str, db: Session):
         await redis.set(cache_key, json.dumps(stats_dict), ex=60*60)
         return stats_dict
 
-# CRUD para Ticket
 
 class TicketResponse(BaseModel):
     total: int
     items: List[TicketList]
 
-@app.get("/tickets/", response_model=TicketResponse)
+
+@app.get("/api/tickets/", response_model=TicketResponse)
 async def read_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     total = db.query(Ticket).count()
     tickets = db.query(Ticket).offset(skip).limit(limit).all()
     return {"total": total, "items": [to_dict(ticket) for ticket in tickets]}
 
 
-@app.get("/tickets/cedula/{cedula}", response_model=TicketList)
+@app.get("/api/tickets/cedula/{cedula}", response_model=TicketList)
 async def read_ticket_by_cedula(cedula: str, db: Session = Depends(get_db)):
     ticket = db.query(Ticket).filter(Ticket.cedula == cedula).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return ticket
 
-@app.get("/tickets/{ticket_id}", response_model=TicketList)
+
+@app.get("/api/tickets/{ticket_id}", response_model=TicketList)
 async def read_ticket(ticket_id: int, db: Session = Depends(get_db)):
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     return to_dict(ticket)
 
-@app.post("/tickets/", response_model=TicketList)
+
+@app.post("/api/tickets/", response_model=TicketList)
 async def create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     db_ticket = Ticket(**ticket.model_dump())
     db.add(db_ticket)
@@ -1471,7 +1524,8 @@ async def create_ticket(ticket: TicketCreate, db: Session = Depends(get_db)):
     db.refresh(db_ticket)
     return to_dict(db_ticket)
 
-@app.patch("/tickets/{ticket_id}", response_model=TicketList)
+
+@app.patch("/api/tickets/{ticket_id}", response_model=TicketList)
 async def update_ticket(ticket_id: int, ticket: TicketUpdate, db: Session = Depends(get_db)):
     db_ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not db_ticket:
@@ -1485,20 +1539,22 @@ async def update_ticket(ticket_id: int, ticket: TicketUpdate, db: Session = Depe
     return to_dict(db_ticket)
 
 
-@app.get("/tickets/estados", response_model=List[str])
+@app.get("/api/tickets/estados", response_model=List[str])
 async def get_estados(db: Session = Depends(get_db)):
     estados = db.query(distinct(Ticket.estado)).all()
     return [estado[0] for estado in estados]
 
-@app.get("/tickets/municipios", response_model=List[str])
+
+@app.get("/api/tickets/municipios", response_model=List[str])
 async def get_municipios(estado: str, db: Session = Depends(get_db)):
     municipios = db.query(distinct(Ticket.municipio)).filter(Ticket.estado == estado).all()
     return [municipio[0] for municipio in municipios]
-# CRUD para Recolector
+
 
 class RecolectorResponse(BaseModel):
     total: int
     items: List[RecolectorList]
+
 
 @app.get("/api/recolectores/", response_model=RecolectorResponse)
 async def read_recolectores(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -1514,6 +1570,7 @@ async def read_recolector(recolector_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Recolector not found")
     return to_dict(recolector)
 
+
 @app.post("/api/recolectores/", response_model=RecolectorList)
 async def create_recolector(recolector: RecolectorCreate, db: Session = Depends(get_db)):
     db_recolector = Recolector(**recolector.model_dump())
@@ -1521,6 +1578,7 @@ async def create_recolector(recolector: RecolectorCreate, db: Session = Depends(
     db.commit()
     db.refresh(db_recolector)
     return to_dict(db_recolector)
+
 
 @app.delete("/api/recolectores/{recolector_id}", response_model=dict)
 async def delete_recolector(recolector_id: int, db: Session = Depends(get_db)):
@@ -1530,6 +1588,7 @@ async def delete_recolector(recolector_id: int, db: Session = Depends(get_db)):
     db.delete(recolector)
     db.commit()
     return {"message": "Recolector deleted successfully"}
+
 
 @app.patch("/api/recolectores/{recolector_id}", response_model=RecolectorList)
 async def update_recolector(recolector_id: int, recolector: RecolectorUpdate, db: Session = Depends(get_db)):
@@ -1542,8 +1601,13 @@ async def update_recolector(recolector_id: int, recolector: RecolectorUpdate, db
     db.refresh(db_recolector)
     return to_dict(db_recolector)
 
+
 @app.get("/api/recolectores/estadisticas/", response_model=List[RecolectorEstadisticas])
-async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: Session = Depends(get_db)):
+async def get_recolector_estadisticas(
+    recolector_id: Optional[int] = None,
+    codigo_estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     query = (
         db.query(
             Recolector.id,
@@ -1551,15 +1615,181 @@ async def get_recolector_estadisticas(recolector_id: Optional[int] = None, db: S
             func.count(Ticket.id).label("tickets_count")
         )
         .join(Ticket, Ticket.referido_id == Recolector.id, isouter=True)
-        .group_by(Recolector.id, Recolector.nombre)
     )
 
     if recolector_id:
         query = query.filter(Recolector.id == recolector_id)
+    if codigo_estado:
+        query = query.filter(Ticket.estado == codigo_estado)
+
+    query = query.group_by(Recolector.id, Recolector.nombre)
 
     estadisticas = query.all()
-    
-    return [{"recolector_id": est.id, "nombre": est.nombre, "tickets_count": est.tickets_count} for est in estadisticas]
+    return [
+        {"recolector_id": est.id, "nombre": est.nombre, "tickets_count": est.tickets_count}
+        for est in estadisticas
+    ]
+
+
+@app.get("/api/recolectores/{recolector_id}/referidos")
+async def get_recolector_referidos(
+    recolector_id: int,
+    codigo_estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    try:
+        recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
+        if not recolector:
+            raise HTTPException(status_code=404, detail="Recolector no encontrado")
+
+        query = (
+            db.query(
+                Ticket.id,
+                Ticket.cedula,
+                Ticket.nombre,
+                Ticket.telefono,
+                Ticket.estado,
+                Ticket.municipio,
+                Ticket.parroquia,
+                Ticket.created_at
+            )
+            .filter(Ticket.referido_id == recolector_id)
+            .order_by(
+                # Ordenar primero por letra de cédula (V antes que E)
+                case(
+                    (func.substr(Ticket.cedula, 1, 1) == 'V', 0),
+                    (func.substr(Ticket.cedula, 1, 1) == 'E', 1),
+                    else_=2
+                ),
+                # Luego ordenar por número de cédula (convertido a entero)
+                func.cast(func.substr(Ticket.cedula, 2), Integer).asc()
+            )
+        )
+
+        if codigo_estado:
+            query = query.filter(Ticket.estado == codigo_estado)
+
+        referidos = query.all()
+
+        return {
+            "recolector": {
+                "id": recolector.id,
+                "nombre": recolector.nombre,
+                "total_referidos": len(referidos)
+            },
+            "referidos": [
+                {
+                    "id": ref.id,
+                    "cedula": ref.cedula,
+                    "nombre": ref.nombre,
+                    "telefono": ref.telefono,
+                    "estado": ref.estado,
+                    "municipio": ref.municipio,
+                    "parroquia": ref.parroquia,
+                    "fecha_registro": ref.created_at.isoformat()
+                }
+                for ref in referidos
+            ]
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/download/excel/recolector-referidos/{recolector_id}")
+async def download_excel_recolector_referidos(
+    recolector_id: int,
+    codigo_estado: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Obtener el recolector
+        recolector = db.query(Recolector).filter(Recolector.id == recolector_id).first()
+        if not recolector:
+            raise HTTPException(status_code=404, detail="Recolector no encontrado")
+
+        # Consulta ordenada de referidos
+        query = (
+            db.query(Ticket)
+            .filter(Ticket.referido_id == recolector_id)
+            .order_by(
+                # Ordenar primero por letra de cédula (V antes que E)
+                case(
+                    (func.substr(Ticket.cedula, 1, 1) == 'V', 0),
+                    (func.substr(Ticket.cedula, 1, 1) == 'E', 1),
+                    else_=2
+                ),
+                # Luego ordenar por número de cédula (convertido a entero)
+                func.cast(func.substr(Ticket.cedula, 2), Integer).asc()
+            )
+        )
+
+        if codigo_estado:
+            query = query.filter(Ticket.estado == codigo_estado)
+
+        referidos = query.all()
+
+        # Crear DataFrame con los datos ordenados
+        df = pd.DataFrame([{
+            'Cédula': ref.cedula,
+            'Nombre': ref.nombre,
+            'Teléfono': ref.telefono,
+            'Estado': ref.estado,
+            'Municipio': ref.municipio,
+            'Parroquia': ref.parroquia,
+            'Fecha de Registro': ref.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        } for ref in referidos])
+
+        # Crear el archivo Excel
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            workbook = writer.book
+            header_format = workbook.add_format({
+                'bold': True,
+                'bg_color': '#D3D3D3',
+                'border': 1
+            })
+
+            # Escribir la información del recolector y estadísticas
+            worksheet = workbook.add_worksheet('Referidos')
+            worksheet.write(0, 0, f"Recolector: {recolector.nombre}", header_format)
+            worksheet.write(1, 0, f"Cédula del Recolector: {recolector.cedula}", header_format)
+            worksheet.write(2, 0, f"Total de Referidos: {len(referidos)}", header_format)
+            if codigo_estado:
+                estado_nombre = db.query(Geografico.estado).filter(
+                    Geografico.codigo_estado == codigo_estado
+                ).first()
+                if estado_nombre:
+                    worksheet.write(3, 0, f"Estado: {estado_nombre[0]}", header_format)
+
+            # Escribir los datos de referidos
+            df.to_excel(writer, sheet_name='Referidos', startrow=5, index=False)
+
+            # Ajustar el ancho de las columnas
+            for idx, col in enumerate(df.columns):
+                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                worksheet.set_column(idx, idx, max_length + 2)
+
+        excel_buffer.seek(0)
+        recolector_nombre = recolector.nombre.replace(" ", "_")
+        estado_filtro = f"_{codigo_estado}" if codigo_estado else ""
+        filename = f"referidos_{recolector_nombre}{estado_filtro}.xlsx"
+
+        # Comprimir el archivo Excel
+        zip_buffer = compress_file(excel_buffer, filename)
+
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.zip"'
+            }
+        )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def read_settings():
@@ -1573,6 +1803,7 @@ def read_settings():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 def write_settings(settings: dict):
     try:
         with open("app/settings.json", "w") as file:
@@ -1580,31 +1811,30 @@ def write_settings(settings: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Endpoint to get settings
+
 @app.get("/api/settings")
 async def get_settings():
     settings = read_settings()
     return JSONResponse(status_code=200, content=settings)
 
-# Endpoint to update settings
+
 @app.post("/api/settings")
 async def update_settings(payload: dict):
     try:
         settings = read_settings()
 
-        # Actualiza el valor de currentTemplate
         if "currentTemplate" in payload:
             settings["currentTemplate"] = payload["currentTemplate"]
 
         current_template = settings.get("currentTemplate")
-
         if not current_template:
             raise HTTPException(status_code=400, detail="currentTemplate not set in settings")
-
         if current_template not in settings:
-            raise HTTPException(status_code=400, detail=f"Template {current_template} not found in settings")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Template {current_template} not found in settings"
+            )
 
-        # Update the correct template
         template_settings = settings[current_template]
         for section_key, section_value in payload.get(current_template, {}).items():
             if section_key in template_settings:
@@ -1623,8 +1853,6 @@ async def update_settings(payload: dict):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-
-
 class UpdateHTMLSettings(BaseModel):
     title: str
     description: str
@@ -1636,12 +1864,10 @@ BASE_DIR = Path(__file__).resolve().parent
 @app.post("/api/update-html")
 async def update_html(settings: UpdateHTMLSettings):
     try:
-        # Path to index.html
         html_path = BASE_DIR / "frontend/out/index.html"
         with open(html_path, 'r', encoding='utf-8') as file:
             html_content = file.read()
 
-        # Update the index.html file
         html_content = re.sub(r'<title>.*?</title>', f'<title>{settings.title}</title>', html_content)
         html_content = re.sub(
             r'<meta name="description" content=".*?"/>',
@@ -1657,7 +1883,6 @@ async def update_html(settings: UpdateHTMLSettings):
         with open(html_path, 'w', encoding='utf-8') as file:
             file.write(html_content)
         
-        # Update the _next directory files
         _next_dir = BASE_DIR / "frontend/out/_next/static/chunks/app"
         for root, _, files in os.walk(_next_dir):
             for name in files:
@@ -1666,7 +1891,6 @@ async def update_html(settings: UpdateHTMLSettings):
                     with open(file_path, 'r', encoding='utf-8') as file:
                         file_content = file.read()
                     
-                    # Update the JavaScript content
                     file_content = re.sub(
                         r'title:t.title\|\|"[^"]+"',
                         f'title:t.title||"{settings.title}"',
@@ -1697,8 +1921,7 @@ class UserCreate(BaseModel):
     isAdmin: bool
     password: str
 
-# Crear usuario
-# Crear usuario
+
 @app.post("/api/users", response_model=UserList)
 async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     hashed_password = generate_password_hash(user.password)
@@ -1715,7 +1938,7 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-# Leer usuario por ID
+
 @app.get("/api/users/{user_id}", response_model=UserList)
 async def read_user(user_id: int, db: Session = Depends(get_db)):
     user = db.query(Users).filter(Users.id == user_id).first()
@@ -1723,13 +1946,13 @@ async def read_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-# Leer todos los usuarios
+
 @app.get("/api/users", response_model=list[UserList])
 async def get_users(db: Session = Depends(get_db)):
     users = db.query(Users).all()
     return users
 
-# Actualizar usuario
+
 @app.put("/api/users/{user_id}", response_model=UserList)
 async def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(Users).filter(Users.id == user_id).first()
@@ -1745,7 +1968,7 @@ async def update_user(user_id: int, user: UserCreate, db: Session = Depends(get_
     db.refresh(db_user)
     return db_user
 
-# Eliminar usuario
+
 @app.delete("/api/users/{user_id}")
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
     db_user = db.query(Users).filter(Users.id == user_id).first()
@@ -1755,9 +1978,12 @@ async def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "User deleted successfully"}
 
-# Login de usuario
+
 @app.post("/api/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     user = db.query(Users).filter(Users.username == form_data.username).first()
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
@@ -1768,38 +1994,47 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer", "isAdmin": user.isAdmin}
 
-# Logout de usuario
+
 @app.post("/api/logout")
 async def logout(token: str = Depends(oauth2_scheme)):
     return {"message": "User logged out successfully"}
 
 
-
-
-
-# Example endpoint
-@app.get("/estados/", response_model=list[GeograficoList])
+@app.get("/api/estados/", response_model=list[GeograficoList])
 async def read_estados(db: Session = Depends(get_db)):
-    estados = db.query(Geografico.codigo_estado, Geografico.estado).distinct().all()
+    estados = db.query(Geografico.codigo_estado, Geografico.estado).distinct().order_by(Geografico.estado.asc()).all()
     return [{"codigo_estado": estado[0], "estado": estado[1], "codigo_municipio": None, "codigo_parroquia": None, "municipio": None, "parroquia": None, "id": i} for i, estado in enumerate(estados)]
 
-@app.get("/municipios/{codigo_estado}", response_model=list[GeograficoList])
+
+@app.get("/api/municipios/{codigo_estado}", response_model=list[GeograficoList])
 async def read_municipios(codigo_estado: int, db: Session = Depends(get_db)):
-    municipios = db.query(Geografico.codigo_municipio, Geografico.municipio).filter(Geografico.codigo_estado == codigo_estado).distinct().all()
+    municipios = db.query(Geografico.codigo_municipio, Geografico.municipio).filter(
+        Geografico.codigo_estado == codigo_estado
+    ).distinct().order_by(Geografico.municipio.asc()).all()
     return [{"codigo_municipio": municipio[0], "municipio": municipio[1], "codigo_estado": codigo_estado, "codigo_parroquia": None, "estado": None, "parroquia": None, "id": i} for i, municipio in enumerate(municipios)]
 
-@app.get("/parroquias/{codigo_estado}/{codigo_municipio}", response_model=list[GeograficoList])
+
+@app.get("/api/parroquias/{codigo_estado}/{codigo_municipio}", response_model=list[GeograficoList])
 async def read_parroquias(codigo_estado: int, codigo_municipio: int, db: Session = Depends(get_db)):
-    parroquias = db.query(Geografico.codigo_parroquia, Geografico.parroquia).filter(Geografico.codigo_estado == codigo_estado, Geografico.codigo_municipio == codigo_municipio).distinct().all()
+    parroquias = db.query(Geografico.codigo_parroquia, Geografico.parroquia).filter(
+        Geografico.codigo_estado == codigo_estado,
+        Geografico.codigo_municipio == codigo_municipio
+    ).distinct().order_by(Geografico.parroquia.asc()).all()
     return [{"codigo_parroquia": parroquia[0], "parroquia": parroquia[1], "codigo_estado": codigo_estado, "codigo_municipio": codigo_municipio, "estado": None, "municipio": None, "id": i} for i, parroquia in enumerate(parroquias)]
 
-@app.get("/centros_votacion/{codigo_estado}/{codigo_municipio}/{codigo_parroquia}", response_model=List[CentroVotacionList])
-async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codigo_parroquia: int, db: Session = Depends(get_db)):
+
+@app.get("/api/centros_votacion/{codigo_estado}/{codigo_municipio}/{codigo_parroquia}", response_model=List[CentroVotacionList])
+async def read_centros_votacion_by_ubicacion(codigo_estado: int, codigo_municipio: int, codigo_parroquia: int, db: Session = Depends(get_db)):
     centros = db.query(CentroVotacion).filter(
         CentroVotacion.codigo_estado == codigo_estado,
         CentroVotacion.codigo_municipio == codigo_municipio,
         CentroVotacion.codigo_parroquia == codigo_parroquia
-    ).distinct().all()
+    ).distinct(
+        CentroVotacion.codificacion_nueva_cv
+    ).order_by(
+        CentroVotacion.codificacion_nueva_cv,
+        CentroVotacion.nombre_cv
+    ).all()
     
     return [
         CentroVotacionList(
@@ -1815,13 +2050,13 @@ async def read_centros_votacion(codigo_estado: int, codigo_municipio: int, codig
         )
         for centro in centros
     ]
-    
-    
+
 
 
 class LineaTelefonicaResponse(BaseModel):
     total: int
     items: List[LineaTelefonicaList]
+
 
 @app.get("/api/lineas_telefonicas/", response_model=LineaTelefonicaResponse)
 async def read_lineas_telefonicas(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -1837,6 +2072,7 @@ async def read_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(
         raise HTTPException(status_code=404, detail="LineaTelefonica not found")
     return linea_telefonica
 
+
 @app.post("/api/lineas_telefonicas/", response_model=LineaTelefonicaList)
 async def create_linea_telefonica(linea_telefonica: LineaTelefonicaCreate, db: Session = Depends(get_db)):
     db_linea_telefonica = LineaTelefonica(**linea_telefonica.dict())
@@ -1844,6 +2080,7 @@ async def create_linea_telefonica(linea_telefonica: LineaTelefonicaCreate, db: S
     db.commit()
     db.refresh(db_linea_telefonica)
     return db_linea_telefonica
+
 
 @app.patch("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def update_linea_telefonica(linea_telefonica_id: int, linea_telefonica: LineaTelefonicaUpdate, db: Session = Depends(get_db)):
@@ -1856,6 +2093,7 @@ async def update_linea_telefonica(linea_telefonica_id: int, linea_telefonica: Li
     db.refresh(db_linea_telefonica)
     return db_linea_telefonica
 
+
 @app.delete("/api/lineas_telefonicas/{linea_telefonica_id}", response_model=LineaTelefonicaList)
 async def delete_linea_telefonica(linea_telefonica_id: int, db: Session = Depends(get_db)):
     db_linea_telefonica = db.query(LineaTelefonica).filter(LineaTelefonica.id == linea_telefonica_id).first()
@@ -1866,13 +2104,13 @@ async def delete_linea_telefonica(linea_telefonica_id: int, db: Session = Depend
     return db_linea_telefonica
 
 
-
 class SorteoRequest(BaseModel):
     cantidad_ganadores: int
     estado: Optional[str]
     municipio: Optional[str]
 
-@app.post("/sorteo/ganadores", response_model=List[TicketList])
+
+@app.post("/api/sorteo/ganadores", response_model=List[TicketList])
 async def sorteo_ganadores(request: SorteoRequest, db: Session = Depends(get_db)):
     query = db.query(Ticket).filter(Ticket.validado == True, Ticket.ganador == False)
     
@@ -1883,7 +2121,6 @@ async def sorteo_ganadores(request: SorteoRequest, db: Session = Depends(get_db)
         query = query.filter(Ticket.municipio == request.municipio)
     
     tickets_validos = query.all()
-    
     if len(tickets_validos) < request.cantidad_ganadores:
         return JSONResponse(
             status_code=400,
@@ -1891,7 +2128,6 @@ async def sorteo_ganadores(request: SorteoRequest, db: Session = Depends(get_db)
         )
 
     ganadores = random.sample(tickets_validos, request.cantidad_ganadores)
-
     for ganador in ganadores:
         ganador.ganador = True
         db.commit()
@@ -1899,7 +2135,8 @@ async def sorteo_ganadores(request: SorteoRequest, db: Session = Depends(get_db)
     
     return ganadores
 
-@app.post("/sorteo/quitar_ganadores")
+
+@app.post("/api/sorteo/quitar_ganadores")
 async def quitar_ganadores(db: Session = Depends(get_db)):
     tickets_ganadores = db.query(Ticket).filter(Ticket.ganador == True).all()
     for ticket in tickets_ganadores:
@@ -1908,9 +2145,11 @@ async def quitar_ganadores(db: Session = Depends(get_db)):
         db.refresh(ticket)
     return {"message": "Marca de ganadores eliminada de todos los tickets"}
 
+
 app.include_router(router)
 
-@app.get("/download/excel/electores/info")
+
+@app.get("/api/download/excel/electores/info")
 async def get_electores_download_info(
     codigo_estado: Optional[str] = Query(None),
     codigo_municipio: Optional[str] = Query(None),
@@ -1941,7 +2180,8 @@ async def get_electores_download_info(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/download/excel/electores/batch/{batch_number}")
+
+@app.get("/api/download/excel/electores/batch/{batch_number}")
 async def download_excel_electores_batch(
     batch_number: int,
     codigo_estado: Optional[str] = Query(None),
@@ -1959,7 +2199,9 @@ async def download_excel_electores_batch(
 
         if codigo_estado:
             query = query.filter(Elector.codigo_estado == codigo_estado)
-            estado = db.query(Geografico.estado).filter(Geografico.codigo_estado == codigo_estado).first()
+            estado = db.query(Geografico.estado).filter(
+                Geografico.codigo_estado == codigo_estado
+            ).first()
             if estado:
                 nombre_estado = estado[0]
 
@@ -1993,29 +2235,27 @@ async def download_excel_electores_batch(
         batch_size = 100000
         offset = (batch_number - 1) * batch_size
 
-        # Obtener el lote actual de registros
         batch_electores = query.offset(offset).limit(batch_size).all()
-        
         if not batch_electores:
             raise HTTPException(status_code=404, detail="No hay más registros")
 
         data = [to_dict(elector) for elector in batch_electores]
         df = pd.DataFrame(data)
 
-        # Crear archivo Excel para este lote
         excel_buffer = BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Electores', index=False)
             worksheet = writer.sheets['Electores']
-            
+
             for idx, col in enumerate(df.columns):
                 max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
                 worksheet.set_column(idx, idx, max_length + 2)
 
         excel_buffer.seek(0)
-        
-        # Comprimir el archivo
-        filename = f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}_parte_{batch_number}.xlsx"
+
+        filename = (
+            f"electores_{nombre_estado}_{nombre_municipio}_{nombre_parroquia}_{nombre_centro}_parte_{batch_number}.xlsx"
+        )
         zip_buffer = compress_file(excel_buffer, filename)
 
         return StreamingResponse(
@@ -2032,18 +2272,18 @@ async def download_excel_electores_batch(
         print(f"Error generando Excel batch {batch_number}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error generando Excel batch {batch_number}: {str(e)}")
 
-@app.get("/download/excel/electores/progress")
+
+@app.get("/api/download/excel/electores/progress")
 async def get_download_progress(request: Request):
     async def event_generator():
         try:
             progress_key = request.headers.get("X-Progress-Key", "default")
             progress = 0
             while progress < 100:
-                # Aquí podrías obtener el progreso real desde Redis o algún otro almacenamiento
                 progress = await redis.get(f"download_progress:{progress_key}") or 0
                 if isinstance(progress, str):
                     progress = float(progress)
-                
+
                 yield {
                     "event": "progress",
                     "data": json.dumps({"progress": progress})
@@ -2057,14 +2297,363 @@ async def get_download_progress(request: Request):
 
     return EventSourceResponse(event_generator())
 
+
+@app.get("/api/download/excel/electores-por-centros/{codigo_estado}")
+async def download_excel_electores_por_centros(
+    codigo_estado: str,
+    download_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        download_info_str = await redis.get(f"download:electores_centros:{download_id}")
+        if not download_info_str:
+            raise HTTPException(status_code=404, detail="Información de descarga no encontrada")
+
+        download_info = json.loads(download_info_str)
+        estado = db.query(Geografico.estado).filter(
+            Geografico.codigo_estado == codigo_estado
+        ).first()
+        if not estado:
+            raise HTTPException(status_code=404, detail="Estado no encontrado")
+        nombre_estado = estado[0]
+
+        centros = (
+            db.query(CentroVotacion)
+            .filter(CentroVotacion.codigo_estado == codigo_estado)
+            .all()
+        )
+        if not centros:
+            raise HTTPException(
+                status_code=404,
+                detail="No se encontraron centros de votación para este estado"
+            )
+
+        # Se asumiría que hay alguna variable batch_size previamente establecida
+        # (No está en el contexto completo, se podría setear en 100,000 si se desea)
+        batch_size = 100000
+        total_centros = len(centros)
+        num_batches = (total_centros + batch_size - 1) // batch_size
+
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
+            for batch_num in range(num_batches):
+                start_idx = batch_num * batch_size
+                end_idx = min(start_idx + batch_size, total_centros)
+                centros_batch = centros[start_idx:end_idx]
+
+                excel_buffer = BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                    workbook = writer.book
+                    header_format = workbook.add_format({
+                        'bold': True,
+                        'bg_color': '#D3D3D3',
+                        'border': 1
+                    })
+
+                    for centro in centros_batch:
+                        electores = (
+                            db.query(Elector)
+                            .filter(
+                                Elector.codigo_estado == codigo_estado,
+                                Elector.codigo_centro_votacion == centro.codificacion_nueva_cv
+                            )
+                            .all()
+                        )
+                        if electores:
+                            data = [{
+                                'Cédula': f"{elector.letra_cedula}-{elector.numero_cedula}",
+                                'Primer Nombre': elector.p_nombre,
+                                'Segundo Nombre': elector.s_nombre,
+                                'Primer Apellido': elector.p_apellido,
+                                'Segundo Apellido': elector.s_apellido,
+                                'Fecha Nacimiento': elector.fecha_nacimiento,
+                                'Sexo': elector.sexo
+                            } for elector in electores]
+
+                            df = pd.DataFrame(data)
+                            sheet_name = f"Centro_{centro.codificacion_nueva_cv}"[:31]
+                            df.to_excel(writer, sheet_name=sheet_name, startrow=4, index=False)
+                            worksheet = writer.sheets[sheet_name]
+
+                            worksheet.write(0, 0, f"Centro de Votación: {centro.nombre_cv}", header_format)
+                            worksheet.write(1, 0, f"Dirección: {centro.direccion_cv}", header_format)
+                            worksheet.write(2, 0, f"Código: {centro.codificacion_nueva_cv}", header_format)
+
+                            for idx, col in enumerate(df.columns):
+                                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                                worksheet.set_column(idx, idx, max_length + 2)
+
+                excel_buffer.seek(0)
+                batch_filename = f"electores_por_centros_{nombre_estado}_parte_{batch_num + 1}.xlsx"
+                zip_file.writestr(batch_filename, excel_buffer.getvalue())
+
+        zip_buffer.seek(0)
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="electores_por_centros_{nombre_estado}_completo.zip"'
+            }
+        )
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"Error generando Excel de electores por centros: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generando Excel de electores por centros: {str(e)}"
+        )
+
+
+@app.get("/api/download/excel/electores-por-centros/info/{codigo_estado}")
+async def get_electores_por_centros_info(
+    codigo_estado: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Primero verificamos que el estado exista
+        estado = db.query(Geografico.estado).filter(
+            Geografico.codigo_estado == int(codigo_estado)
+        ).first()
+
+        if not estado:
+            return {
+                "centros": [],
+                "total_centros": 0,
+                "total_electores": 0
+            }
+
+        # Consulta para obtener los centros y su conteo de electores
+        centros = db.query(
+            CentroVotacion.codificacion_nueva_cv.label('codigo'),
+            CentroVotacion.nombre_cv.label('nombre'),
+            func.count(distinct(Elector.id)).label('total_electores')
+        ).outerjoin(
+            Elector,
+            CentroVotacion.codificacion_nueva_cv == Elector.codigo_centro_votacion
+        ).filter(
+            CentroVotacion.codigo_estado == int(codigo_estado)
+        ).group_by(
+            CentroVotacion.codificacion_nueva_cv,
+            CentroVotacion.nombre_cv
+        ).all()
+
+        if not centros:
+            return {
+                "centros": [],
+                "total_centros": 0,
+                "total_electores": 0
+            }
+
+        centros_info = []
+        total_electores = 0
+
+        for centro in centros:
+            num_electores = centro.total_electores or 0
+            num_particiones = max(1, math.ceil(num_electores / 100000))
+            centros_info.append({
+                "codigo": str(centro.codigo),
+                "nombre": centro.nombre,
+                "total_electores": num_electores,
+                "num_particiones": num_particiones
+            })
+            total_electores += num_electores
+
+        return {
+            "centros": centros_info,
+            "total_centros": len(centros_info),
+            "total_electores": total_electores
+        }
+
+    except ValueError as ve:
+        print(f"Error de valor en get_electores_por_centros_info: {str(ve)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Código de estado inválido: {codigo_estado}"
+        )
+    except Exception as e:
+        print(f"Error al obtener información de centros: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al obtener información de centros: {str(e)}"
+        )
+
+
+@app.get("/api/download/excel/electores-por-centros/progress/{download_id}")
+async def get_download_progress(download_id: str):
+    try:
+        progress_data = await redis.get(f"download:{download_id}")
+        if not progress_data:
+            return {
+                "estado": "not_found",
+                "progreso": 0,
+                "total_centros": 0,
+                "centros_procesados": 0,
+                "total_electores": 0,
+                "electores_procesados": 0
+            }
+
+        progress_info = json.loads(progress_data)
+        return {
+            "estado": progress_info.get("estado", "pending"),
+            "progreso": progress_info.get("progreso", 0),
+            "total_centros": progress_info.get("total_centros", 0),
+            "centros_procesados": progress_info.get("centros_procesados", 0),
+            "total_electores": progress_info.get("total_electores", 0),
+            "electores_procesados": progress_info.get("electores_procesados", 0)
+        }
+    except Exception as e:
+        print(f"Error al obtener progreso de descarga: {str(e)}")
+        return {
+            "estado": "error",
+            "progreso": 0,
+            "mensaje": str(e),
+            "total_centros": 0,
+            "centros_procesados": 0,
+            "total_electores": 0,
+            "electores_procesados": 0
+        }
+
+
+@app.get("/api/download/excel/electores-por-centros/{codigo_estado}/{codigo_centro}")
+async def download_excel_electores_por_centro(
+    codigo_estado: str,
+    codigo_centro: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Obtener información del centro
+        centro = db.query(CentroVotacion).filter(
+            CentroVotacion.codigo_estado == int(codigo_estado),
+            CentroVotacion.codificacion_nueva_cv == codigo_centro
+        ).first()
+
+        if not centro:
+            raise HTTPException(status_code=404, detail="Centro no encontrado")
+
+        # Obtener información geográfica completa
+        geo_info = db.query(Geografico).filter(
+            Geografico.codigo_estado == int(codigo_estado),
+            Geografico.codigo_municipio == centro.codigo_municipio,
+            Geografico.codigo_parroquia == centro.codigo_parroquia
+        ).first()
+
+        if not geo_info:
+            raise HTTPException(status_code=404, detail="Información geográfica no encontrada")
+
+        # Obtener los electores del centro, ordenados por letra (V antes que E) y número de cédula
+        electores = (
+            db.query(Elector)
+            .filter(Elector.codigo_centro_votacion == codigo_centro)
+            .order_by(
+                # Ordenar primero por letra de cédula (V antes que E)
+                case(
+                    (Elector.letra_cedula == 'V', 0),
+                    (Elector.letra_cedula == 'E', 1),
+                    else_=2
+                ),
+                # Luego ordenar por número de cédula
+                Elector.numero_cedula.asc()
+            )
+            .all()
+        )
+
+        if not electores:
+            # Si no hay electores, crear un DataFrame vacío con las columnas necesarias
+            df = pd.DataFrame(columns=[
+                'Cédula', 'Primer Nombre', 'Segundo Nombre',
+                'Primer Apellido', 'Segundo Apellido',
+                'Fecha Nacimiento', 'Sexo'
+            ])
+        else:
+            # Crear DataFrame con los electores
+            data = [{
+                'Cédula': f"{elector.letra_cedula}-{elector.numero_cedula}",
+                'Primer Nombre': elector.p_nombre,
+                'Segundo Nombre': elector.s_nombre,
+                'Primer Apellido': elector.p_apellido,
+                'Segundo Apellido': elector.s_apellido,
+                'Fecha Nacimiento': elector.fecha_nacimiento,
+                'Sexo': elector.sexo
+            } for elector in electores]
+            df = pd.DataFrame(data)
+
+        # Crear el archivo Excel
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+            workbook = writer.book
+            header_format = workbook.add_format({
+                'bold': True,
+                'bg_color': '#D3D3D3',
+                'border': 1
+            })
+
+            # Escribir la información del centro
+            worksheet = workbook.add_worksheet(f"Centro_{codigo_centro}"[:31])
+            worksheet.write(0, 0, f"Estado: {geo_info.estado}", header_format)
+            worksheet.write(1, 0, f"Municipio: {geo_info.municipio}", header_format)
+            worksheet.write(2, 0, f"Parroquia: {geo_info.parroquia}", header_format)
+            worksheet.write(3, 0, f"Centro de Votación: {centro.nombre_cv}", header_format)
+            worksheet.write(4, 0, f"Dirección: {centro.direccion_cv}", header_format)
+            worksheet.write(5, 0, f"Código: {centro.codificacion_nueva_cv}", header_format)
+
+            # Escribir los datos de electores
+            df.to_excel(writer, sheet_name=f"Centro_{codigo_centro}"[:31], startrow=7, index=False)
+
+            # Ajustar el ancho de las columnas
+            for idx, col in enumerate(df.columns):
+                max_length = max(df[col].astype(str).apply(len).max(), len(str(col)))
+                worksheet.set_column(idx, idx, max_length + 2)
+
+        excel_buffer.seek(0)
+        filename = f"electores_{geo_info.estado}_centro_{codigo_centro}.xlsx"
+
+        # Comprimir el archivo Excel
+        zip_buffer = compress_file(excel_buffer, filename)
+
+        return StreamingResponse(
+            zip_buffer,
+            media_type='application/zip',
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}.zip"'
+            }
+        )
+
+    except ValueError as ve:
+        print(f"Error de valor en download_excel_electores_por_centro: {str(ve)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error de valor: {str(ve)}"
+        )
+    except Exception as e:
+        print(f"Error generando Excel de electores por centro: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generando Excel de electores por centro: {str(e)}"
+        )
+
+
+@app.get("/api/centros_votacion/", response_model=list[CentroVotacionList])
+async def read_all_centros_votacion(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    centros = db.query(CentroVotacion).distinct(
+        CentroVotacion.codificacion_nueva_cv
+    ).order_by(
+        CentroVotacion.codificacion_nueva_cv,
+        CentroVotacion.nombre_cv
+    ).offset(skip).limit(limit).all()
+    return [to_dict(centro) for centro in centros]
+
+
+
+
 if __name__ == "__main__":
+    import platform
     import uvicorn
-    # import threading
-
-    # def start_bot():
-    #     bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
-    #     bot.run_forever()
-
+    
+    if platform.system() != "Windows":
+        # En sistemas Unix/Linux, usar uvloop
+        import uvloop
+        uvloop.install()
+        
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    # bot_thread = threading.Thread(target=start_bot)
-    # bot_thread.start()

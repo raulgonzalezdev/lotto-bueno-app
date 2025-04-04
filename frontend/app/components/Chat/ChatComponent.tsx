@@ -57,50 +57,107 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [currentBatch, setCurrentBatch] = useState(0);
 
   useEffect(() => {
+    if (APIHost) {
     fetchEstados();
     fetchElectores();
     fetchTotalElectores();
-  }, [codigoEstado, codigoMunicipio, codigoParroquia, codigoCentroVotacion, currentElectorPage]);
+    }
+  }, [APIHost]);
+
+  useEffect(() => {
+    if (APIHost && codigoEstado) {
+      fetchMunicipios(codigoEstado);
+    }
+  }, [APIHost, codigoEstado]);
+
+  useEffect(() => {
+    if (APIHost && codigoEstado && codigoMunicipio) {
+      fetchParroquias(codigoEstado, codigoMunicipio);
+    }
+  }, [APIHost, codigoEstado, codigoMunicipio]);
+
+  useEffect(() => {
+    if (APIHost && codigoEstado && codigoMunicipio && codigoParroquia) {
+      fetchCentrosVotacion(codigoEstado, codigoMunicipio, codigoParroquia);
+    }
+  }, [APIHost, codigoEstado, codigoMunicipio, codigoParroquia]);
+
+  useEffect(() => {
+    if (APIHost) {
+      fetchElectores();
+      fetchTotalElectores();
+    }
+  }, [APIHost, codigoEstado, codigoMunicipio, codigoParroquia, codigoCentroVotacion, currentElectorPage]);
 
   const fetchEstados = async () => {
+    if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/estados`);
-      const data: Estado[] = await response.json();
-      const uniqueEstados = Array.from(new Set(data.map((item: Estado) => item.estado)))
-        .map(estado => data.find((item: Estado) => item.estado === estado));
-      setEstados(uniqueEstados as Estado[]);
+      const response = await fetch(`${APIHost}/api/estados`);
+      if (!response.ok) {
+        throw new Error('Error fetching estados');
+      }
+      const data = await response.json();
+      const estadosOrdenados = data.sort((a: Estado, b: Estado) => 
+        a.estado.localeCompare(b.estado, 'es', { sensitivity: 'base' })
+      );
+      setEstados(estadosOrdenados);
     } catch (error) {
       console.error("Error fetching estados:", error);
+      setEstados([]);
     }
   };
 
   const fetchMunicipios = async (codigoEstado: string) => {
+    if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/municipios/${codigoEstado}`);
-      const data: Municipio[] = await response.json();
-      setMunicipios(data);
+      const response = await fetch(`${APIHost}/api/municipios/${codigoEstado}`);
+      if (!response.ok) {
+        throw new Error('Error fetching municipios');
+      }
+      const data = await response.json();
+      const municipiosOrdenados = data.sort((a: Municipio, b: Municipio) => 
+        a.municipio.localeCompare(b.municipio, 'es', { sensitivity: 'base' })
+      );
+      setMunicipios(municipiosOrdenados);
     } catch (error) {
       console.error("Error fetching municipios:", error);
+      setMunicipios([]);
     }
   };
 
   const fetchParroquias = async (codigoEstado: string, codigoMunicipio: string) => {
+    if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/parroquias/${codigoEstado}/${codigoMunicipio}`);
-      const data: Parroquia[] = await response.json();
-      setParroquias(data);
+      const response = await fetch(`${APIHost}/api/parroquias/${codigoEstado}/${codigoMunicipio}`);
+      if (!response.ok) {
+        throw new Error('Error fetching parroquias');
+      }
+      const data = await response.json();
+      const parroquiasOrdenadas = data.sort((a: Parroquia, b: Parroquia) => 
+        a.parroquia.localeCompare(b.parroquia, 'es', { sensitivity: 'base' })
+      );
+      setParroquias(parroquiasOrdenadas);
     } catch (error) {
       console.error("Error fetching parroquias:", error);
+      setParroquias([]);
     }
   };
 
   const fetchCentrosVotacion = async (codigoEstado: string, codigoMunicipio: string, codigoParroquia: string) => {
+    if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
-      const data: CentroVotacion[] = await response.json();
-      setCentrosVotacion(data);
+      const response = await fetch(`${APIHost}/api/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
+      if (!response.ok) {
+        throw new Error('Error fetching centros votacion');
+      }
+      const data = await response.json();
+      const centrosOrdenados = data.sort((a: CentroVotacion, b: CentroVotacion) => 
+        a.nombre_cv.localeCompare(b.nombre_cv, 'es', { sensitivity: 'base' })
+      );
+      setCentrosVotacion(centrosOrdenados);
     } catch (error) {
       console.error("Error fetching centros votacion:", error);
+      setCentrosVotacion([]);
     }
   };
 
@@ -115,7 +172,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      const response = await fetch(`${APIHost}/electores/?${query}`);
+      const response = await fetch(`${APIHost}/api/electores/?${query}`);
       const data: Elector[] = await response.json();
       setElectores(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -145,7 +202,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const fetchElectorDetail = async (numero_cedula: string) => {
     if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/electores/cedula/${numero_cedula}`);
+      const response = await fetch(`${APIHost}/api/electores/cedula/${numero_cedula}`);
       const data: Elector = await response.json();
       setSelectedElector(data);
     } catch (error) {
@@ -155,16 +212,13 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
   const handleEstadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setCodigoEstado(value);
+    setCodigoEstado(value === "Seleccione un estado" ? "" : value);
     setCodigoMunicipio("");
     setCodigoParroquia("");
     setCodigoCentroVotacion("");
     setMunicipios([]);
     setParroquias([]);
     setCentrosVotacion([]);
-    if (value) {
-      fetchMunicipios(value);
-    }
   };
 
   const handleMunicipioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -174,9 +228,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setCodigoCentroVotacion("");
     setParroquias([]);
     setCentrosVotacion([]);
-    if (value) {
-      fetchParroquias(codigoEstado, value);
-    }
   };
 
   const handleParroquiaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -184,9 +235,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setCodigoParroquia(value);
     setCodigoCentroVotacion("");
     setCentrosVotacion([]);
-    if (value) {
-      fetchCentrosVotacion(codigoEstado, codigoMunicipio, value);
-    }
   };
 
   const handleCentroVotacionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -200,7 +248,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const handleCedulaSearch = async () => {
     if (cedulaSearch) {
       try {
-        const response = await fetch(`${APIHost}/electores/cedula/${cedulaSearch}`);
+        const response = await fetch(`${APIHost}/api/electores/cedula/${cedulaSearch}`);
         if (response.status === 404) {
           setSearchError("Cédula no encontrada");
           setSelectedElector(null);
@@ -265,7 +313,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       if (codigoParroquia && codigoParroquia !== "") query.append('codigo_parroquia', codigoParroquia);
       if (codigoCentroVotacion && codigoCentroVotacion !== "") query.append('codigo_centro_votacion', codigoCentroVotacion);
 
-      const infoResponse = await fetch(`${APIHost}/download/excel/electores/info?${query}`);
+      const infoResponse = await fetch(`${APIHost}/download/excel/api/electores/info?${query}`);
       const info = await infoResponse.json();
       setTotalBatches(info.num_batches);
 
@@ -273,7 +321,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         setCurrentBatch(batchNumber);
         setDownloadProgress((batchNumber - 1) / info.num_batches * 100);
 
-        const url = `${APIHost}/download/excel/electores/batch/${batchNumber}?${query}`;
+        const url = `${APIHost}/download/excel/api/electores/batch/${batchNumber}?${query}`;
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -341,13 +389,87 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   };
 
+  const downloadElectoresPorCentros = async () => {
+    if (!codigoEstado) {
+      alert('Por favor, seleccione un estado primero');
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      setDownloadProgress(0);
+
+      // Obtener información sobre la descarga
+      const infoResponse = await fetch(`${APIHost}/download/excel/api/electores-por-centros/info/${codigoEstado}`);
+      if (!infoResponse.ok) {
+        throw new Error(`Error al obtener información de la descarga: ${infoResponse.statusText}`);
+      }
+      
+      const info = await infoResponse.json();
+      
+      if (!info.centros || !Array.isArray(info.centros)) {
+        throw new Error('Formato de respuesta inválido: no se encontraron centros');
+      }
+
+      let centrosProcesados = 0;
+      const totalCentros = info.centros.length;
+
+      // Procesar cada centro
+      for (const centro of info.centros) {
+        try {
+          const response = await fetch(
+            `${APIHost}/download/excel/api/electores-por-centros/${codigoEstado}/${centro.codigo}`
+          );
+
+          if (!response.ok) {
+            console.error(`Error al descargar centro ${centro.codigo}: ${response.statusText}`);
+            continue;
+          }
+
+          const blob = await response.blob();
+          const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
+                        `centro_${centro.codigo}.xlsx.zip`;
+
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+
+          centrosProcesados++;
+          const progreso = (centrosProcesados / totalCentros) * 100;
+          setDownloadProgress(progreso);
+
+          // Pequeña pausa entre descargas
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error(`Error descargando centro ${centro.codigo}:`, error);
+        }
+      }
+
+      setDownloadProgress(100);
+    } catch (error) {
+      console.error('Error en la descarga:', error);
+      alert('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="p-4">
       <h2>Control de Electores</h2>
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div>
           <label>Estado:</label>
-          <select onChange={handleEstadoChange} className="input input-bordered w-full" value={codigoEstado}>
+          <select 
+            onChange={handleEstadoChange} 
+            className="input input-bordered w-full" 
+            value={codigoEstado || ""}
+          >
             <option value="">Seleccione un estado</option>
             {estados.map(estado => (
               <option key={estado.codigo_estado} value={estado.codigo_estado}>
@@ -435,9 +557,25 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         <button 
           onClick={downloadCentrosPorEstado} 
           className="btn btn-primary"
-          disabled={isDownloading || !codigoEstado}
+          disabled={!codigoEstado || isDownloading}
         >
           {isDownloading ? 'Descargando...' : 'Descargar Centros del Estado'}
+        </button>
+        <button
+          onClick={downloadElectoresPorCentros}
+          disabled={!codigoEstado || isDownloading}
+          className={`flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+            !codigoEstado || isDownloading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
+        >
+          {isDownloading ? (
+            <>
+              <span className="mr-2">Descargando... {downloadProgress.toFixed(1)}%</span>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </>
+          ) : (
+            'Descargar Electores por Centros'
+          )}
         </button>
       </div>
       <div className="pagination mb-4 flex justify-center">

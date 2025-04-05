@@ -40,7 +40,18 @@ const SorteoControl: React.FC = () => {
   const quitarGanadoresMutation = useQuitarGanadores();
 
   useEffect(() => {
-    fetchHost();
+    // Usar directamente detectHost en lugar de la función fetchHost
+    const initHost = async () => {
+      try {
+        const host = await detectHost();
+        setAPIHost(host);
+      } catch (error) {
+        console.error("Error detecting host:", error);
+        setAPIHost(process.env.NEXT_PUBLIC_API_URL || 'https://applottobueno.com');
+      }
+    };
+    
+    initHost();
   }, []);
 
   useEffect(() => {
@@ -48,16 +59,6 @@ const SorteoControl: React.FC = () => {
       setMunicipioDescripcion("");
     }
   }, [municipioSelected]);
-
-  const fetchHost = async () => {
-    try {
-      const host = await detectHost();
-      setAPIHost(host);
-    } catch (error) {
-      console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'https://applottobueno.com');
-    }
-  };
 
   const handleSorteo = async () => {
     try {

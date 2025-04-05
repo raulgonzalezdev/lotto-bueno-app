@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   "output": "standalone",
   env: {
-    HOST: process.env.HOST
+    HOST: process.env.NEXT_PUBLIC_API_URL
   },
   typescript: {
     ignoreBuildErrors: true

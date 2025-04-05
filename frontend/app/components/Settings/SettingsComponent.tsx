@@ -63,7 +63,7 @@ const SettingsComponent: React.FC<SettingsComponentProps> = ({
       setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'https://applottobueno.com');
+      setAPIHost(process.env.NEXT_PUBLIC_API_URL || 'https://applottobueno.com');
     }
   };
 

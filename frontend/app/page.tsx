@@ -85,15 +85,11 @@ const Home = () => {
     setCurrentPage("WELCOME");
   };
 
-  const handleAdminChange = (value: string | boolean): void => {
-    if (typeof value === "string" && value === "1234") {
+  const handleAdminLogin = (isAdminSuccess: boolean) => {
+    if (isAdminSuccess) {
       setIsAdmin(true);
       setCurrentPage("ELECTORES");
-    } else if (typeof value === "boolean") {
-      setIsAdmin(value);
-      if (value) {
-        setCurrentPage("ELECTORES");
-      }
+      console.log("Login successful, setting isAdmin=true, currentPage=ELECTORES");
     }
   };
 
@@ -141,18 +137,41 @@ const Home = () => {
     );
   }
 
+  // Si llegamos aquí, settingsData está cargado
+  const currentCustomizationSettings = settingsData[settingTemplate]?.Customization?.settings;
+  const currentChatSettings = settingsData[settingTemplate]?.Chat?.settings;
+
+  // Log de props antes del return principal
+  console.log('[Home Component Render]', {
+    isAdmin,
+    currentPage,
+    settingTemplate,
+    settingsDataLoaded: !!settingsData,
+    currentCustomizationSettingsExists: !!currentCustomizationSettings,
+    currentChatSettingsExists: !!currentChatSettings
+  });
+  if (isAdmin) {
+      console.log('Admin view props:', {
+          APIHost: process.env.NEXT_PUBLIC_API_URL,
+          production,
+          navbarTitle: currentCustomizationSettings?.title?.text,
+          navbarSubtitle: currentCustomizationSettings?.subtitle?.text,
+          navbarImageSrc: currentCustomizationSettings?.image?.src || '/lotto.avif',
+          chatSettingConfig: settingsData ? settingsData[settingTemplate] : null,
+          chatImageSrc: currentCustomizationSettings?.image?.src || '/lotto.avif'
+      });
+  }
+
   return (
-    <div onClick={handleOutsideClick}>
+    <div>
       <main
         className={
           isAdmin
             ? `min-h-screen p-5 bg-bg-verba text-text-verba ${fontClassName}`
-            : `fixed inset-0 overflow-y-auto bg-white bg-opacity-75 ${fontClassName}`
+            : `welcome-page ${fontClassName}`
         }
         data-theme={
-          baseSetting && settingTemplate
-            ? baseSetting[settingTemplate]?.Customization?.settings?.theme
-            : "light"
+          currentCustomizationSettings?.theme || "light"
         }
       >
         {gtag !== "" && <GoogleAnalytics gaId={gtag} />}
@@ -160,9 +179,9 @@ const Home = () => {
         <div>
           {!isAdmin && currentPage === "WELCOME" && (
             <WelcomeComponent 
-              title="Completa tu registro y gana fabulosos premios" 
-              subtitle="En tan solo 3 simples pasos podrás convertirte en el ganador o ganadora de #LottoBueno"
-              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
+              title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || "Bienvenido"}
+              subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || "Registrate para participar"}
+              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || '/lotto.avif'}
               setCurrentPage={setCurrentPage}
             />
           )}
@@ -171,21 +190,21 @@ const Home = () => {
             <RegisterWindow 
               title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Registro'}
               subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Completa tus datos'}
-              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
+              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || '/lotto.avif'}
               setCurrentPage={setCurrentPage}
-              onAdminLogin={handleAdminChange}
+              onAdminLogin={handleAdminLogin}
             />
           )}
 
-          {isAdmin && baseSetting && (
+          {isAdmin && (
             <>
               <div className="flex justify-between items-center mb-4">
                 <Navbar
                   APIHost={process.env.NEXT_PUBLIC_API_URL || null}
                   production={production}
-                  title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Admin'}
-                  subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Panel'}
-                  imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
+                  title={currentCustomizationSettings?.title?.text || 'Admin'}
+                  subtitle={currentCustomizationSettings?.subtitle?.text || 'Panel'}
+                  imageSrc={currentCustomizationSettings?.image?.src || '/lotto.avif'}
                   version="v1.0.1"
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
@@ -199,20 +218,26 @@ const Home = () => {
               </div>
 
               {currentPage === "ELECTORES" && (
-                <ChatComponent
-                  production={production}
-                  settingConfig={baseSetting?.[settingTemplate]}
-                  APIHost={process.env.NEXT_PUBLIC_API_URL || null}
-                  RAGConfig={RAGConfig}
-                  isAdmin={isAdmin}
-                  title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Chat'}
-                  subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Consulta'}
-                  imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
-                />
+                <>
+                  {settingsData && settingsData[settingTemplate] ? (
+                    <ChatComponent
+                      production={production}
+                      settingConfig={settingsData[settingTemplate]}
+                      APIHost={process.env.NEXT_PUBLIC_API_URL || null}
+                      RAGConfig={RAGConfig}
+                      isAdmin={isAdmin}
+                      title={currentCustomizationSettings?.title?.text || 'Chat'}
+                      subtitle={currentCustomizationSettings?.subtitle?.text || 'Consulta'}
+                      imageSrc={currentCustomizationSettings?.image?.src || '/lotto.avif'}
+                    />
+                  ) : (
+                    <p>Cargando datos de chat...</p>
+                  )}
+                </>
               )}
 
               {currentPage === "STATUS" && <SorteoControl />}
-              {currentPage === "SETTINGS" && !production && (
+              {currentPage === "SETTINGS" && !production && baseSetting && (
                 <SettingsComponent
                   settingTemplate={settingTemplate}
                   setSettingTemplate={setSettingTemplate}

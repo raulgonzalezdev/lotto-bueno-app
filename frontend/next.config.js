@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  "output": "export",
   env: {
     HOST: process.env.HOST
   },

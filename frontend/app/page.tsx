@@ -15,7 +15,7 @@ import SorteoControl from "./components/sorteo/SorteoControl";
 
 import { Settings } from "./components/Settings/types";
 import { RAGConfig } from "./components/RAG/types";
-// import { detectHost } from "./api"; // Comentado o eliminado
+
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { fonts, FontKey } from "./info";
 import PulseLoader from "react-spinners/PulseLoader";
@@ -31,11 +31,11 @@ const Home = () => {
   const [settingTemplate, setSettingTemplate] = useState<string>("Default");
   const [baseSetting, setBaseSetting] = useState<Settings | null>(null);
   const [RAGConfig, setRAGConfig] = useState<RAGConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
   const fontKey = baseSetting ? (baseSetting[settingTemplate]?.Customization.settings.font.value as FontKey) : null;
   const fontClassName = fontKey ? fonts[fontKey]?.className || "" : "";
 
-  const [APIHost, setAPIHost] = useState<string | null>(null);
+  
 
   const { 
     data: settingsData,

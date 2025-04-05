@@ -14,13 +14,18 @@ const nextConfig = {
   jest: {
     enabled: false
   },
-  async rewrites() {
+  async headers() {
     return [
       {
-        source: '/api/:path*',
-        destination: 'https://applottobueno.com/api/:path*',
-      },
-    ];
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "upgrade-insecure-requests"
+          }
+        ]
+      }
+    ]
   }
 };
 

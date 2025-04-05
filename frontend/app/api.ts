@@ -8,15 +8,14 @@ export const detectHost = async (): Promise<string> => {
 
 // Funciones utilitarias
 const getBaseUrl = (): string => {
-  // Usar rutas relativas en el navegador para aprovechar los rewrites de Next.js
-  if (typeof window !== 'undefined') {
-    return '/'; // Ruta relativa local
-  }
-  
-  // En el servidor, necesitamos una URL completa
   let baseUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!baseUrl) {
-    baseUrl = 'https://applottobueno.com';
+    // Si no hay una URL definida, usar el host actual
+    if (typeof window !== 'undefined') {
+      baseUrl = window.location.origin;
+    } else {
+      baseUrl = 'https://applottobueno.com';
+    }
   }
   
   // Garantizar que siempre usamos HTTPS

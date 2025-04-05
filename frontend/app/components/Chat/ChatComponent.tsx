@@ -226,49 +226,31 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   // Añadir estas funciones de mutación después de los otros hooks pero antes de las funciones de descargas
   const downloadElectoresInfoMutation = useMutation({
     mutationFn: async (query: URLSearchParams) => {
-      return apiClient.get<{ num_batches: number }>(`api/download/excel/electores/info?${query}`);
+      return apiClient.get<{ num_batches: number }>(`/api/download/excel/electores/info?${query}`);
     }
   });
 
   const downloadElectoresBatchMutation = useMutation({
     mutationFn: async ({ batchNumber, query }: { batchNumber: number, query: URLSearchParams }) => {
-      const response = await fetch(`${APIHost}api/download/excel/electores/batch/${batchNumber}?${query}`);
-      if (!response.ok) {
-        throw new Error(`Error al descargar el lote ${batchNumber}: ${response.statusText}`);
-      }
-      return response;
+      return apiClient.get<Response>(`/api/download/excel/electores/batch/${batchNumber}?${query}`);
     }
   });
 
   const downloadCentrosPorEstadoMutation = useMutation({
     mutationFn: async (codigoEstado: string) => {
-      const response = await fetch(`${APIHost}api/download/excel/centros-por-estado/${codigoEstado}`);
-      if (!response.ok) {
-        throw new Error(`Error al descargar los centros: ${response.statusText}`);
-      }
-      return response;
+      return apiClient.get<Response>(`/api/download/excel/centros-por-estado/${codigoEstado}`);
     }
   });
 
   const downloadElectoresPorCentrosInfoMutation = useMutation({
     mutationFn: async (codigoEstado: string) => {
-      const response = await fetch(`${APIHost}api/download/excel/electores-por-centros/info/${codigoEstado}`);
-      if (!response.ok) {
-        throw new Error(`Error al obtener información de la descarga: ${response.statusText}`);
-      }
-      return response.json();
+      return apiClient.get<any>(`/api/download/excel/electores-por-centros/info/${codigoEstado}`);
     }
   });
 
   const downloadElectoresPorCentroMutation = useMutation({
     mutationFn: async ({ codigoEstado, codigoCentro }: { codigoEstado: string, codigoCentro: string }) => {
-      const response = await fetch(
-        `${APIHost}api/download/excel/electores-por-centros/${codigoEstado}/${codigoCentro}`
-      );
-      if (!response.ok) {
-        throw new Error(`Error al descargar centro ${codigoCentro}: ${response.statusText}`);
-      }
-      return response;
+      return apiClient.get<Response>(`/api/download/excel/electores-por-centros/${codigoEstado}/${codigoCentro}`);
     }
   });
 

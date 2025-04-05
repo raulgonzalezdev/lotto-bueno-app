@@ -142,7 +142,7 @@ const Home = () => {
   const currentChatSettings = settingsData[settingTemplate]?.Chat?.settings;
 
   // Log de props antes del return principal
-  console.log('[Home Component Render]', {
+ /* console.log('[Home Component Render]', {
     isAdmin,
     currentPage,
     settingTemplate,
@@ -160,7 +160,7 @@ const Home = () => {
           chatSettingConfig: settingsData ? settingsData[settingTemplate] : null,
           chatImageSrc: currentCustomizationSettings?.image?.src || '/lotto.avif'
       });
-  }
+  }*/
 
   return (
     <div>

@@ -57,12 +57,12 @@ services:
   frontend:
     build:
       context: .
+      dockerfile: Dockerfile
       target: frontend
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
     ports:
       - "3000:3000"
-    environment:
-      # Solo la URL base, las rutas completas se construirán en el frontend
-      NEXT_PUBLIC_API_URL: "https://applottobueno.com/"
     networks:
       - lotto-bueno-network
     depends_on:

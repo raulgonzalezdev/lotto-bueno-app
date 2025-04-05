@@ -35,6 +35,11 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # Etapa 3: Configuración de la aplicación frontend
 FROM node:18-alpine as frontend
 
+# Argumento de build para la URL de la API
+ARG NEXT_PUBLIC_API_URL
+# Establecer la variable de entorno DENTRO del build
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 WORKDIR /frontend
 
 # Copia los archivos de configuración del frontend y el código fuente

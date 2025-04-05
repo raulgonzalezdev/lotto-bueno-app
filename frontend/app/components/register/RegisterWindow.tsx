@@ -27,7 +27,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
   const [ticketMessage, setTicketMessage] = useState("");
   const [fullnumberMessage, setFullnumberMessage] = useState("");
-  const [APIHost, setAPIHost] = useState<string | null>(null);
+  const [APIHost, setAPIHost] = useState<string>('https://applottobueno.com');
   
 
   const companyPhoneContact = process.env.COMPANY_PHONE_CONTACT || '584262831867';
@@ -44,7 +44,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
 
   const fetchReferidos = async () => {
     try {
-      const response = await fetch(`${APIHost}/api/recolectores`);
+      const baseUrl = APIHost?.replace('http://', 'https://');
+      if (!baseUrl) {
+        throw new Error('No se ha configurado la URL base');
+      }
+      const response = await fetch(`${baseUrl}/api/recolectores`);
       const data = await response.json();
       setReferidos(data.items);
     } catch (error) {
@@ -55,10 +59,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const fetchHost = async () => {
     try {
       const host = await detectHost();
-      setAPIHost(host);
+      const secureHost = host?.replace('http://', 'https://');
+      setAPIHost(secureHost || 'https://applottobueno.com');
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'https://applottobueno.com');
+      setAPIHost('https://applottobueno.com');
     }
   };
 
@@ -113,7 +118,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     }
 
     try {
-      const response = await fetch(`${APIHost}/generate_tickets`, {
+      const baseUrl = APIHost?.replace('http://', 'https://');
+      if (!baseUrl) {
+        throw new Error('No se ha configurado la URL base');
+      }
+      const response = await fetch(`${baseUrl}/generate_tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

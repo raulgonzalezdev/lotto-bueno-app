@@ -38,7 +38,7 @@ const TicketControl: React.FC = () => {
   const [ticketsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [APIHost, setAPIHost] = useState<string | null>(null);
+  const [APIHost, setAPIHost] = useState<string>('https://applottobueno.com');
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
   const [estados, setEstados] = useState<Estado[]>([]);
   const [recolectores, setRecolectores] = useState<Recolector[]>([]);
@@ -70,7 +70,9 @@ const TicketControl: React.FC = () => {
   const fetchEstados = async () => {
     if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/api/estados`);
+      // Asegurar que la URL use HTTPS
+      const baseUrl = APIHost.replace('http://', 'https://');
+      const response = await fetch(`${baseUrl}/api/estados`);
       if (!response.ok) {
         throw new Error('Error fetching estados');
       }
@@ -80,11 +82,13 @@ const TicketControl: React.FC = () => {
       console.error("Error fetching estados:", error);
     }
   };
-
+  
   const fetchRecolectores = async () => {
     if (!APIHost) return;
     try {
-      const response = await fetch(`${APIHost}/api/recolectores`);
+      // Asegurar que la URL use HTTPS
+      const baseUrl = APIHost.replace('http://', 'https://');
+      const response = await fetch(`${baseUrl}/api/recolectores`);
       if (!response.ok) {
         throw new Error('Error fetching recolectores');
       }
@@ -94,7 +98,7 @@ const TicketControl: React.FC = () => {
       console.error("Error fetching recolectores:", error);
     }
   };
-
+  
   const fetchTickets = async () => {
     const query = new URLSearchParams({
       skip: ((currentPage - 1) * ticketsPerPage).toString(),
@@ -103,9 +107,14 @@ const TicketControl: React.FC = () => {
       ...(estadoFiltro && { codigo_estado: estadoFiltro }),
       ...(recolectorFiltro && { referido_id: recolectorFiltro }),
     }).toString();
-
+  
     try {
-      const response = await fetch(`${APIHost}/api/tickets/?${query}`);
+      // Asegurar que la URL use HTTPS
+      const baseUrl = APIHost?.replace('http://', 'https://');
+      if (!baseUrl) {
+        throw new Error('No se ha configurado la URL base');
+      }
+      const response = await fetch(`${baseUrl}/api/tickets/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }

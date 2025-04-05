@@ -50,10 +50,11 @@ DATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@postgres:5432/lottobueno
 API_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544
 API_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0
 REDIS_URL=redis://localhost:6380/0
-FASTAPI_BASE_URL=http://applottobueno.com:8000
+FASTAPI_BASE_URL=http://localhost:8000
 COMPANY_PHONE_CONTACT=584262837784
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
-ALGORITHM=HS256' > /.env
+ALGORITHM=HS256
+HOST=http://localhost:8000' > /.env
 
 
    docker exec -it 8fd75fd2984c /bin/bash
@@ -65,9 +66,9 @@ aed5f68d9ee6
 docker cp .env 215274748a33:/app/app/.env
 docker cp /home/soyrauldev/proyectos/Brito/lotto-bueno-app/app/settings.json 8fd75fd2984c:/app/app/settings.json
 
-docker exec -i ce8fbdc6e7fe sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
+docker exec -i aaf66128df8d sh -c "PGUSER=lottobueno PGHOST=localhost PGPORT=5432 PGDATABASE=lottobueno PGPASSWORD=lottobueno pg_restore -U lottobueno -h localhost -p 5432 -d lottobueno -v /docker-entrypoint-initdb.d/lottobueno_backup.dump"
 
-docker exec -it 4b7569f1f0e4 bash
+docker exec -it 726d2ed68a62 bash
 
 docker system prune -a -f --volumes
 

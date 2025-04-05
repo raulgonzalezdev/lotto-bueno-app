@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia solo el código de la aplicación backend
 COPY ./app /app/app
+COPY ./whatsapp_chatbot_python /app/whatsapp_chatbot_python
 
 # Crear el archivo .env directamente en el contenedor
 # Considera usar variables de entorno de Docker Compose en su lugar para mayor seguridad y flexibilidad

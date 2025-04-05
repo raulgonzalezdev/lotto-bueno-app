@@ -50,8 +50,5 @@ export const useMunicipios = (codigoEstado: string) => {
     queryKey: ['municipios', codigoEstado],
     queryFn: () => fetchMunicipios(codigoEstado),
     enabled: !!codigoEstado, // Solo ejecutar la query si codigoEstado tiene valor
-    staleTime: Infinity, // Datos geográficos suelen ser estáticos
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 }; 

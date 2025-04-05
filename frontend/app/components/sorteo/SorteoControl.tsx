@@ -66,7 +66,7 @@ const SorteoControl: React.FC = () => {
       setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'http://34.134.166.180:8000');
+      setAPIHost(process.env.HOST || 'https://applottobueno.com');
     }
   };
 

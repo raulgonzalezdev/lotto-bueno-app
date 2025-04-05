@@ -41,7 +41,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
       setAPIHost(host);
     } catch (error) {
       console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'http://34.134.166.180:8000');
+      setAPIHost(process.env.HOST || 'https://applottobueno.com');
     }
   };
 
@@ -79,7 +79,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
   };
 
   const handleRegister = async () => {
-    const apiHost = APIHost || 'http://34.134.166.180:8000';
+    const apiHost = APIHost || 'https://applottobueno.com';
     try {
       //const response = await fetch(`${apiHost}/api/register`, {
       const response = await fetch(`/api/register`, {

@@ -138,7 +138,7 @@ export const useElectores = (params: FetchElectoresParams) => {
   return useQuery<Elector[], Error>({
     queryKey: ['electores', params],
     queryFn: () => fetchElectores(params),
-    keepPreviousData: true,
+    placeholderData: (oldData) => oldData,
   });
 };
 

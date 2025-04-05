@@ -3,6 +3,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { Elector, Estado, Municipio, Parroquia, CentroVotacion, elector } from './types';
+import { useEstados } from '../../hooks/useEstados';
+import { useMunicipios } from '../../hooks/useMunicipios';
+import { useParroquias } from '../../hooks/useParroquias';
+import { useCentrosVotacion } from '../../hooks/useCentrosVotacion';
+import { useElectores, useElectorDetail, useTotalElectores } from '../../hooks/useElectores';
 
 interface ChatComponentProps {
   production: boolean;
@@ -29,19 +34,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   subtitle,
   imageSrc
 }) => {
-  const [electores, setElectores] = useState<Elector[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
-  const [selectedElector, setSelectedElector] = useState<Elector | null>(null);
+  const [selectedElector, setSelectedElector] = useState<any | null>(null);
   const [currentElectorPage, setCurrentElectorPage] = useState(1);
   const [electoresPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [cedulaSearch, setCedulaSearch] = useState("");
 
-  const [estados, setEstados] = useState<Estado[]>([]);
-  const [municipios, setMunicipios] = useState<Municipio[]>([]);
-  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
-  const [centrosVotacion, setCentrosVotacion] = useState<CentroVotacion[]>([]);
   const [searchError, setSearchError] = useState("");
 
   const [codigoEstado, setCodigoEstado] = useState("");
@@ -56,159 +56,103 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [totalBatches, setTotalBatches] = useState(0);
   const [currentBatch, setCurrentBatch] = useState(0);
 
+  // Utilizar los hooks de React Query
+  const { data: estados = [], isLoading: estadosLoading, error: estadosError } = useEstados();
+  const { data: municipios = [], isLoading: municipiosLoading } = useMunicipios(codigoEstado);
+  const { data: parroquias = [], isLoading: parroquiasLoading } = useParroquias(codigoEstado, codigoMunicipio);
+  const { data: centrosVotacion = [], isLoading: centrosLoading } = useCentrosVotacion(codigoEstado, codigoMunicipio, codigoParroquia);
+  
+  // Para los electores, usamos el hook con los parámetros necesarios
+  const { data: electoresData = [], isLoading: electoresLoading } = useElectores({
+    currentPage: currentElectorPage,
+    electoresPerPage,
+    codigoEstado,
+    codigoMunicipio,
+    codigoParroquia,
+    codigoCentroVotacion
+  });
+
+  // Para obtener el total de electores
+  const { data: totalElectores = 0 } = useTotalElectores({
+    codigoEstado,
+    codigoMunicipio,
+    codigoParroquia,
+    codigoCentroVotacion
+  });
+
+  // Para obtener el detalle de un elector por cédula
+  const { data: electorDetailData, isLoading: electorDetailLoading } = useElectorDetail(cedulaSearch);
+
+  // Actualizamos el estado electores cuando cambia electoresData
   useEffect(() => {
-    if (APIHost) {
-    fetchEstados();
-    fetchElectores();
-    fetchTotalElectores();
+    if (electoresData) {
+      // Convertimos los datos de electoresData al tipo esperado por el componente
+      const electoresConverted = Array.isArray(electoresData) 
+        ? electoresData.map(e => ({
+            id: e.id,
+            letra_cedula: e.letra_cedula,
+            numero_cedula: String(e.numero_cedula),
+            p_nombre: e.p_nombre,
+            s_nombre: e.s_nombre || '',
+            p_apellido: e.p_apellido,
+            s_apellido: e.s_apellido || '',
+            sexo: e.sexo || '',
+            fecha_nacimiento: e.fecha_nacimiento,
+            codigo_estado: e.codigo_estado,
+            codigo_municipio: e.codigo_municipio,
+            codigo_parroquia: e.codigo_parroquia,
+            codigo_centro_votacion: String(e.codigo_centro_votacion),
+            
+            // Añadimos los objetos anidados necesarios
+            elector: {
+              id: e.id,
+              letra_cedula: e.letra_cedula,
+              numero_cedula: String(e.numero_cedula),
+              p_nombre: e.p_nombre,
+              s_nombre: e.s_nombre || '',
+              p_apellido: e.p_apellido,
+              s_apellido: e.s_apellido || '',
+              sexo: e.sexo || '',
+              fecha_nacimiento: e.fecha_nacimiento,
+              codigo_estado: e.codigo_estado,
+              codigo_municipio: e.codigo_municipio,
+              codigo_parroquia: e.codigo_parroquia,
+              codigo_centro_votacion: String(e.codigo_centro_votacion)
+            },
+            centro_votacion: {
+              codificacion_vieja_cv: 0,
+              codificacion_nueva_cv: 0,
+              condicion: 0,
+              codigo_estado: e.codigo_estado,
+              codigo_municipio: e.codigo_municipio,
+              codigo_parroquia: e.codigo_parroquia,
+              nombre_cv: '',
+              direccion_cv: '',
+              id: 0
+            },
+            geografico: {
+              codigo_estado: e.codigo_estado,
+              codigo_municipio: e.codigo_municipio,
+              codigo_parroquia: e.codigo_parroquia,
+              estado: '',
+              municipio: '',
+              parroquia: '',
+              id: 0
+            }
+          } as Elector))
+        : [];
+      setElectores(electoresConverted);
     }
-  }, [APIHost]);
+  }, [electoresData]);
 
+  // Actualizamos el total de páginas cuando cambia totalElectores
   useEffect(() => {
-    if (APIHost && codigoEstado) {
-      fetchMunicipios(codigoEstado);
+    if (typeof totalElectores === 'number') {
+      setTotalPages(Math.ceil(totalElectores / electoresPerPage));
     }
-  }, [APIHost, codigoEstado]);
+  }, [totalElectores, electoresPerPage]);
 
-  useEffect(() => {
-    if (APIHost && codigoEstado && codigoMunicipio) {
-      fetchParroquias(codigoEstado, codigoMunicipio);
-    }
-  }, [APIHost, codigoEstado, codigoMunicipio]);
-
-  useEffect(() => {
-    if (APIHost && codigoEstado && codigoMunicipio && codigoParroquia) {
-      fetchCentrosVotacion(codigoEstado, codigoMunicipio, codigoParroquia);
-    }
-  }, [APIHost, codigoEstado, codigoMunicipio, codigoParroquia]);
-
-  useEffect(() => {
-    if (APIHost) {
-      fetchElectores();
-      fetchTotalElectores();
-    }
-  }, [APIHost, codigoEstado, codigoMunicipio, codigoParroquia, codigoCentroVotacion, currentElectorPage]);
-
-  const fetchEstados = async () => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/estados`);
-      if (!response.ok) {
-        throw new Error('Error fetching estados');
-      }
-      const data = await response.json();
-      const estadosOrdenados = data.sort((a: Estado, b: Estado) => 
-        a.estado.localeCompare(b.estado, 'es', { sensitivity: 'base' })
-      );
-      setEstados(estadosOrdenados);
-    } catch (error) {
-      console.error("Error fetching estados:", error);
-      setEstados([]);
-    }
-  };
-
-  const fetchMunicipios = async (codigoEstado: string) => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/municipios/${codigoEstado}`);
-      if (!response.ok) {
-        throw new Error('Error fetching municipios');
-      }
-      const data = await response.json();
-      const municipiosOrdenados = data.sort((a: Municipio, b: Municipio) => 
-        a.municipio.localeCompare(b.municipio, 'es', { sensitivity: 'base' })
-      );
-      setMunicipios(municipiosOrdenados);
-    } catch (error) {
-      console.error("Error fetching municipios:", error);
-      setMunicipios([]);
-    }
-  };
-
-  const fetchParroquias = async (codigoEstado: string, codigoMunicipio: string) => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/parroquias/${codigoEstado}/${codigoMunicipio}`);
-      if (!response.ok) {
-        throw new Error('Error fetching parroquias');
-      }
-      const data = await response.json();
-      const parroquiasOrdenadas = data.sort((a: Parroquia, b: Parroquia) => 
-        a.parroquia.localeCompare(b.parroquia, 'es', { sensitivity: 'base' })
-      );
-      setParroquias(parroquiasOrdenadas);
-    } catch (error) {
-      console.error("Error fetching parroquias:", error);
-      setParroquias([]);
-    }
-  };
-
-  const fetchCentrosVotacion = async (codigoEstado: string, codigoMunicipio: string, codigoParroquia: string) => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/centros_votacion/${codigoEstado}/${codigoMunicipio}/${codigoParroquia}`);
-      if (!response.ok) {
-        throw new Error('Error fetching centros votacion');
-      }
-      const data = await response.json();
-      const centrosOrdenados = data.sort((a: CentroVotacion, b: CentroVotacion) => 
-        a.nombre_cv.localeCompare(b.nombre_cv, 'es', { sensitivity: 'base' })
-      );
-      setCentrosVotacion(centrosOrdenados);
-    } catch (error) {
-      console.error("Error fetching centros votacion:", error);
-      setCentrosVotacion([]);
-    }
-  };
-
-  const fetchElectores = async () => {
-    try {
-      const query = new URLSearchParams({
-        skip: ((currentElectorPage - 1) * electoresPerPage).toString(),
-        limit: electoresPerPage.toString(),
-        ...(codigoEstado && { codigo_estado: codigoEstado }),
-        ...(codigoMunicipio && { codigo_municipio: codigoMunicipio }),
-        ...(codigoParroquia && { codigo_parroquia: codigoParroquia }),
-        ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
-      }).toString();
-
-      const response = await fetch(`${APIHost}/api/electores/?${query}`);
-      const data: Elector[] = await response.json();
-      setElectores(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error fetching electores:", error);
-      setElectores([]);
-    }
-  };
-
-  const fetchTotalElectores = async () => {
-    try {
-      const query = new URLSearchParams({
-        ...(codigoEstado && { codigo_estado: codigoEstado }),
-        ...(codigoMunicipio && { codigo_municipio: codigoMunicipio }),
-        ...(codigoParroquia && { codigo_parroquia: codigoParroquia }),
-        ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
-      }).toString();
-
-      const response = await fetch(`${APIHost}/api/total/electores?${query}`);
-      const total = await response.json();
-      setTotalPages(Math.ceil(total / electoresPerPage));
-    } catch (error) {
-      console.error("Error fetching total electores:", error);
-      setTotalPages(1);
-    }
-  };
-
-  const fetchElectorDetail = async (numero_cedula: string) => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/electores/cedula/${numero_cedula}`);
-      const data: Elector = await response.json();
-      setSelectedElector(data);
-    } catch (error) {
-      console.error("Error fetching elector detail:", error);
-    }
-  };
+  const [electores, setElectores] = useState<Elector[]>([]);
 
   const handleEstadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -216,9 +160,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setCodigoMunicipio("");
     setCodigoParroquia("");
     setCodigoCentroVotacion("");
-    setMunicipios([]);
-    setParroquias([]);
-    setCentrosVotacion([]);
   };
 
   const handleMunicipioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -226,15 +167,12 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setCodigoMunicipio(value);
     setCodigoParroquia("");
     setCodigoCentroVotacion("");
-    setParroquias([]);
-    setCentrosVotacion([]);
   };
 
   const handleParroquiaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setCodigoParroquia(value);
     setCodigoCentroVotacion("");
-    setCentrosVotacion([]);
   };
 
   const handleCentroVotacionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -245,24 +183,11 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const handleCedulaSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCedulaSearch(e.target.value);
   };
+  
   const handleCedulaSearch = async () => {
     if (cedulaSearch) {
-      try {
-        const response = await fetch(`${APIHost}/api/electores/cedula/${cedulaSearch}`);
-        if (response.status === 404) {
-          setSearchError("Cédula no encontrada");
-          setSelectedElector(null);
-          setModalIsOpen(false);
-          return;
-        }
-        const data: Elector = await response.json();
-        setSelectedElector(data);
-        setSearchError("");
-        setModalIsOpen(true);
-      } catch (error) {
-        console.error("Error searching by cedula:", error);
-        setSearchError("Error al buscar la cédula");
-      }
+      setCedulaSearch(cedulaSearch); // Esto activará el useElectorDetail hook
+      setModalIsOpen(true);
     }
   };
 
@@ -271,7 +196,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   };
 
   const openModal = (numero_cedula: string) => {
-    fetchElectorDetail(numero_cedula);
+    setCedulaSearch(numero_cedula);
     setModalIsOpen(true);
   };
 
@@ -279,7 +204,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setModalIsOpen(false);
     setSelectedElector(null);
     setSearchError("");
-
   };
 
   const paginate = (pageNumber: number) => {
@@ -290,7 +214,6 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     } else {
       setCurrentElectorPage(pageNumber);
     }
-    fetchElectores();
   };
 
   const initiateDownload = (type: string, format: string) => {
@@ -459,6 +382,15 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   };
 
+  // Utilizamos electorDetailData cuando está disponible
+  useEffect(() => {
+    if (electorDetailData) {
+      setSelectedElector(electorDetailData);
+      setSearchError("");
+      setModalIsOpen(true);
+    }
+  }, [electorDetailData]);
+
   return (
     <div className="p-4">
       <h2>Control de Electores</h2>
@@ -469,6 +401,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             onChange={handleEstadoChange} 
             className="input input-bordered w-full" 
             value={codigoEstado || ""}
+            disabled={estadosLoading}
           >
             <option value="">Seleccione un estado</option>
             {estados.map(estado => (
@@ -484,7 +417,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             onChange={handleMunicipioChange}
             className="input input-bordered w-full"
             value={codigoMunicipio}
-            disabled={!codigoEstado}
+            disabled={!codigoEstado || municipiosLoading}
           >
             <option value="">Seleccione un municipio</option>
             {municipios.map(municipio => (
@@ -500,7 +433,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             onChange={handleParroquiaChange}
             className="input input-bordered w-full"
             value={codigoParroquia}
-            disabled={!codigoMunicipio}
+            disabled={!codigoMunicipio || parroquiasLoading}
           >
             <option value="">Seleccione una parroquia</option>
             {parroquias.map(parroquia => (
@@ -516,7 +449,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             onChange={handleCentroVotacionChange}
             className="input input-bordered w-full"
             value={codigoCentroVotacion}
-            disabled={!codigoParroquia}
+            disabled={!codigoParroquia || centrosLoading}
           >
             <option value="">Seleccione un centro de votación</option>
             {centrosVotacion.map(centro => (
@@ -585,38 +518,46 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         <button onClick={() => paginate(currentElectorPage + 1)} className="btn btn-primary mr-1">{">"}</button>
         <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
       </div>
-      <table className="table-auto w-full mb-4">
-        <thead>
-          <tr>
-            <th>Cédula</th>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Centro de Votación</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {electores.map((elector) => (
-            <tr key={elector?.id}>
-              <td>{`${elector?.letra_cedula}-${elector?.numero_cedula}`}</td>
-              <td>{elector?.p_nombre}</td>
-              <td>{elector?.p_apellido}</td>
-              <td>{elector?.codigo_centro_votacion}</td>
-              <td>
-                <button className="btn btn-primary" onClick={() => openModal(elector?.numero_cedula)}>
-                  Ver Detalle
-                </button>
-              </td>
+      
+      {electoresLoading ? (
+        <div className="flex justify-center">Cargando electores...</div>
+      ) : (
+        <table className="table-auto w-full mb-4">
+          <thead>
+            <tr>
+              <th>Cédula</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Centro de Votación</th>
+              <th>Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {electores.map((elector) => (
+              <tr key={elector?.id}>
+                <td>{`${elector?.letra_cedula}-${elector?.numero_cedula}`}</td>
+                <td>{elector?.p_nombre}</td>
+                <td>{elector?.p_apellido}</td>
+                <td>{elector?.codigo_centro_votacion}</td>
+                <td>
+                  <button className="btn btn-primary" onClick={() => openModal(elector?.numero_cedula)}>
+                    Ver Detalle
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
       {modalIsOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-button" onClick={closeModal}>×</button>
             <h2>Detalle del Elector</h2>
-            {selectedElector && (
+            {electorDetailLoading ? (
+              <div>Cargando información del elector...</div>
+            ) : selectedElector ? (
               <div>
                 <p><strong>ID:</strong> {selectedElector.elector.id}</p>
                 <p><strong>Cédula:</strong> {`${selectedElector.elector.letra_cedula}-${selectedElector.elector.numero_cedula}`}</p>
@@ -630,6 +571,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
                 <p><strong>Centro de Votación:</strong> {selectedElector.centro_votacion.nombre_cv}</p>
                 <p><strong>Dirección Centro de Votación:</strong> {selectedElector.centro_votacion.direccion_cv}</p>
               </div>
+            ) : (
+              <div>No se encontró información del elector</div>
             )}
           </div>
         </div>

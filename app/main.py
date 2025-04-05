@@ -1344,7 +1344,7 @@ async def verificar_cedula(request: CedulaRequest, db: Session = Depends(get_db)
     return response
 
 
-@router.get("/total/api/electores", response_model=int)
+@router.get("/total/electores", response_model=int)
 def get_total_electores(
     codigo_estado: Optional[int] = None,
     codigo_municipio: Optional[int] = None,

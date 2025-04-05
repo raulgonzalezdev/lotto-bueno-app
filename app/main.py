@@ -16,7 +16,7 @@ from typing import Dict, Any, List
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta, date
 from io import StringIO, BytesIO
-from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter, Request
+from fastapi import FastAPI, HTTPException, Depends, Query, APIRouter, Request, Form
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 import pandas as pd
@@ -1983,20 +1983,88 @@ async def delete_user(user_id: int, db: Session = Depends(get_db)):
     return {"message": "User deleted successfully"}
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 @app.post("/api/login")
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    user = db.query(Users).filter(Users.username == form_data.username).first()
+    try:
+        # Intentar obtener datos del body como JSON
+        body = await request.json()
+        username = body.get("username")
+        password = body.get("password")
+    except:
+        # Si falla, intentar obtener como form-data
+        form = await request.form()
+        username = form.get("username")
+        password = form.get("password")
+    
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+
+    user = db.query(Users).filter(Users.username == username).first()
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
-    if not check_password_hash(user.hashed_password, form_data.password):
+    if not check_password_hash(user.hashed_password, password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer", "isAdmin": user.isAdmin}
+
+@app.post("/api/register")
+async def register(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # Verificar si el usuario ya existe
+    existing_user = db.query(Users).filter(
+        (Users.username == username) | (Users.email == email)
+    ).first()
+    
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already registered"
+        )
+    
+    # Crear nuevo usuario
+    hashed_password = generate_password_hash(password)
+    new_user = Users(
+        username=username,
+        email=email,
+        hashed_password=hashed_password,
+        isAdmin=False,  # Por defecto, los usuarios registrados no son admin
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # Generar token de acceso
+        access_token = create_access_token(data={"sub": new_user.username})
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "isAdmin": new_user.isAdmin,
+            "message": "User registered successfully"
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating user: {str(e)}"
+        )
 
 
 @app.post("/api/logout")

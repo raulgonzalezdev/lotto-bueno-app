@@ -48,8 +48,5 @@ export const useCentrosVotacion = (codigoEstado: string, codigoMunicipio: string
     queryKey: ['centrosVotacion', codigoEstado, codigoMunicipio, codigoParroquia],
     queryFn: () => fetchCentrosVotacion(codigoEstado, codigoMunicipio, codigoParroquia),
     enabled: !!codigoEstado && !!codigoMunicipio && !!codigoParroquia, // Ejecutar solo si los tres códigos están presentes
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 }; 

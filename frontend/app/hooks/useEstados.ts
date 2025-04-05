@@ -47,8 +47,5 @@ export const useEstados = () => {
   return useQuery<Estado[], Error>({
     queryKey: ['estados'], // Clave única para la query
     queryFn: fetchEstados, // Función fetch
-    staleTime: Infinity, // Considerar los estados como datos estáticos
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 }; 

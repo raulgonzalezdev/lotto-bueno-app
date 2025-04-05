@@ -48,8 +48,5 @@ export const useParroquias = (codigoEstado: string, codigoMunicipio: string) => 
     queryKey: ['parroquias', codigoEstado, codigoMunicipio],
     queryFn: () => fetchParroquias(codigoEstado, codigoMunicipio),
     enabled: !!codigoEstado && !!codigoMunicipio, // Ejecutar solo si ambos códigos están presentes
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnWindowFocus: false,
   });
 }; 

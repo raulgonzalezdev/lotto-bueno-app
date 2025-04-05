@@ -1,7 +1,8 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAPIHost } from '@/hooks/useAPIHost';
+import { detectHost } from "../api";
+import { useState, useEffect } from 'react';
 
 // --- Interfaces --- //
 interface LineaTelefonica {
@@ -10,7 +11,7 @@ interface LineaTelefonica {
   operador: string;
 }
 
-interface LineasResponse {
+export interface LineasResponse {
   total: number;
   items: LineaTelefonica[];
 }
@@ -105,20 +106,37 @@ const deleteLinea = async (lineaId: number): Promise<void> => {
 
 // --- Hooks --- //
 
-// Definir una interfaz para la respuesta paginada
-export interface LineasResponse {
-    items: LineaTelefonica[];
-    total: number;
-}
+// Hook personalizado para manejar la detección del host API
+export const useAPIHost = () => {
+    const [APIHost, setAPIHost] = useState<string | null>(null);
+    
+    useEffect(() => {
+        const fetchHostData = async () => {
+            try {
+                const host = await detectHost();
+                setAPIHost(host);
+            } catch (error) {
+                console.error("Error detecting host:", error);
+                setAPIHost(process.env.HOST || 'https://applottobueno.com');
+            }
+        };
+        
+        fetchHostData();
+    }, []);
+    
+    return { APIHost };
+};
 
 export const useLineasTelefonicas = (params: { currentPage: number; lineasPerPage: number; searchTerm: string }) => {
     const { currentPage, lineasPerPage, searchTerm } = params;
     const queryClient = useQueryClient();
-    const { APIHost } = useAPIHost(); // Obtener el host desde el hook
+    
+    // Usar nuestro hook personalizado en lugar del importado
+    const { APIHost } = useAPIHost();
 
     const queryKey = ['lineasTelefonicas', currentPage, lineasPerPage, searchTerm];
 
-    return useQuery<LineasResponse, Error>({ // Especificar el tipo de retorno aquí
+    return useQuery<LineasResponse, Error>({
         queryKey: queryKey,
         queryFn: async (): Promise<LineasResponse> => {
             if (!APIHost) throw new Error('API host no definido');

@@ -18,7 +18,7 @@ from app.main import get_db, send_message, send_qr_code, obtener_numero_contacto
 
 API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://localhost:8000")
+FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://34.134.166.180:8000")
 
 bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
 

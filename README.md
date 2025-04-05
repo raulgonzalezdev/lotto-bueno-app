@@ -37,10 +37,10 @@ git lfs clone https://github.com/raulgonzalezdev/lotto-bueno-app.git
 
 
 anexar . env 
-docker exec -i b3628ee0f4869b02063474b773a33971208bab4c692f3d618596147cfc567054  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=http://localhost:8000\nCOMPANY_PHONE_CONTACT=584262837784\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256\n0\nHOST=http://localhost:8000' > /app/.env"
+docker exec -i b3628ee0f4869b02063474b773a33971208bab4c692f3d618596147cfc567054  sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=http://34.134.166.180:8000\nCOMPANY_PHONE_CONTACT=584262837784\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256\n0\nHOST=http://34.134.166.180:8000' > /app/.env"
 
 
-docker exec -i 8a3f28c668181b7317574bfbff717eeadadc76e6cee53fa95fb2fb585515cf25 sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=http://localhost:8000\nCOMPANY_PHONE_CONTACT=584262837784\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256\nHOST=http://localhost:8000' > /app/.env"
+docker exec -i 8a3f28c668181b7317574bfbff717eeadadc76e6cee53fa95fb2fb585515cf25 sh -c "echo 'POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@localhost:5432/lottobueno\nAPI_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544\nAPI_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0\nREDIS_URL=redis://localhost:6380/0\nFASTAPI_BASE_URL=http://34.134.166.180:8000\nCOMPANY_PHONE_CONTACT=584262837784\nSECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo\nALGORITHM=HS256\nHOST=http://34.134.166.180:8000' > /app/.env"
 
 
 echo 'POSTGRES_DB=lottobueno
@@ -50,11 +50,11 @@ DATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@postgres:5432/lottobueno
 API_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544
 API_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0
 REDIS_URL=redis://localhost:6380/0
-FASTAPI_BASE_URL=http://localhost:8000
+FASTAPI_BASE_URL=http://34.134.166.180:8000
 COMPANY_PHONE_CONTACT=584262837784
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
 ALGORITHM=HS256
-HOST=http://localhost:8000' > /.env
+HOST=http://34.134.166.180:8000' > /.env
 
 
    docker exec -it 8fd75fd2984c /bin/bash

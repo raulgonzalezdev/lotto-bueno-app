@@ -126,21 +126,18 @@ def get_db():
 
 # Configuración de CORS
 origins = [
-    "http://applottobueno.com",
     "https://applottobueno.com",
-    "http://34.134.166.180:8000",
-    "http://34.134.166.180:8000",
+    "http://applottobueno.com",
+    "https://www.applottobueno.com",
+    "http://www.applottobueno.com",
+    "http://applottobueno.com:8000",
+    "https://applottobueno.com:8000",
     "http://34.134.166.180",
-    "https://34.134.166.180",
-    "https://34.134.166.180:8000",
+    "http://34.134.166.180:8000",
     "http://localhost:3000",
-    "https://7103.api.greenapi.com",
-    "http://localhost",
-    "https://localhost",
-    "http://127.0.0.1:8000",
-    "http://127.0.0.1",
-    "https://wa.me"
+    "http://localhost:8000"
 ]
+
 
 app.add_middleware(
     CORSMiddleware,

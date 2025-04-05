@@ -190,7 +190,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         ...(codigoCentroVotacion && { codigo_centro_votacion: codigoCentroVotacion }),
       }).toString();
 
-      const response = await fetch(`${APIHost}/total/electores?${query}`);
+      const response = await fetch(`${APIHost}/api/total/electores?${query}`);
       const total = await response.json();
       setTotalPages(Math.ceil(total / electoresPerPage));
     } catch (error) {

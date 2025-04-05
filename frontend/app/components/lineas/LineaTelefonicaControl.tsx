@@ -81,13 +81,15 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    await fetch(`/api/lineas_telefonicas/${id}`, { method: "DELETE" });
+    if (!APIHost) return;
+    await fetch(`${APIHost}/api/lineas_telefonicas/${id}`, { method: "DELETE" });
     fetchLineas();
   };
 
   const handleCreate = async () => {
+    if (!APIHost) return;
     try {
-      const response = await fetch(`/api/lineas_telefonicas`, {
+      const response = await fetch(`${APIHost}/api/lineas_telefonicas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -126,7 +128,8 @@ const LineaTelefonicaControl: React.FC = () => {
   };
 
   const handleUpdate = async (linea: LineaTelefonica) => {
-    await fetch(`/api/lineas_telefonicas/${linea.id}`, {
+    if (!APIHost) return;
+    await fetch(`${APIHost}/api/lineas_telefonicas/${linea.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

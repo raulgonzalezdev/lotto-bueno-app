@@ -25,45 +25,15 @@ interface RealizarSorteoPayload {
     municipio?: string; // Usar descripción del municipio
 }
 
-// --- Funciones Utilitarias y Fetch --- //
-const getApiBaseUrl = (): string => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!baseUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL no está definida.');
-    }
-    const url = new URL(baseUrl);
-    if (url.protocol === 'http:' && url.hostname !== 'localhost') {
-        url.protocol = 'https:';
-    }
-    return url.toString().replace(/\/$/, ''); 
-};
-
+// --- Funciones para realizar operaciones con el sorteo (usando apiClient) --- //
+// Función refactorizada usando apiClient en lugar de fetch directo
 const realizarSorteo = async (payload: RealizarSorteoPayload): Promise<Ticket[]> => {
-    const baseUrl = getApiBaseUrl();
-    const fetchUrl = `${baseUrl}/api/sorteo/ganadores`;
-    const response = await fetch(fetchUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        // Usar el mensaje específico de la API si existe
-        throw new Error(errorData.message || `Error ${response.status}: No se pudo realizar el sorteo`);
-    }
-    return response.json();
+    return apiClient.post<Ticket[]>('api/sorteo/ganadores', payload);
 };
 
+// Función refactorizada usando apiClient en lugar de fetch directo
 const quitarGanadores = async (): Promise<void> => {
-    const baseUrl = getApiBaseUrl();
-    const fetchUrl = `${baseUrl}/api/sorteo/quitar_ganadores`;
-    const response = await fetch(fetchUrl, { method: "POST" });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error ${response.status}: No se pudo quitar la marca de ganadores`);
-    }
+    return apiClient.post<void>('api/sorteo/quitar_ganadores', {});
 };
 
 // --- Hooks --- //
@@ -71,7 +41,8 @@ const quitarGanadores = async (): Promise<void> => {
 export const useRealizarSorteo = () => {
     const queryClient = useQueryClient();
     return useMutation<Ticket[], Error, RealizarSorteoPayload>({
-        mutationFn: (payload) => apiClient.post<Ticket[]>('api/sorteo/ganadores', payload),
+        // Usamos la función realizarSorteo que internamente usa apiClient
+        mutationFn: realizarSorteo,
         onSuccess: () => {
             // Invalidar queries relacionadas si es necesario, por ejemplo, la lista de tickets
             queryClient.invalidateQueries({ queryKey: ['tickets'] });
@@ -82,9 +53,10 @@ export const useRealizarSorteo = () => {
 export const useQuitarGanadores = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, void>({
-        mutationFn: () => apiClient.post<void>('api/sorteo/quitar_ganadores', {}),
+        // Usamos la función quitarGanadores que internamente usa apiClient
+        mutationFn: quitarGanadores,
         onSuccess: () => {
-             queryClient.invalidateQueries({ queryKey: ['tickets'] });
+            queryClient.invalidateQueries({ queryKey: ['tickets'] });
         },
     });
 }; 

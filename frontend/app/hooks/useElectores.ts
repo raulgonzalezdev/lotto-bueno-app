@@ -57,104 +57,56 @@ interface FetchElectoresParams {
   // searchTerm?: string; // Si tu API soporta búsqueda general de electores
 }
 
-// --- Funciones Utilitarias y Fetch --- //
-const getApiBaseUrl = (): string => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!baseUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL no está definida.');
-    }
-    const url = new URL(baseUrl);
-    if (url.protocol === 'http:' && url.hostname !== 'localhost') {
-        url.protocol = 'https:';
-    }
-    return url.toString().replace(/\/$/, ''); 
-};
+// --- Funciones para operaciones con electores (usando apiClient) --- //
 
 const fetchElectores = async ({ currentPage, electoresPerPage, ...filters }: FetchElectoresParams): Promise<Elector[]> => {
-  const baseUrl = getApiBaseUrl();
-  const queryParams = new URLSearchParams({
+  const queryParams: Record<string, string> = {
     skip: ((currentPage - 1) * electoresPerPage).toString(),
     limit: electoresPerPage.toString(),
-  });
+  };
 
   // Añadir filtros a los parámetros
-  if (filters.codigoEstado) queryParams.append('codigo_estado', filters.codigoEstado);
-  if (filters.codigoMunicipio) queryParams.append('codigo_municipio', filters.codigoMunicipio);
-  if (filters.codigoParroquia) queryParams.append('codigo_parroquia', filters.codigoParroquia);
-  if (filters.codigoCentroVotacion) queryParams.append('codigo_centro_votacion', filters.codigoCentroVotacion);
-  // if (filters.searchTerm) queryParams.append('search', filters.searchTerm);
+  if (filters.codigoEstado) queryParams.codigo_estado = filters.codigoEstado;
+  if (filters.codigoMunicipio) queryParams.codigo_municipio = filters.codigoMunicipio;
+  if (filters.codigoParroquia) queryParams.codigo_parroquia = filters.codigoParroquia;
+  if (filters.codigoCentroVotacion) queryParams.codigo_centro_votacion = filters.codigoCentroVotacion;
 
-  const fetchUrl = `${baseUrl}/api/electores/?${queryParams.toString()}`;
-  const response = await fetch(fetchUrl);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error ${response.status}: No se pudo obtener la lista de electores`);
-  }
-  // Asumiendo que la API devuelve directamente un array de electores
-  const data = await response.json();
-  return Array.isArray(data) ? data : []; 
+  const data = await apiClient.get<Elector[]>('api/electores/', queryParams);
+  return Array.isArray(data) ? data : [];
 };
 
 const fetchTotalElectores = async (filters: Omit<FetchElectoresParams, 'currentPage' | 'electoresPerPage'>): Promise<number> => {
-  const baseUrl = getApiBaseUrl();
-  const queryParams = new URLSearchParams();
+  const queryParams: Record<string, string> = {};
 
-  if (filters.codigoEstado) queryParams.append('codigo_estado', filters.codigoEstado);
-  if (filters.codigoMunicipio) queryParams.append('codigo_municipio', filters.codigoMunicipio);
-  if (filters.codigoParroquia) queryParams.append('codigo_parroquia', filters.codigoParroquia);
-  if (filters.codigoCentroVotacion) queryParams.append('codigo_centro_votacion', filters.codigoCentroVotacion);
+  if (filters.codigoEstado) queryParams.codigo_estado = filters.codigoEstado;
+  if (filters.codigoMunicipio) queryParams.codigo_municipio = filters.codigoMunicipio;
+  if (filters.codigoParroquia) queryParams.codigo_parroquia = filters.codigoParroquia;
+  if (filters.codigoCentroVotacion) queryParams.codigo_centro_votacion = filters.codigoCentroVotacion;
 
-  const fetchUrl = `${baseUrl}/api/total/electores?${queryParams.toString()}`;
-  const response = await fetch(fetchUrl);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error ${response.status}: No se pudo obtener el total de electores`);
-  }
-  return response.json();
+  return apiClient.get<number>('api/total/electores', queryParams);
 };
 
 const fetchElectorDetail = async (numeroCedula: string): Promise<ElectorDetail | null> => {
   if (!numeroCedula) {
     return null;
   }
-  const baseUrl = getApiBaseUrl();
-  const fetchUrl = `${baseUrl}/api/electores/cedula/${encodeURIComponent(numeroCedula)}`;
-  const response = await fetch(fetchUrl);
-
-  if (response.status === 404) {
-    return null; // Considerar 404 como no encontrado, no un error de fetch
+  
+  try {
+    return await apiClient.get<ElectorDetail>(`api/electores/cedula/${encodeURIComponent(numeroCedula)}`);
+  } catch (error) {
+    if ((error as Error).message.includes('404')) {
+      return null; // Considerar 404 como no encontrado, no un error de fetch
+    }
+    throw error;
   }
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error ${response.status}: No se pudo obtener el detalle del elector`);
-  }
-  return response.json();
 };
 
 // --- Hooks --- //
 
 export const useElectores = (params: FetchElectoresParams) => {
-  const { currentPage, electoresPerPage, ...filters } = params;
-  
   return useQuery<Elector[], Error>({
     queryKey: ['electores', params],
-    queryFn: async () => {
-      const queryParams: Record<string, string> = {
-        skip: ((currentPage - 1) * electoresPerPage).toString(),
-        limit: electoresPerPage.toString(),
-      };
-
-      // Añadir filtros a los parámetros
-      if (filters.codigoEstado) queryParams.codigo_estado = filters.codigoEstado;
-      if (filters.codigoMunicipio) queryParams.codigo_municipio = filters.codigoMunicipio;
-      if (filters.codigoParroquia) queryParams.codigo_parroquia = filters.codigoParroquia;
-      if (filters.codigoCentroVotacion) queryParams.codigo_centro_votacion = filters.codigoCentroVotacion;
-      
-      const data = await apiClient.get<Elector[]>('api/electores/', queryParams);
-      return Array.isArray(data) ? data : [];
-    },
+    queryFn: () => fetchElectores(params),
     placeholderData: (oldData) => oldData,
   });
 };
@@ -165,36 +117,14 @@ export const useTotalElectores = (filters: Omit<FetchElectoresParams, 'currentPa
     
     return useQuery<number, Error>({
         queryKey: ['totalElectores', stableFilters],
-        queryFn: async () => {
-          const queryParams: Record<string, string> = {};
-          
-          if (stableFilters.codigoEstado) queryParams.codigo_estado = stableFilters.codigoEstado;
-          if (stableFilters.codigoMunicipio) queryParams.codigo_municipio = stableFilters.codigoMunicipio;
-          if (stableFilters.codigoParroquia) queryParams.codigo_parroquia = stableFilters.codigoParroquia;
-          if (stableFilters.codigoCentroVotacion) queryParams.codigo_centro_votacion = stableFilters.codigoCentroVotacion;
-          
-          return apiClient.get<number>('api/total/electores', queryParams);
-        },
+        queryFn: () => fetchTotalElectores(stableFilters),
     });
 };
 
 export const useElectorDetail = (numeroCedula: string) => {
   return useQuery<ElectorDetail | null, Error>({
     queryKey: ['electorDetail', numeroCedula],
-    queryFn: async () => {
-      if (!numeroCedula) {
-        return null;
-      }
-      
-      try {
-        return await apiClient.get<ElectorDetail>(`api/electores/cedula/${encodeURIComponent(numeroCedula)}`);
-      } catch (error) {
-        if ((error as Error).message.includes('404')) {
-          return null; // Considerar 404 como no encontrado, no un error de fetch
-        }
-        throw error;
-      }
-    },
+    queryFn: () => fetchElectorDetail(numeroCedula),
     enabled: !!numeroCedula, // Solo ejecutar si hay cédula
   });
 }; 

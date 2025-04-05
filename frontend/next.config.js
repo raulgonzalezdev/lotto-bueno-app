@@ -13,6 +13,14 @@ const nextConfig = {
   },
   jest: {
     enabled: false
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'https://applottobueno.com/api/:path*',
+      },
+    ];
   }
 };
 

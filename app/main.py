@@ -126,6 +126,8 @@ def get_db():
 
 # Configuración de CORS
 origins = [
+    "http://applottobueno.com",
+    "https://applottobueno.com",
     "http://34.134.166.180:8000",
     "http://34.134.166.180:8000",
     "http://34.134.166.180",
@@ -301,7 +303,24 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend/out"), name="app
 @app.get("/")
 @app.head("/")
 async def serve_frontend():
-    return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
+    html_path = os.path.join(BASE_DIR, "frontend/out/index.html")
+    with open(html_path, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+        
+    # Inyectar la configuración
+    api_host = os.getenv("HOST", "https://applottobueno.com") 
+    script_tag = f"""
+    <script>
+        window.ENV = {{
+            HOST: "{api_host}"
+        }};
+    </script>
+    """
+    
+    # Insertar antes de </head>
+    html_content = html_content.replace('</head>', f'{script_tag}</head>')
+    
+    return HTMLResponse(content=html_content)
 
 
 @app.post("/api/check_whatsapp")

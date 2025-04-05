@@ -162,7 +162,7 @@ API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
 API_URL_BASE = os.getenv("API_URL_BASE", f"https://7103.api.greenapi.com/waInstance{API_INSTANCE}")
 API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://34.134.166.180:8000")
+NEXT_PUBLIC_API_URL = os.getenv("NEXT_PUBLIC_API_URL", "https://applottobueno.com")
 COMPANY_PHONE_CONTACT = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
 SECRET_KEY = os.getenv("SECRET_KEY", "J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
@@ -697,7 +697,7 @@ def obtener_numero_instancia():
 
 
 def verificar_numero_whatsapp(phone_number):
-    url = f"{FASTAPI_BASE_URL}/check_whatsapp"
+    url = f"{NEXT_PUBLIC_API_URL}/check_whatsapp"
     payload = {"phone_number": phone_number}
     headers = {'Content-Type': 'application/json'}
     

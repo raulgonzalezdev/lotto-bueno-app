@@ -8,6 +8,8 @@ import { useMunicipios } from '../../hooks/useMunicipios';
 import { useParroquias } from '../../hooks/useParroquias';
 import { useCentrosVotacion } from '../../hooks/useCentrosVotacion';
 import { useElectores, useElectorDetail, useTotalElectores } from '../../hooks/useElectores';
+import { useMutation } from '@tanstack/react-query';
+import { apiClient } from '../../api';
 
 interface ChatComponentProps {
   production: boolean;
@@ -221,6 +223,56 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     setShowDownloadDialog(true);
   };
 
+  // Añadir estas funciones de mutación después de los otros hooks pero antes de las funciones de descargas
+  const downloadElectoresInfoMutation = useMutation({
+    mutationFn: async (query: URLSearchParams) => {
+      return apiClient.get<{ num_batches: number }>(`download/excel/api/electores/info?${query}`);
+    }
+  });
+
+  const downloadElectoresBatchMutation = useMutation({
+    mutationFn: async ({ batchNumber, query }: { batchNumber: number, query: URLSearchParams }) => {
+      const response = await fetch(`${APIHost}/download/excel/api/electores/batch/${batchNumber}?${query}`);
+      if (!response.ok) {
+        throw new Error(`Error al descargar el lote ${batchNumber}: ${response.statusText}`);
+      }
+      return response;
+    }
+  });
+
+  const downloadCentrosPorEstadoMutation = useMutation({
+    mutationFn: async (codigoEstado: string) => {
+      const response = await fetch(`${APIHost}/download/excel/centros-por-estado/${codigoEstado}`);
+      if (!response.ok) {
+        throw new Error(`Error al descargar los centros: ${response.statusText}`);
+      }
+      return response;
+    }
+  });
+
+  const downloadElectoresPorCentrosInfoMutation = useMutation({
+    mutationFn: async (codigoEstado: string) => {
+      const response = await fetch(`${APIHost}/download/excel/api/electores-por-centros/info/${codigoEstado}`);
+      if (!response.ok) {
+        throw new Error(`Error al obtener información de la descarga: ${response.statusText}`);
+      }
+      return response.json();
+    }
+  });
+
+  const downloadElectoresPorCentroMutation = useMutation({
+    mutationFn: async ({ codigoEstado, codigoCentro }: { codigoEstado: string, codigoCentro: string }) => {
+      const response = await fetch(
+        `${APIHost}/download/excel/api/electores-por-centros/${codigoEstado}/${codigoCentro}`
+      );
+      if (!response.ok) {
+        throw new Error(`Error al descargar centro ${codigoCentro}: ${response.statusText}`);
+      }
+      return response;
+    }
+  });
+
+  // Reemplazar la función startSequentialDownload por esta versión
   const startSequentialDownload = async () => {
     if (!downloadType) return;
     
@@ -236,20 +288,16 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       if (codigoParroquia && codigoParroquia !== "") query.append('codigo_parroquia', codigoParroquia);
       if (codigoCentroVotacion && codigoCentroVotacion !== "") query.append('codigo_centro_votacion', codigoCentroVotacion);
 
-      const infoResponse = await fetch(`${APIHost}/download/excel/api/electores/info?${query}`);
-      const info = await infoResponse.json();
+      // Obtener información de descarga usando mutation
+      const info = await downloadElectoresInfoMutation.mutateAsync(query);
       setTotalBatches(info.num_batches);
 
       for (let batchNumber = 1; batchNumber <= info.num_batches; batchNumber++) {
         setCurrentBatch(batchNumber);
         setDownloadProgress((batchNumber - 1) / info.num_batches * 100);
 
-        const url = `${APIHost}/download/excel/api/electores/batch/${batchNumber}?${query}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error(`Error al descargar el lote ${batchNumber}: ${response.statusText}`);
-        }
+        // Descargar cada lote usando mutation
+        const response = await downloadElectoresBatchMutation.mutateAsync({ batchNumber, query });
 
         const blob = await response.blob();
         const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
@@ -278,6 +326,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   };
 
+  // Reemplazar la función downloadCentrosPorEstado por esta versión
   const downloadCentrosPorEstado = async () => {
     if (!codigoEstado) {
       alert('Por favor, seleccione un estado primero');
@@ -286,12 +335,10 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
 
     try {
       setIsDownloading(true);
-      const response = await fetch(`${APIHost}/download/excel/centros-por-estado/${codigoEstado}`);
       
-      if (!response.ok) {
-        throw new Error(`Error al descargar los centros: ${response.statusText}`);
-      }
-
+      // Descargar centros usando mutation
+      const response = await downloadCentrosPorEstadoMutation.mutateAsync(codigoEstado);
+      
       const blob = await response.blob();
       const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
                       'centros_electorales.xlsx.zip';
@@ -312,6 +359,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   };
 
+  // Reemplazar la función downloadElectoresPorCentros por esta versión
   const downloadElectoresPorCentros = async () => {
     if (!codigoEstado) {
       alert('Por favor, seleccione un estado primero');
@@ -322,13 +370,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       setIsDownloading(true);
       setDownloadProgress(0);
 
-      // Obtener información sobre la descarga
-      const infoResponse = await fetch(`${APIHost}/download/excel/api/electores-por-centros/info/${codigoEstado}`);
-      if (!infoResponse.ok) {
-        throw new Error(`Error al obtener información de la descarga: ${infoResponse.statusText}`);
-      }
-      
-      const info = await infoResponse.json();
+      // Obtener información sobre la descarga usando mutation
+      const info = await downloadElectoresPorCentrosInfoMutation.mutateAsync(codigoEstado);
       
       if (!info.centros || !Array.isArray(info.centros)) {
         throw new Error('Formato de respuesta inválido: no se encontraron centros');
@@ -340,14 +383,11 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       // Procesar cada centro
       for (const centro of info.centros) {
         try {
-          const response = await fetch(
-            `${APIHost}/download/excel/api/electores-por-centros/${codigoEstado}/${centro.codigo}`
-          );
-
-          if (!response.ok) {
-            console.error(`Error al descargar centro ${centro.codigo}: ${response.statusText}`);
-            continue;
-          }
+          // Descargar cada centro usando mutation
+          const response = await downloadElectoresPorCentroMutation.mutateAsync({
+            codigoEstado,
+            codigoCentro: centro.codigo
+          });
 
           const blob = await response.blob();
           const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 

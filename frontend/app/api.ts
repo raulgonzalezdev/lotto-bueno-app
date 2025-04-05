@@ -8,10 +8,28 @@ export const detectHost = async (): Promise<string> => {
 
 // Funciones utilitarias
 const getBaseUrl = (): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+  let baseUrl = process.env.NEXT_PUBLIC_API_URL;
   if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL no está definida.');
+    // Si no hay una URL definida, usar el host actual
+    if (typeof window !== 'undefined') {
+      baseUrl = window.location.origin;
+    } else {
+      baseUrl = 'https://applottobueno.com';
+    }
   }
+  
+  // Garantizar que siempre usamos HTTPS
+  if (baseUrl.startsWith('http://')) {
+    baseUrl = baseUrl.replace('http://', 'https://');
+  } else if (!baseUrl.startsWith('https://')) {
+    baseUrl = `https://${baseUrl}`;
+  }
+  
+  // Asegurar que la URL termine con /
+  if (!baseUrl.endsWith('/')) {
+    baseUrl = `${baseUrl}/`;
+  }
+  
   return baseUrl;
 };
 

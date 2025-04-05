@@ -14,6 +14,20 @@ const nextConfig = {
   jest: {
     enabled: false
   }
+  ,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "upgrade-insecure-requests"
+          }
+        ]
+      }
+    ]
+  }
 };
 
 // Set assetPrefix only in production/export mode

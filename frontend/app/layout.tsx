@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Inter } from "next/font/google";
+import Providers from './providers';
 
 import { detectHost } from "./api";
+
+const inter = Inter({ subsets: ["latin"] });
 
 // Use the environment variables for metadata
 export const metadata: Metadata = {
@@ -22,7 +26,11 @@ export default function RootLayout({
       <link rel="icon" href={faviconUrl} /> */}
 
       <link href={faviconUrl} rel="icon" type="image/x-icon"></link>
-      <body>{children}</body>
+      <body className={inter.className}>
+        <Providers>
+          {children}
+        </Providers>
+      </body>
     </html>
   );
 }

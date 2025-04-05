@@ -14,13 +14,12 @@ import LineaTelefonicaControl from "./components/lineas/LineaTelefonicaControl";
 import SorteoControl from "./components/sorteo/SorteoControl";
 
 import { Settings } from "./components/Settings/types";
-
 import { RAGConfig } from "./components/RAG/types";
-import { detectHost } from "./api";
+// import { detectHost } from "./api"; // Comentado o eliminado
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { fonts, FontKey } from "./info";
 import PulseLoader from "react-spinners/PulseLoader";
-
+import { useSettings } from "./hooks/useSettings";
 
 const Home = () => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -37,6 +36,13 @@ const Home = () => {
   const fontClassName = fontKey ? fonts[fontKey]?.className || "" : "";
 
   const [APIHost, setAPIHost] = useState<string | null>(null);
+
+  const { 
+    data: settingsData,
+    isLoading: isLoadingSettings,
+    isError: isErrorSettings,
+    error: errorSettings 
+  } = useSettings();
 
   const handleOutsideClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -82,132 +88,46 @@ const Home = () => {
     }
   };
 
-  const fetchCurrentSettings = async (apiHost: string) => {
-    try {
-      const response = await fetch(`${apiHost}/api/settings`);
-      if (response.ok) {
-        const data = await response.json();
-        setBaseSetting(data);
-        setSettingTemplate(data.currentTemplate);
-      } else {
-        console.error("Failed to fetch settings");
+  useEffect(() => {
+    if (baseSetting && settingTemplate) {
+      const currentSettings = baseSetting[settingTemplate]?.Customization.settings;
+      if (currentSettings) {
+        document.documentElement.style.setProperty("--primary-verba", currentSettings.primary_color.color);
+        document.documentElement.style.setProperty("--secondary-verba", currentSettings.secondary_color.color);
+        document.documentElement.style.setProperty("--warning-verba", currentSettings.warning_color.color);
+        document.documentElement.style.setProperty("--bg-verba", currentSettings.bg_color.color);
+        document.documentElement.style.setProperty("--bg-alt-verba", currentSettings.bg_alt_color.color);
+        document.documentElement.style.setProperty("--text-verba", currentSettings.text_color.color);
+        document.documentElement.style.setProperty("--text-alt-verba", currentSettings.text_alt_color.color);
+        document.documentElement.style.setProperty("--button-verba", currentSettings.button_color.color);
+        document.documentElement.style.setProperty("--button-hover-verba", currentSettings.button_hover_color.color);
+        document.documentElement.style.setProperty("--bg-console-verba", currentSettings.bg_console.color);
+        document.documentElement.style.setProperty("--text-console-verba", currentSettings.text_console.color);
       }
-    } catch (error) {
-      console.error("Error fetching settings:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchHost = async () => {
-    try {
-      const host = await detectHost();
-      setAPIHost(host);
-      await fetchCurrentSettings(host);
-    } catch (error) {
-      console.error("Error detecting host:", error);
-      setAPIHost(null);
-      setIsLoading(false);
-    }
-  };
-
-  const importConfig = async () => {
-    if (!APIHost || !baseSetting) {
-      return;
-    }
-
-    try {
-      const payload = {
-        config: {
-          RAG: RAGConfig,
-          SETTING: { selectedTheme: settingTemplate, themes: baseSetting },
-        },
-      };
-      await fetch(`${APIHost}/api/settings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload.config.SETTING),
-      });
-    } catch (error) {
-      console.error("Failed to update config:", error);
-    }
-  };
-
-
-  useEffect(() => {
-    fetchHost();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    importConfig();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseSetting, settingTemplate]);
-
-  useEffect(() => {
-    if (baseSetting) {
-      document.documentElement.style.setProperty(
-        "--primary-verba",
-        baseSetting[settingTemplate]?.Customization.settings.primary_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--secondary-verba",
-        baseSetting[settingTemplate]?.Customization.settings.secondary_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--warning-verba",
-        baseSetting[settingTemplate]?.Customization.settings.warning_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--bg-verba",
-        baseSetting[settingTemplate]?.Customization.settings.bg_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--bg-alt-verba",
-        baseSetting[settingTemplate]?.Customization.settings.bg_alt_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--text-verba",
-        baseSetting[settingTemplate]?.Customization.settings.text_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--text-alt-verba",
-        baseSetting[settingTemplate]?.Customization.settings.text_alt_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--button-verba",
-        baseSetting[settingTemplate]?.Customization.settings.button_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--button-hover-verba",
-        baseSetting[settingTemplate]?.Customization.settings.button_hover_color.color
-      );
-      document.documentElement.style.setProperty(
-        "--bg-console-verba",
-        baseSetting[settingTemplate]?.Customization.settings.bg_console.color
-      );
-      document.documentElement.style.setProperty(
-        "--text-console-verba",
-        baseSetting[settingTemplate]?.Customization.settings.text_console.color
-      );
     }
   }, [baseSetting, settingTemplate]);
 
-  if (isLoading) {
+  if (isLoadingSettings) {
     return (
       <div className="flex items-center justify-center h-screen gap-2">
         <PulseLoader loading={true} size={12} speedMultiplier={0.75} />
-        <p>Cargando Lotto Bueno</p>
+        <p>Cargando configuración...</p>
       </div>
     );
   }
 
-  if (!baseSetting) {
+  if (isErrorSettings) {
     return (
       <div className="flex items-center justify-center h-screen gap-2">
-        <p>Error cargando la configuración.</p>
+        <p>Error cargando la configuración: {errorSettings?.message}</p>
+      </div>
+    );
+  }
+
+  if (!settingsData) {
+    return (
+      <div className="flex items-center justify-center h-screen gap-2">
+        <p>No se pudo obtener la configuración del servidor.</p>
       </div>
     );
   }
@@ -221,8 +141,8 @@ const Home = () => {
             : `fixed inset-0 overflow-y-auto bg-white bg-opacity-75 ${fontClassName}`
         }
         data-theme={
-          baseSetting
-            ? baseSetting[settingTemplate]?.Customization.settings.theme
+          baseSetting && settingTemplate
+            ? baseSetting[settingTemplate]?.Customization?.settings?.theme
             : "light"
         }
       >
@@ -233,30 +153,30 @@ const Home = () => {
             <WelcomeComponent 
               title="Completa tu registro y gana fabulosos premios" 
               subtitle="En tan solo 3 simples pasos podrás convertirte en el ganador o ganadora de #LottoBueno"
-              imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
               setCurrentPage={setCurrentPage}
             />
           )}
 
           {!isAdmin && currentPage === "REGISTER" && (
             <RegisterWindow 
-              title={baseSetting[settingTemplate]?.Customization.settings.title.text} 
-              subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
-              imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+              title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Registro'}
+              subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Completa tus datos'}
+              imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
               setCurrentPage={setCurrentPage}
               onAdminLogin={handleAdminChange}
             />
           )}
 
-          {isAdmin && (
+          {isAdmin && baseSetting && (
             <>
               <div className="flex justify-between items-center mb-4">
                 <Navbar
-                  APIHost={APIHost}
+                  APIHost={process.env.NEXT_PUBLIC_API_URL || null}
                   production={production}
-                  title={baseSetting[settingTemplate]?.Customization.settings.title.text}
-                  subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
-                  imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+                  title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Admin'}
+                  subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Panel'}
+                  imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
                   version="v1.0.1"
                   currentPage={currentPage}
                   setCurrentPage={setCurrentPage}
@@ -272,13 +192,13 @@ const Home = () => {
               {currentPage === "ELECTORES" && (
                 <ChatComponent
                   production={production}
-                  settingConfig={baseSetting[settingTemplate]}
-                  APIHost={APIHost}
+                  settingConfig={baseSetting?.[settingTemplate]}
+                  APIHost={process.env.NEXT_PUBLIC_API_URL || null}
                   RAGConfig={RAGConfig}
                   isAdmin={isAdmin}
-                  title={baseSetting[settingTemplate]?.Customization.settings.title.text}
-                  subtitle={baseSetting[settingTemplate]?.Customization.settings.subtitle.text}
-                  imageSrc={baseSetting[settingTemplate]?.Customization.settings.image.src}
+                  title={baseSetting?.[settingTemplate]?.Customization?.settings?.title?.text || 'Chat'}
+                  subtitle={baseSetting?.[settingTemplate]?.Customization?.settings?.subtitle?.text || 'Consulta'}
+                  imageSrc={baseSetting?.[settingTemplate]?.Customization?.settings?.image?.src || 'default_image_path.png'}
                 />
               )}
 

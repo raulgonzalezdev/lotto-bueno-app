@@ -13,15 +13,41 @@ ENV POSTGRES_PASSWORD=lottobueno
 #RUN chmod +x /docker-entrypoint-initdb.d/init-db.sh
 #RUN chmod +x /docker-entrypoint-initdb.d/wait-for-it.sh
 
-# Etapa 2: Configuración de la aplicación
+# Etapa 2: Configuración de la aplicación backend
 FROM python:3.10-slim as app
 
 WORKDIR /app
 
-COPY . /app
-# Crear el archivo .env directamente en el contenedor
-RUN echo "POSTGRES_DB=lottobueno\nPOSTGRES_USER=lottobueno\nPOSTGRES_PASSWORD=lottobueno\nDATABASE_URL=postgresql://lottobueno:lottobueno@postgres:5432/lottobueno\nREDIS_URL=redis://localhost:6380/0" > /app/.env
-
+COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copia solo el código de la aplicación backend
+COPY ./app /app/app
+
+# Crear el archivo .env directamente en el contenedor
+# Considera usar variables de entorno de Docker Compose en su lugar para mayor seguridad y flexibilidad
+# RUN echo "POSTGRES_DB=lottobueno\\nPOSTGRES_USER=lottobueno\\nPOSTGRES_PASSWORD=lottobueno\\nDATABASE_URL=postgresql://lottobueno:lottobueno@postgres:5432/lottobueno\\nREDIS_URL=redis://redis:6379/0" > /app/.env
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+# Etapa 3: Configuración de la aplicación frontend
+FROM node:18-alpine as frontend
+
+WORKDIR /app/frontend
+
+# Copia los archivos de configuración del frontend y el código fuente
+COPY ./frontend/package.json ./frontend/package-lock.json* ./
+COPY ./frontend /app/frontend
+
+# Instala dependencias del frontend
+RUN npm install
+
+# Construye la aplicación frontend
+RUN npm run build:standalone
+
+# Expone el puerto que usa Next.js por defecto (o el que definas en start script)
+EXPOSE 3000
+
+# Comando para iniciar la aplicación Next.js
+CMD ["npm", "run", "start"]

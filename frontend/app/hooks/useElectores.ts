@@ -18,7 +18,7 @@ interface Elector {
     codigo_estado: number;
     codigo_municipio: number;
     codigo_parroquia: number;
-    codigo_centro_votacion: string;
+    codigo_centro_votacion: number;
 }
 
 interface Geografico {
@@ -71,8 +71,19 @@ const fetchElectores = async ({ currentPage, electoresPerPage, ...filters }: Fet
   if (filters.codigoParroquia) queryParams.codigo_parroquia = filters.codigoParroquia;
   if (filters.codigoCentroVotacion) queryParams.codigo_centro_votacion = filters.codigoCentroVotacion;
 
-  const data = await apiClient.get<Elector[]>('api/electores/', queryParams);
-  return Array.isArray(data) ? data : [];
+  const data = await apiClient.get<any[]>('api/electores/', queryParams);
+  
+  // Asegurar que codigo_centro_votacion sea un número
+  if (Array.isArray(data)) {
+    return data.map(elector => ({
+      ...elector,
+      codigo_centro_votacion: typeof elector.codigo_centro_votacion === 'string' 
+        ? Number(elector.codigo_centro_votacion) 
+        : elector.codigo_centro_votacion
+    }));
+  }
+  
+  return [];
 };
 
 const fetchTotalElectores = async (filters: Omit<FetchElectoresParams, 'currentPage' | 'electoresPerPage'>): Promise<number> => {

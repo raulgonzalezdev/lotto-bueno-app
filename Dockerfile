@@ -48,7 +48,7 @@ COPY ./frontend/.env ./
 COPY ./frontend /frontend
 
 # Instala dependencias del frontend
-RUN npm install
+RUN npm install --force or --legacy-peer-deps
 
 # Construye la aplicación frontend
 RUN npm run build:standalone

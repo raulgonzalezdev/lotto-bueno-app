@@ -290,41 +290,26 @@ def generate_file_responses(data, file_type, base_filename):
         raise
 
 
-app.mount(
-    "/static/_next",
-    StaticFiles(directory=BASE_DIR / "frontend/out/_next"),
-    name="next-assets",
-)
+# Eliminar el montaje de archivos estáticos del frontend
+# app.mount(
+#     "/static/_next",
+#     StaticFiles(directory=BASE_DIR / "frontend/out/_next"),
+#     name="next-assets",
+# )
+# 
+# app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend/out"), name="app")
 
-app.mount("/static", StaticFiles(directory=BASE_DIR / "frontend/out"), name="app")
 
+# Eliminar la ruta que sirve el index.html del frontend
+# @app.get("/")
+# @app.head("/")
+# async def serve_frontend():
+#     return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
 
 #@app.get("/")
 #@app.head("/")
 #async def serve_frontend():
-#    html_path = os.path.join(BASE_DIR, "frontend/out/index.html")
-#    with open(html_path, 'r', encoding='utf-8') as f:
-#        html_content = f.read()
-        
-    # Inyectar la configuración
- #   api_host = os.getenv("HOST", "https://applottobueno.com") 
- #   script_tag = f"""
- #   <script>
- #       window.ENV = {{
- #           HOST: "{api_host}"
- #       }};
- #   </script>
- #   """
-    
-    # Insertar antes de </head>
- #   html_content = html_content.replace('</head>', f'{script_tag}</head>')
-    
- #   return HTMLResponse(content=html_content)
-
-@app.get("/")
-@app.head("/")
-async def serve_frontend():
-    return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
+ #   return FileResponse(os.path.join(BASE_DIR, "frontend/out/index.html"))
 
 @app.post("/api/check_whatsapp")
 def api_check_whatsapp(request: PhoneNumberRequest):

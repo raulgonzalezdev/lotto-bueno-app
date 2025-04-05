@@ -57,8 +57,16 @@ const Home = () => {
       const sessionData = JSON.parse(session);
       setIsAdmin(sessionData.isAdmin);
       setCurrentPage(sessionData.lastPage || "ELECTORES");
+    } else {
+      setCurrentPage("WELCOME");
+      setIsAdmin(false);
     }
-  }, []);
+
+    if (settingsData) {
+      setSettingTemplate(settingsData.currentTemplate || "Default");
+      setBaseSetting(settingsData);
+    }
+  }, [settingsData]);
 
   // Guardar estado de la sesión cuando cambia
   useEffect(() => {
@@ -67,12 +75,13 @@ const Home = () => {
         isAdmin,
         lastPage: currentPage
       }));
+    } else {
+      localStorage.removeItem('session');
     }
   }, [isAdmin, currentPage]);
 
   const handleLogout = () => {
     setIsAdmin(false);
-    localStorage.removeItem('session');
     setCurrentPage("WELCOME");
   };
 

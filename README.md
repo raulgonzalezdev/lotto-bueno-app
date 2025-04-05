@@ -54,7 +54,7 @@ FASTAPI_BASE_URL=https://applottobueno.com
 COMPANY_PHONE_CONTACT=584262837784
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
 ALGORITHM=HS256
-HOST=https://applottobueno.com' > /.env
+HOST=https://applottobueno.com' > .env
 
 
    docker exec -it 8fd75fd2984c /bin/bash

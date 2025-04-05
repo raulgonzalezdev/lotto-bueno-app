@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api';
 
 // --- Interfaces --- //
 interface Ticket {
@@ -38,68 +39,27 @@ interface TicketUpdatePayload {
   ganador?: boolean;
 }
 
-// --- Funciones Fetch --- //
-
-const getApiBaseUrl = (): string => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!baseUrl) {
-        throw new Error('NEXT_PUBLIC_API_URL no está definida.');
-    }
-    const url = new URL(baseUrl);
-    if (url.protocol === 'http:' && url.hostname !== 'localhost') {
-        url.protocol = 'https:';
-    }
-    return url.toString();
-};
-
-const fetchTickets = async ({ currentPage, ticketsPerPage, searchTerm, estadoFiltro, recolectorFiltro }: FetchTicketsParams): Promise<TicketsResponse> => {
-  const baseUrl = getApiBaseUrl();
-  const queryParams = new URLSearchParams({
-    skip: ((currentPage - 1) * ticketsPerPage).toString(),
-    limit: ticketsPerPage.toString(),
-  });
-
-  if (searchTerm) queryParams.append('search', searchTerm);
-  if (estadoFiltro) queryParams.append('codigo_estado', estadoFiltro);
-  if (recolectorFiltro) queryParams.append('referido_id', recolectorFiltro);
-
-  const fetchUrl = new URL(`api/tickets/?${queryParams.toString()}`, baseUrl).toString();
-  const response = await fetch(fetchUrl);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Error ${response.status}: No se pudo obtener la lista de tickets`);
-  }
-  return response.json();
-};
-
-const updateTicket = async ({ ticketId, payload }: { ticketId: number; payload: TicketUpdatePayload }): Promise<Ticket> => {
-    const baseUrl = getApiBaseUrl();
-    const fetchUrl = new URL(`api/tickets/${ticketId}`, baseUrl).toString();
-
-    const response = await fetch(fetchUrl, {
-        method: "PATCH",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Error ${response.status}: No se pudo actualizar el ticket`);
-    }
-    return response.json();
-};
-
 // --- Hooks --- //
 
 // Hook para obtener tickets paginados y filtrados
 export const useTickets = (params: FetchTicketsParams) => {
+  const { currentPage, ticketsPerPage, searchTerm, estadoFiltro, recolectorFiltro } = params;
+  
   return useQuery<TicketsResponse, Error>({
     // La clave de la query incluye todos los parámetros para re-fetch automático
     queryKey: ['tickets', params],
-    queryFn: () => fetchTickets(params),
+    queryFn: async () => {
+      const queryParams: Record<string, string> = {
+        skip: ((currentPage - 1) * ticketsPerPage).toString(),
+        limit: ticketsPerPage.toString(),
+      };
+
+      if (searchTerm) queryParams.search = searchTerm;
+      if (estadoFiltro) queryParams.codigo_estado = estadoFiltro;
+      if (recolectorFiltro) queryParams.referido_id = recolectorFiltro;
+
+      return apiClient.get<TicketsResponse>('api/tickets/', queryParams);
+    },
     placeholderData: (oldData) => oldData, // Útil para paginación para no ver pantalla en blanco
   });
 };
@@ -108,7 +68,8 @@ export const useTickets = (params: FetchTicketsParams) => {
 export const useUpdateTicket = () => {
     const queryClient = useQueryClient();
     return useMutation<Ticket, Error, { ticketId: number; payload: TicketUpdatePayload }>({
-        mutationFn: updateTicket,
+        mutationFn: ({ ticketId, payload }) => 
+          apiClient.patch<Ticket>(`api/tickets/${ticketId}`, payload),
         onSuccess: (updatedTicket) => {
             // Invalidar la query de tickets para refrescar la lista después de la actualización
             queryClient.invalidateQueries({ queryKey: ['tickets'] });

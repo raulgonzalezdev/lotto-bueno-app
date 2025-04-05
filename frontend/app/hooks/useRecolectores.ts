@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../api';
 
 // Definir la interfaz para un Recolector según tu API
 interface Recolector {
@@ -18,31 +19,11 @@ interface RecolectoresResponse {
   items: Recolector[];
 }
 
-// Función para obtener los recolectores de la API
-const fetchRecolectores = async (): Promise<RecolectoresResponse> => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!baseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL no está definida.');
-  }
-
-  const endpointPath = 'api/recolectores/'; // Asegúrate que la ruta es correcta
-  const fetchUrl = new URL(endpointPath, baseUrl).toString();
-
-  const response = await fetch(fetchUrl);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})); // Intenta obtener detalles del error
-    throw new Error(errorData.detail || `Error ${response.status}: No se pudo obtener la lista de recolectores`);
-  }
-
-  return response.json();
-};
-
 // Hook personalizado
 export const useRecolectores = () => {
   return useQuery<RecolectoresResponse, Error>({
-    queryKey: ['recolectores'], // La clave ahora es un array
-    queryFn: fetchRecolectores, // La función se pasa aquí
+    queryKey: ['recolectores'],
+    queryFn: () => apiClient.get<RecolectoresResponse>('api/recolectores/'),
     // Opciones adicionales (opcional)
     // staleTime: 5 * 60 * 1000, 
     // cacheTime: 10 * 60 * 1000, 

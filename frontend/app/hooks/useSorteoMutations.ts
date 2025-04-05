@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api';
 
 // --- Interfaces --- //
 // Reutilizar la interfaz Ticket si ya está definida globalmente o importarla
@@ -70,7 +71,7 @@ const quitarGanadores = async (): Promise<void> => {
 export const useRealizarSorteo = () => {
     const queryClient = useQueryClient();
     return useMutation<Ticket[], Error, RealizarSorteoPayload>({
-        mutationFn: realizarSorteo,
+        mutationFn: (payload) => apiClient.post<Ticket[]>('api/sorteo/ganadores', payload),
         onSuccess: () => {
             // Invalidar queries relacionadas si es necesario, por ejemplo, la lista de tickets
             queryClient.invalidateQueries({ queryKey: ['tickets'] });
@@ -81,7 +82,7 @@ export const useRealizarSorteo = () => {
 export const useQuitarGanadores = () => {
     const queryClient = useQueryClient();
     return useMutation<void, Error, void>({
-        mutationFn: quitarGanadores,
+        mutationFn: () => apiClient.post<void>('api/sorteo/quitar_ganadores', {}),
         onSuccess: () => {
              queryClient.invalidateQueries({ queryKey: ['tickets'] });
         },

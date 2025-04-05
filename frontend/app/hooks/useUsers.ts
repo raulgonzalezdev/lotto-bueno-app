@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api';
 
 // --- Interfaces --- //
 interface User {
@@ -135,9 +136,35 @@ const deleteUser = async (userId: number): Promise<void> => {
 
 // Hook para obtener usuarios paginados y filtrados
 export const useUsers = (params: FetchUsersParams) => {
+  const { currentPage, usersPerPage, searchTerm } = params;
+  
   return useQuery<UsersResponse, Error>({
     queryKey: ['users', params],
-    queryFn: () => fetchUsers(params),
+    queryFn: async () => {
+      const queryParams: Record<string, string> = {
+        skip: ((currentPage - 1) * usersPerPage).toString(),
+        limit: usersPerPage.toString(),
+      };
+      
+      if (searchTerm) queryParams.search = searchTerm;
+
+      const data = await apiClient.get<UsersResponse | User[]>('api/users/', queryParams);
+      
+      // Manejar diferentes formatos de respuesta
+      if (typeof data === 'object' && data !== null && 'items' in data && Array.isArray(data.items)) {
+        return data as UsersResponse;
+      } else if (Array.isArray(data)) {
+        return {
+          items: data,
+          total: data.length
+        };
+      }
+      
+      return {
+        items: [],
+        total: 0
+      };
+    },
     placeholderData: (oldData) => oldData, // Usar datos anteriores mientras carga
   });
 };
@@ -146,7 +173,7 @@ export const useUsers = (params: FetchUsersParams) => {
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
   return useMutation<User, Error, CreateUserPayload>({
-    mutationFn: createUser,
+    mutationFn: (payload) => apiClient.post<User>('api/users/', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     }
@@ -157,7 +184,7 @@ export const useCreateUser = () => {
 export const useUpdateUser = () => {
   const queryClient = useQueryClient();
   return useMutation<User, Error, { userId: number; payload: UpdateUserPayload }>({
-    mutationFn: updateUser,
+    mutationFn: ({ userId, payload }) => apiClient.put<User>(`api/users/${userId}`, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     }
@@ -168,7 +195,7 @@ export const useUpdateUser = () => {
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
   return useMutation<void, Error, number>({
-    mutationFn: deleteUser,
+    mutationFn: (userId) => apiClient.delete<void>(`api/users/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     }

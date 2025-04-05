@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../api';
 
 // --- Interfaces --- //
 // Asegúrate de que estas interfaces coincidan con tu schema de FastAPI
@@ -135,9 +136,25 @@ const fetchElectorDetail = async (numeroCedula: string): Promise<ElectorDetail |
 // --- Hooks --- //
 
 export const useElectores = (params: FetchElectoresParams) => {
+  const { currentPage, electoresPerPage, ...filters } = params;
+  
   return useQuery<Elector[], Error>({
     queryKey: ['electores', params],
-    queryFn: () => fetchElectores(params),
+    queryFn: async () => {
+      const queryParams: Record<string, string> = {
+        skip: ((currentPage - 1) * electoresPerPage).toString(),
+        limit: electoresPerPage.toString(),
+      };
+
+      // Añadir filtros a los parámetros
+      if (filters.codigoEstado) queryParams.codigo_estado = filters.codigoEstado;
+      if (filters.codigoMunicipio) queryParams.codigo_municipio = filters.codigoMunicipio;
+      if (filters.codigoParroquia) queryParams.codigo_parroquia = filters.codigoParroquia;
+      if (filters.codigoCentroVotacion) queryParams.codigo_centro_votacion = filters.codigoCentroVotacion;
+      
+      const data = await apiClient.get<Elector[]>('api/electores/', queryParams);
+      return Array.isArray(data) ? data : [];
+    },
     placeholderData: (oldData) => oldData,
   });
 };
@@ -145,16 +162,39 @@ export const useElectores = (params: FetchElectoresParams) => {
 export const useTotalElectores = (filters: Omit<FetchElectoresParams, 'currentPage' | 'electoresPerPage'>) => {
     // Clonar filtros para evitar problemas de mutabilidad en la queryKey
     const stableFilters = { ...filters }; 
+    
     return useQuery<number, Error>({
         queryKey: ['totalElectores', stableFilters],
-        queryFn: () => fetchTotalElectores(stableFilters),
+        queryFn: async () => {
+          const queryParams: Record<string, string> = {};
+          
+          if (stableFilters.codigoEstado) queryParams.codigo_estado = stableFilters.codigoEstado;
+          if (stableFilters.codigoMunicipio) queryParams.codigo_municipio = stableFilters.codigoMunicipio;
+          if (stableFilters.codigoParroquia) queryParams.codigo_parroquia = stableFilters.codigoParroquia;
+          if (stableFilters.codigoCentroVotacion) queryParams.codigo_centro_votacion = stableFilters.codigoCentroVotacion;
+          
+          return apiClient.get<number>('api/total/electores', queryParams);
+        },
     });
 };
 
 export const useElectorDetail = (numeroCedula: string) => {
   return useQuery<ElectorDetail | null, Error>({
     queryKey: ['electorDetail', numeroCedula],
-    queryFn: () => fetchElectorDetail(numeroCedula),
+    queryFn: async () => {
+      if (!numeroCedula) {
+        return null;
+      }
+      
+      try {
+        return await apiClient.get<ElectorDetail>(`api/electores/cedula/${encodeURIComponent(numeroCedula)}`);
+      } catch (error) {
+        if ((error as Error).message.includes('404')) {
+          return null; // Considerar 404 como no encontrado, no un error de fetch
+        }
+        throw error;
+      }
+    },
     enabled: !!numeroCedula, // Solo ejecutar si hay cédula
   });
 }; 

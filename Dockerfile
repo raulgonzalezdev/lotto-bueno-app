@@ -39,6 +39,7 @@ WORKDIR /frontend
 
 # Copia los archivos de configuración del frontend y el código fuente
 COPY ./frontend/package.json ./frontend/package-lock.json* ./
+COPY ./frontend/.env ./
 COPY ./frontend /frontend
 
 # Instala dependencias del frontend

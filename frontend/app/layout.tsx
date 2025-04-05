@@ -3,7 +3,8 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import Providers from './providers';
 
-import { detectHost } from "./api";
+// Importación detectHost eliminada porque no se usa
+// import { detectHost } from "./api";
 
 const inter = Inter({ subsets: ["latin"] });
 

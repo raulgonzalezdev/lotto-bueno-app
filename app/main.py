@@ -1708,7 +1708,7 @@ async def get_recolector_referidos(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/download/excel/recolector-referidos/{recolector_id}")
+@app.get("/api/download/excel/recolector-referidos/{recolector_id}")
 async def download_excel_recolector_referidos(
     recolector_id: int,
     codigo_estado: Optional[str] = None,
@@ -2244,7 +2244,7 @@ async def quitar_ganadores(db: Session = Depends(get_db)):
     return {"message": "Marca de ganadores eliminada de todos los tickets"}
 
 
-app.include_router(router)
+app.include_router(router, prefix="/api")
 
 
 @app.get("/api/download/excel/electores/info")

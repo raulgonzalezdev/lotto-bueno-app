@@ -180,7 +180,9 @@ const TicketControl: React.FC = () => {
     if (!APIHost || !selectedTicket) return;
 
     try {
-      const response = await fetch(`/tickets/${selectedTicket.id}`, {
+      // Asegurar que la URL use HTTPS y añadir el prefijo /api/
+      const baseUrl = APIHost.replace('http://', 'https://');
+      const response = await fetch(`${baseUrl}/api/tickets/${selectedTicket.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

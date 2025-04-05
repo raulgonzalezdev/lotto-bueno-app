@@ -282,7 +282,14 @@ const RecolectorControl: React.FC = () => {
     
     try {
       setIsDownloading(true);
-      let url = `${APIHost}/download/excel/recolector-referidos/${recolectorId}`;
+      if (!APIHost) {
+        setToastMessage("Error: API host no está configurado");
+        setToastType("error");
+        setIsDownloading(false);
+        return;
+      }
+
+      let url = `${APIHost}/api/download/excel/recolector-referidos/${recolectorId}`;
       if (estadoFiltro) {
         url += `?codigo_estado=${estadoFiltro}`;
       }

@@ -82,7 +82,7 @@ const LoginModal: React.FC<LoginModalProps> = ({
     const apiHost = APIHost || 'https://applottobueno.com';
     try {
       //const response = await fetch(`${apiHost}/api/register`, {
-      const response = await fetch(`/api/register`, {
+      const response = await fetch(`${apiHost}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

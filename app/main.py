@@ -2016,13 +2016,32 @@ async def login(
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer", "isAdmin": user.isAdmin}
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
 @app.post("/api/register")
 async def register(
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...),
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    try:
+        # Intentar obtener datos del body como JSON
+        body = await request.json()
+        username = body.get("username")
+        email = body.get("email")
+        password = body.get("password")
+    except:
+        # Si falla, intentar obtener como form-data
+        form = await request.form()
+        username = form.get("username")
+        email = form.get("email")
+        password = form.get("password")
+    
+    if not username or not email or not password:
+        raise HTTPException(status_code=400, detail="Username, email and password are required")
+
     # Verificar si el usuario ya existe
     existing_user = db.query(Users).filter(
         (Users.username == username) | (Users.email == email)

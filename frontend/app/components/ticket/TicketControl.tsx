@@ -2,6 +2,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { detectHost } from "../../api";
+import { useTickets, useUpdateTicket } from "../../hooks/useTickets";
+import { useEstados } from "../../hooks/useEstados";
+import { useRecolectores } from "../../hooks/useRecolectores";
 
 interface Ticket {
   id: number;
@@ -19,18 +22,7 @@ interface Ticket {
   created_at: string;
 }
 
-interface Estado {
-  codigo_estado: string;
-  estado: string;
-}
-
-interface Recolector {
-  id: number;
-  nombre: string;
-}
-
 const TicketControl: React.FC = () => {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [editModalIsOpen, setEditModalIsOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -40,22 +32,36 @@ const TicketControl: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [APIHost, setAPIHost] = useState<string>('https://applottobueno.com');
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
-  const [estados, setEstados] = useState<Estado[]>([]);
-  const [recolectores, setRecolectores] = useState<Recolector[]>([]);
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [recolectorFiltro, setRecolectorFiltro] = useState<string>("");
+
+  // Usando React Query Hooks
+  const { data: ticketsResponse, isLoading: ticketsLoading } = useTickets({
+    currentPage,
+    ticketsPerPage,
+    searchTerm,
+    estadoFiltro,
+    recolectorFiltro
+  });
+
+  const { data: estados = [], isLoading: estadosLoading } = useEstados();
+  const { data: recolectoresData, isLoading: recolectoresLoading } = useRecolectores();
+
+  // Mutación para actualizar tickets
+  const updateTicketMutation = useUpdateTicket();
+
+  // Extraer la lista de tickets y total de la respuesta
+  const tickets = ticketsResponse?.items || [];
+  
+  useEffect(() => {
+    if (ticketsResponse) {
+      setTotalPages(Math.ceil(ticketsResponse.total / ticketsPerPage));
+    }
+  }, [ticketsResponse, ticketsPerPage]);
 
   useEffect(() => {
     fetchHost();
   }, []);
-
-  useEffect(() => {
-    if (APIHost) {
-      fetchTickets();
-      fetchEstados();
-      fetchRecolectores();
-    }
-  }, [APIHost, currentPage, searchTerm, estadoFiltro, recolectorFiltro]);
 
   const fetchHost = async () => {
     try {
@@ -64,72 +70,6 @@ const TicketControl: React.FC = () => {
     } catch (error) {
       console.error("Error detecting host:", error);
       setAPIHost(process.env.HOST || 'https://applottobueno.com');
-    }
-  };
-
-  const fetchEstados = async () => {
-    if (!APIHost) return;
-    try {
-      // Asegurar que la URL use HTTPS
-      const baseUrl = APIHost.replace('http://', 'https://');
-      const response = await fetch(`${baseUrl}/api/estados`);
-      if (!response.ok) {
-        throw new Error('Error fetching estados');
-      }
-      const data = await response.json();
-      setEstados(data);
-    } catch (error) {
-      console.error("Error fetching estados:", error);
-    }
-  };
-  
-  const fetchRecolectores = async () => {
-    if (!APIHost) return;
-    try {
-      // Asegurar que la URL use HTTPS
-      const baseUrl = APIHost.replace('http://', 'https://');
-      const response = await fetch(`${baseUrl}/api/recolectores`);
-      if (!response.ok) {
-        throw new Error('Error fetching recolectores');
-      }
-      const data = await response.json();
-      setRecolectores(data.items || data);
-    } catch (error) {
-      console.error("Error fetching recolectores:", error);
-    }
-  };
-  
-  const fetchTickets = async () => {
-    const query = new URLSearchParams({
-      skip: ((currentPage - 1) * ticketsPerPage).toString(),
-      limit: ticketsPerPage.toString(),
-      ...(searchTerm && { search: searchTerm }),
-      ...(estadoFiltro && { codigo_estado: estadoFiltro }),
-      ...(recolectorFiltro && { referido_id: recolectorFiltro }),
-    }).toString();
-  
-    try {
-      // Asegurar que la URL use HTTPS
-      const baseUrl = APIHost?.replace('http://', 'https://');
-      if (!baseUrl) {
-        throw new Error('No se ha configurado la URL base');
-      }
-      const response = await fetch(`${baseUrl}/api/tickets/?${query}`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      if (Array.isArray(data.items)) {
-        setTickets(data.items);
-        setTotalPages(Math.ceil(data.total / ticketsPerPage));
-      } else {
-        setTickets(data);
-        setTotalPages(Math.ceil(data.length / ticketsPerPage));
-      }
-    } catch (error) {
-      console.error("Error fetching tickets:", error);
-      setTickets([]);
-      setTotalPages(1);
     }
   };
 
@@ -167,7 +107,6 @@ const TicketControl: React.FC = () => {
     } else {
       setCurrentPage(pageNumber);
     }
-    fetchTickets();
   };
 
   const handleUpdateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,25 +116,14 @@ const TicketControl: React.FC = () => {
 
   const handleUpdateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!APIHost || !selectedTicket) return;
+    if (!selectedTicket) return;
 
     try {
-      // Asegurar que la URL use HTTPS y añadir el prefijo /api/
-      const baseUrl = APIHost.replace('http://', 'https://');
-      const response = await fetch(`${baseUrl}/api/tickets/${selectedTicket.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedTicket),
+      await updateTicketMutation.mutateAsync({
+        ticketId: selectedTicket.id,
+        payload: updatedTicket
       });
-
-      if (response.ok) {
-        fetchTickets();
-        closeEditModal();
-      } else {
-        console.error("Error updating ticket");
-      }
+      closeEditModal();
     } catch (error) {
       console.error("Error updating ticket:", error);
     }
@@ -228,6 +156,9 @@ const TicketControl: React.FC = () => {
     }
   };
 
+  // Obtener recolectores de la respuesta
+  const recolectores = recolectoresData?.items || [];
+
   return (
     <div className="p-4">
       <h2>Control de Tickets</h2>
@@ -243,6 +174,7 @@ const TicketControl: React.FC = () => {
           value={estadoFiltro}
           onChange={(e) => setEstadoFiltro(e.target.value)}
           className="select select-bordered"
+          disabled={estadosLoading}
         >
           <option value="">Todos los estados</option>
           {estados.map(estado => (
@@ -255,10 +187,11 @@ const TicketControl: React.FC = () => {
           value={recolectorFiltro}
           onChange={(e) => setRecolectorFiltro(e.target.value)}
           className="select select-bordered"
+          disabled={recolectoresLoading}
         >
           <option value="">Todos los recolectores</option>
           {recolectores.map(recolector => (
-            <option key={recolector.id} value={recolector.id}>
+            <option key={recolector.id} value={recolector.id.toString()}>
               {recolector.nombre}
             </option>
           ))}
@@ -275,51 +208,59 @@ const TicketControl: React.FC = () => {
         <button onClick={() => paginate(currentPage + 1)} className="btn btn-primary mr-1">{">"}</button>
         <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
       </div>
-      <table className="table-auto w-full mb-4">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Número Ticket</th>
-            <th>Cédula</th>
-            <th>Nombre</th>
-            <th>Teléfono</th>
-            <th>Estado</th>
-            <th>Municipio</th>
-            <th>Parroquia</th>
-            <th>Referido ID</th>
-            <th>Validado</th>
-            <th>Ganador</th>
-            <th>Creado en</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map((ticket) => (
-            <tr key={ticket.id}>
-              <td>{ticket.id}</td>
-              <td>{ticket.numero_ticket}</td>
-              <td>{ticket.cedula}</td>
-              <td>{ticket.nombre}</td>
-              <td>{ticket.telefono}</td>
-              <td>{ticket.estado}</td>
-              <td>{ticket.municipio}</td>
-              <td>{ticket.parroquia}</td>
-              <td>{ticket.referido_id}</td>
-              <td>{ticket.validado ? "Sí" : "No"}</td>
-              <td>{ticket.ganador ? "Sí" : "No"}</td>
-              <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
-              <td>
-                <button className="btn btn-primary mr-2" onClick={() => openModal(ticket)}>
-                  Ver Detalles
-                </button>
-                <button className="btn btn-secondary" onClick={() => openEditModal(ticket)}>
-                  Editar
-                </button>
-              </td>
+      {ticketsLoading ? (
+        <div className="text-center">Cargando tickets...</div>
+      ) : (
+        <table className="table-auto w-full mb-4">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Número Ticket</th>
+              <th>Cédula</th>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>Estado</th>
+              <th>Municipio</th>
+              <th>Parroquia</th>
+              <th>Referido ID</th>
+              <th>Validado</th>
+              <th>Ganador</th>
+              <th>Creado en</th>
+              <th>Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {tickets.length > 0 ? tickets.map((ticket) => (
+              <tr key={ticket.id}>
+                <td>{ticket.id}</td>
+                <td>{ticket.numero_ticket}</td>
+                <td>{ticket.cedula}</td>
+                <td>{ticket.nombre}</td>
+                <td>{ticket.telefono}</td>
+                <td>{ticket.estado}</td>
+                <td>{ticket.municipio}</td>
+                <td>{ticket.parroquia}</td>
+                <td>{ticket.referido_id}</td>
+                <td>{ticket.validado ? "Sí" : "No"}</td>
+                <td>{ticket.ganador ? "Sí" : "No"}</td>
+                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
+                <td>
+                  <button className="btn btn-primary mr-2" onClick={() => openModal(ticket)}>
+                    Ver Detalles
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => openEditModal(ticket)}>
+                    Editar
+                  </button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={13} className="text-center">No hay tickets disponibles</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
       {modalIsOpen && selectedTicket && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -372,8 +313,12 @@ const TicketControl: React.FC = () => {
                   className="form-checkbox"
                 />
               </div>
-              <button type="submit" className="btn btn-primary mt-4">
-                Guardar Cambios
+              <button 
+                type="submit" 
+                className="btn btn-primary mt-4"
+                disabled={updateTicketMutation.isPending}
+              >
+                {updateTicketMutation.isPending ? "Guardando..." : "Guardar Cambios"}
               </button>
             </form>
           </div>

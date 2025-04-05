@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
 import { detectHost } from "../../api";
+import { useEstados } from "../../hooks/useEstados";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Recolector {
   id: number;
@@ -39,11 +41,6 @@ interface ReferidosData {
   referidos: Referido[];
 }
 
-interface Estado {
-  codigo_estado: string;
-  estado: string;
-}
-
 const RecolectorControl: React.FC = () => {
   const [recolectores, setRecolectores] = useState<Recolector[]>([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
@@ -66,88 +63,40 @@ const RecolectorControl: React.FC = () => {
   const [referidosData, setReferidosData] = useState<ReferidosData | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [isDownloading, setIsDownloading] = useState(false);
-  const [estados, setEstados] = useState<Estado[]>([]);
 
-  useEffect(() => {
-    fetchHost();
-  }, []);
+  // React Query client
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (APIHost) {
-      fetchRecolectores();
-      fetchEstados();
-    }
-  }, [APIHost, currentPage, searchTerm]);
+  // Fetch Estados usando useEstados
+  const { data: estados = [], isLoading: estadosLoading } = useEstados();
 
-  const fetchRecolectores = async () => {
-    if (!APIHost) return;
-    
-    const query = new URLSearchParams({
-      skip: ((currentPage - 1) * recolectoresPerPage).toString(),
-      limit: recolectoresPerPage.toString(),
-      ...(searchTerm && { search: searchTerm }),
-    }).toString();
+  // Fetch Recolectores con React Query
+  const fetchRecolectoresQuery = useQuery({
+    queryKey: ['recolectores', currentPage, searchTerm],
+    queryFn: async () => {
+      if (!APIHost) return { items: [], total: 0 };
+      
+      const query = new URLSearchParams({
+        skip: ((currentPage - 1) * recolectoresPerPage).toString(),
+        limit: recolectoresPerPage.toString(),
+        ...(searchTerm && { search: searchTerm }),
+      }).toString();
 
-    try {
       const response = await fetch(`${APIHost}/api/recolectores/?${query}`);
       if (!response.ok) {
         throw new Error(`Error: ${response.statusText}`);
       }
       const data = await response.json();
-      if (Array.isArray(data.items)) {
-        setRecolectores(data.items);
-        setTotalPages(Math.ceil(data.total / recolectoresPerPage));
-      } else {
-        setRecolectores(data);
-        setTotalPages(Math.ceil(data.length / recolectoresPerPage));
-      }
-    } catch (error) {
-      console.error("Error fetching recolectores:", error);
-      setRecolectores([]);
-      setTotalPages(1);
-    }
-  };
+      return data;
+    },
+    enabled: !!APIHost,
+  });
 
-  const fetchHost = async () => {
-    try {
-      const host = await detectHost();
-      setAPIHost(host);
-    } catch (error) {
-      console.error("Error detecting host:", error);
-      setAPIHost(process.env.HOST || 'https://applottobueno.com');
-    }
-  };
-
-  const fetchEstados = async () => {
-    if (!APIHost) return;
-    try {
-      const response = await fetch(`${APIHost}/api/estados`);
-      if (!response.ok) {
-        throw new Error('Error fetching estados');
-      }
-      const data = await response.json();
-      setEstados(data);
-    } catch (error) {
-      console.error("Error fetching estados:", error);
-      setToastMessage("Error obteniendo estados");
-      setToastType("error");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!recolectorToDelete || !APIHost) return;
-    await fetch(`${APIHost}/api/recolectores/${recolectorToDelete}`, { method: "DELETE" });
-    setRecolectorToDelete(null);
-    setIsConfirmationModalVisible(false);
-    fetchRecolectores();
-    setToastMessage("Recolector eliminado exitosamente");
-    setToastType("success");
-  };
-
-  const handleCreate = async () => {
-    if (!APIHost) return;
-    
-    try {
+  // Mutación para crear recolector
+  const createRecolectorMutation = useMutation({
+    mutationFn: async (newRecolector: { nombre: string; cedula: string; telefono: string; es_referido: boolean }) => {
+      if (!APIHost) throw new Error('API Host no definido');
+      
       const response = await fetch(`${APIHost}/api/recolectores`, {
         method: "POST",
         headers: {
@@ -160,22 +109,27 @@ const RecolectorControl: React.FC = () => {
         throw new Error('Network response was not ok');
       }
       
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recolectores'] });
       setNewRecolector({ nombre: "", cedula: "", telefono: "", es_referido: false });
-      fetchRecolectores();
       closeModal();
       setToastMessage("Recolector creado exitosamente");
       setToastType("success");
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Error creating recolector:", error);
       setToastMessage("Error creando recolector");
       setToastType("error");
     }
-  };
+  });
 
-  const handleUpdate = async (recolector: Recolector) => {
-    if (!APIHost) return;
-    
-    try {
+  // Mutación para actualizar recolector
+  const updateRecolectorMutation = useMutation({
+    mutationFn: async (recolector: Recolector) => {
+      if (!APIHost) throw new Error('API Host no definido');
+      
       const response = await fetch(`${APIHost}/api/recolectores/${recolector.id}`, {
         method: "PATCH",
         headers: {
@@ -188,15 +142,140 @@ const RecolectorControl: React.FC = () => {
         throw new Error('Network response was not ok');
       }
 
-      fetchRecolectores();
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recolectores'] });
       closeModal();
       setToastMessage("Recolector actualizado exitosamente");
       setToastType("success");
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Error updating recolector:", error);
       setToastMessage("Error actualizando recolector");
       setToastType("error");
     }
+  });
+
+  // Mutación para eliminar recolector
+  const deleteRecolectorMutation = useMutation({
+    mutationFn: async (id: number) => {
+      if (!APIHost) throw new Error('API Host no definido');
+      
+      const response = await fetch(`${APIHost}/api/recolectores/${id}`, { 
+        method: "DELETE" 
+      });
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recolectores'] });
+      setRecolectorToDelete(null);
+      setIsConfirmationModalVisible(false);
+      setToastMessage("Recolector eliminado exitosamente");
+      setToastType("success");
+    },
+    onError: (error) => {
+      console.error("Error deleting recolector:", error);
+      setToastMessage("Error eliminando recolector");
+      setToastType("error");
+    }
+  });
+
+  // Query para estadísticas
+  const fetchEstadisticasQuery = useQuery({
+    queryKey: ['estadisticas', selectedRecolectorId, estadoFiltro],
+    queryFn: async () => {
+      if (!APIHost) return [];
+      
+      let url = `${APIHost}/api/recolectores/estadisticas/`;
+      if (selectedRecolectorId) {
+        url += `?recolector_id=${selectedRecolectorId}`;
+      }
+      if (estadoFiltro) {
+        url += `${selectedRecolectorId ? '&' : '?'}codigo_estado=${estadoFiltro}`;
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    enabled: false, // No ejecutar automáticamente, solo cuando se solicite
+  });
+
+  // Query para referidos
+  const fetchReferidosQuery = useQuery({
+    queryKey: ['referidos', selectedRecolectorId, estadoFiltro],
+    queryFn: async () => {
+      if (!APIHost || !selectedRecolectorId) return null;
+      
+      let url = `${APIHost}/api/recolectores/${selectedRecolectorId}/referidos`;
+      if (estadoFiltro) {
+        url += `?codigo_estado=${estadoFiltro}`;
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Error: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    enabled: false, // No ejecutar automáticamente
+  });
+
+  useEffect(() => {
+    fetchHost();
+  }, []);
+
+  useEffect(() => {
+    if (fetchRecolectoresQuery.data) {
+      if (Array.isArray(fetchRecolectoresQuery.data.items)) {
+        setRecolectores(fetchRecolectoresQuery.data.items);
+        setTotalPages(Math.ceil(fetchRecolectoresQuery.data.total / recolectoresPerPage));
+      } else if (Array.isArray(fetchRecolectoresQuery.data)) {
+        setRecolectores(fetchRecolectoresQuery.data);
+        setTotalPages(Math.ceil(fetchRecolectoresQuery.data.length / recolectoresPerPage));
+      }
+    }
+  }, [fetchRecolectoresQuery.data, recolectoresPerPage]);
+
+  useEffect(() => {
+    if (fetchEstadisticasQuery.data) {
+      setEstadisticas(fetchEstadisticasQuery.data);
+    }
+  }, [fetchEstadisticasQuery.data]);
+
+  useEffect(() => {
+    if (fetchReferidosQuery.data) {
+      setReferidosData(fetchReferidosQuery.data);
+    }
+  }, [fetchReferidosQuery.data]);
+
+  const fetchHost = async () => {
+    try {
+      const host = await detectHost();
+      setAPIHost(host);
+    } catch (error) {
+      console.error("Error detecting host:", error);
+      setAPIHost(process.env.HOST || 'https://applottobueno.com');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!recolectorToDelete) return;
+    deleteRecolectorMutation.mutate(recolectorToDelete);
+  };
+
+  const handleCreate = async () => {
+    createRecolectorMutation.mutate(newRecolector);
+  };
+
+  const handleUpdate = async (recolector: Recolector) => {
+    updateRecolectorMutation.mutate(recolector);
   };
 
   const openModal = (recolector: Recolector | null = null) => {
@@ -223,58 +302,26 @@ const RecolectorControl: React.FC = () => {
     } else {
       setCurrentPage(pageNumber);
     }
-    fetchRecolectores();
   };
 
   const fetchEstadisticas = async (recolectorId?: number) => {
-    let url = `${APIHost}/api/recolectores/estadisticas/`;
+    setSelectedRecolectorId(recolectorId || null);
+    await fetchEstadisticasQuery.refetch();
+    setIsEstadisticasModalOpen(true);
+    
     if (recolectorId) {
-      url += `?recolector_id=${recolectorId}`;
-    }
-    if (estadoFiltro) {
-      url += `${recolectorId ? '&' : '?'}codigo_estado=${estadoFiltro}`;
-    }
-
-    try {
-      const response = await fetch(url);
-      const data: EstadisticasRecolector[] = await response.json();
-      setEstadisticas(data);
-      setIsEstadisticasModalOpen(true);
-      
-      if (recolectorId) {
-        setSelectedRecolectorId(recolectorId);
-        await fetchReferidos(recolectorId);
-      } else {
-        setSelectedRecolectorId(null);
-        setReferidosData(null);
-      }
-    } catch (error) {
-      console.error("Error fetching estadísticas:", error);
-      setToastMessage("Error obteniendo estadísticas");
-      setToastType("error");
-    }
-  };
-
-  const fetchReferidos = async (recolectorId: number) => {
-    try {
-      let url = `${APIHost}/api/recolectores/${recolectorId}/referidos`;
-      if (estadoFiltro) {
-        url += `?codigo_estado=${estadoFiltro}`;
-      }
-      const response = await fetch(url);
-      const data: ReferidosData = await response.json();
-      setReferidosData(data);
-    } catch (error) {
-      console.error("Error fetching referidos:", error);
-      setToastMessage("Error obteniendo referidos");
-      setToastType("error");
+      await fetchReferidosQuery.refetch();
+    } else {
+      setReferidosData(null);
     }
   };
 
   const handleEstadoFiltroChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newEstado = e.target.value;
     setEstadoFiltro(newEstado);
-    await fetchEstadisticas(selectedRecolectorId || undefined);
+    if (isEstadisticasModalOpen) {
+      await fetchEstadisticas(selectedRecolectorId || undefined);
+    }
   };
 
   const downloadReferidosExcel = async (recolectorId: number) => {
@@ -344,34 +391,67 @@ const RecolectorControl: React.FC = () => {
         <button onClick={() => paginate(currentPage + 1)} className="btn btn-primary mr-1">{">"}</button>
         <button onClick={() => paginate(totalPages)} className="btn btn-primary">{">>"}</button>
       </div>
-      <table className="table-auto w-full">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Cédula</th>
-            <th>Teléfono</th>
-            <th>Referido</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {recolectores.map((recolector) => (
-            <tr key={recolector.id}>
-              <td>{recolector.id}</td>
-              <td>{recolector.nombre}</td>
-              <td>{recolector.cedula}</td>
-              <td>{recolector.telefono}</td>
-              <td>{recolector.es_referido ? "Sí" : "No"}</td>
-              <td>
-                <button className="btn btn-primary mr-2" onClick={() => openModal(recolector)}>Editar</button>
-                <button className="btn btn-danger mr-2" onClick={() => { setRecolectorToDelete(recolector.id); setIsConfirmationModalVisible(true); }}>Eliminar</button>
-                <button className="btn btn-info" onClick={() => fetchEstadisticas(recolector.id)}>Ver Estadísticas</button>
-              </td>
+
+      {fetchRecolectoresQuery.isLoading ? (
+        <div className="text-center p-4">Cargando recolectores...</div>
+      ) : fetchRecolectoresQuery.isError ? (
+        <div className="text-center p-4 text-red-500">Error al cargar recolectores</div>
+      ) : (
+        <table className="table-auto w-full">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Cédula</th>
+              <th>Teléfono</th>
+              <th>Referido</th>
+              <th>Acciones</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {recolectores.length > 0 ? (
+              recolectores.map((recolector) => (
+                <tr key={recolector.id}>
+                  <td>{recolector.id}</td>
+                  <td>{recolector.nombre}</td>
+                  <td>{recolector.cedula}</td>
+                  <td>{recolector.telefono}</td>
+                  <td>{recolector.es_referido ? "Sí" : "No"}</td>
+                  <td>
+                    <button 
+                      className="btn btn-primary mr-2" 
+                      onClick={() => openModal(recolector)}
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      className="btn btn-danger mr-2" 
+                      onClick={() => { 
+                        setRecolectorToDelete(recolector.id); 
+                        setIsConfirmationModalVisible(true); 
+                      }}
+                      disabled={deleteRecolectorMutation.isPending}
+                    >
+                      {deleteRecolectorMutation.isPending && recolectorToDelete === recolector.id 
+                        ? "Eliminando..." 
+                        : "Eliminar"
+                      }
+                    </button>
+                    <button className="btn btn-info" onClick={() => fetchEstadisticas(recolector.id)}>
+                      Ver Estadísticas
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="text-center">No hay recolectores disponibles</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+
       {modalIsOpen && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -430,8 +510,15 @@ const RecolectorControl: React.FC = () => {
               />
               Es Referido
             </label>
-            <button onClick={isEditing ? () => handleUpdate(selectedRecolector!) : handleCreate} className="btn btn-primary">
-              {isEditing ? "Actualizar Recolector" : "Crear Recolector"}
+            <button 
+              onClick={isEditing ? () => handleUpdate(selectedRecolector!) : handleCreate} 
+              className="btn btn-primary"
+              disabled={isEditing ? updateRecolectorMutation.isPending : createRecolectorMutation.isPending}
+            >
+              {isEditing 
+                ? (updateRecolectorMutation.isPending ? "Actualizando..." : "Actualizar Recolector") 
+                : (createRecolectorMutation.isPending ? "Creando..." : "Crear Recolector")
+              }
             </button>
           </div>
         </div>
@@ -462,6 +549,7 @@ const RecolectorControl: React.FC = () => {
                 value={estadoFiltro}
                 onChange={handleEstadoFiltroChange}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                disabled={estadosLoading}
               >
                 <option value="">Todos los estados</option>
                 {estados.map(estado => (
@@ -473,40 +561,50 @@ const RecolectorControl: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="table-auto w-full mb-4">
-                <thead>
-                  <tr>
-                    <th>ID Recolector</th>
-                    <th>Nombre</th>
-                    <th>Cantidad de Tickets</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {estadisticas.map((stat) => (
-                    <tr key={stat.recolector_id} className={selectedRecolectorId === stat.recolector_id ? 'bg-blue-100' : ''}>
-                      <td>{stat.recolector_id}</td>
-                      <td>{stat.nombre}</td>
-                      <td>{stat.tickets_count}</td>
-                      <td>
-                        <button 
-                          onClick={() => fetchEstadisticas(stat.recolector_id)}
-                          className="btn btn-sm btn-primary mr-2"
-                        >
-                          Ver Referidos
-                        </button>
-                        <button
-                          onClick={() => downloadReferidosExcel(stat.recolector_id)}
-                          className="btn btn-sm btn-secondary"
-                          disabled={isDownloading}
-                        >
-                          {isDownloading ? 'Descargando...' : 'Descargar Excel'}
-                        </button>
-                      </td>
+              {fetchEstadisticasQuery.isLoading ? (
+                <div className="text-center p-4">Cargando estadísticas...</div>
+              ) : fetchEstadisticasQuery.isError ? (
+                <div className="text-center p-4 text-red-500">Error al cargar estadísticas</div>
+              ) : (
+                <table className="table-auto w-full mb-4">
+                  <thead>
+                    <tr>
+                      <th>ID Recolector</th>
+                      <th>Nombre</th>
+                      <th>Cantidad de Tickets</th>
+                      <th>Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {estadisticas.length > 0 ? estadisticas.map((stat) => (
+                      <tr key={stat.recolector_id} className={selectedRecolectorId === stat.recolector_id ? 'bg-blue-100' : ''}>
+                        <td>{stat.recolector_id}</td>
+                        <td>{stat.nombre}</td>
+                        <td>{stat.tickets_count}</td>
+                        <td>
+                          <button 
+                            onClick={() => fetchEstadisticas(stat.recolector_id)}
+                            className="btn btn-sm btn-primary mr-2"
+                          >
+                            Ver Referidos
+                          </button>
+                          <button
+                            onClick={() => downloadReferidosExcel(stat.recolector_id)}
+                            className="btn btn-sm btn-secondary"
+                            disabled={isDownloading}
+                          >
+                            {isDownloading ? 'Descargando...' : 'Descargar Excel'}
+                          </button>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={4} className="text-center">No hay estadísticas disponibles</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {referidosData && (
@@ -518,32 +616,42 @@ const RecolectorControl: React.FC = () => {
                   </span>
                 </h3>
                 <div className="overflow-x-auto">
-                  <table className="table-auto w-full">
-                    <thead>
-                      <tr>
-                        <th>Cédula</th>
-                        <th>Nombre</th>
-                        <th>Teléfono</th>
-                        <th>Estado</th>
-                        <th>Municipio</th>
-                        <th>Parroquia</th>
-                        <th>Fecha Registro</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {referidosData.referidos.map((referido) => (
-                        <tr key={referido.id}>
-                          <td>{referido.cedula}</td>
-                          <td>{referido.nombre}</td>
-                          <td>{referido.telefono}</td>
-                          <td>{referido.estado}</td>
-                          <td>{referido.municipio}</td>
-                          <td>{referido.parroquia}</td>
-                          <td>{new Date(referido.fecha_registro).toLocaleDateString()}</td>
+                  {fetchReferidosQuery.isLoading ? (
+                    <div className="text-center p-4">Cargando referidos...</div>
+                  ) : fetchReferidosQuery.isError ? (
+                    <div className="text-center p-4 text-red-500">Error al cargar referidos</div>
+                  ) : (
+                    <table className="table-auto w-full">
+                      <thead>
+                        <tr>
+                          <th>Cédula</th>
+                          <th>Nombre</th>
+                          <th>Teléfono</th>
+                          <th>Estado</th>
+                          <th>Municipio</th>
+                          <th>Parroquia</th>
+                          <th>Fecha Registro</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {referidosData.referidos.length > 0 ? referidosData.referidos.map((referido) => (
+                          <tr key={referido.id}>
+                            <td>{referido.cedula}</td>
+                            <td>{referido.nombre}</td>
+                            <td>{referido.telefono}</td>
+                            <td>{referido.estado}</td>
+                            <td>{referido.municipio}</td>
+                            <td>{referido.parroquia}</td>
+                            <td>{new Date(referido.fecha_registro).toLocaleDateString()}</td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={7} className="text-center">No hay referidos disponibles</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               </div>
             )}

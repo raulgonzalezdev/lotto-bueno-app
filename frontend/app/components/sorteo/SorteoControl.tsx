@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Toast from '../toast/Toast';
+import { useEstados } from "../../hooks/useEstados";
+import { useMunicipios } from "../../hooks/useMunicipios";
+import { useRealizarSorteo, useQuitarGanadores } from "../../hooks/useSorteoMutations";
 import { detectHost } from "../../api";
 
 interface Ticket {
@@ -17,48 +20,34 @@ interface Ticket {
   ganador: boolean;
 }
 
-interface Estado {
-  codigo_estado: string;
-  estado: string;
-}
-
-interface Municipio {
-  codigo_municipio: string;
-  municipio: string;
-}
-
 const SorteoControl: React.FC = () => {
   const [ganadores, setGanadores] = useState<Ticket[]>([]);
   const [cantidadGanadores, setCantidadGanadores] = useState(1);
-  const [estado, setEstado] = useState("");
-  const [municipio, setMunicipio] = useState("");
+  const [estadoSelected, setEstadoSelected] = useState("");
+  const [municipioSelected, setMunicipioSelected] = useState("");
   const [estadoDescripcion, setEstadoDescripcion] = useState("");
   const [municipioDescripcion, setMunicipioDescripcion] = useState("");
-  const [estados, setEstados] = useState<Estado[]>([]);
-  const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [APIHost, setAPIHost] = useState<string | null>(null);
+
+  // Usar hooks de React Query
+  const { data: estados = [], isLoading: estadosLoading } = useEstados();
+  const { data: municipios = [], isLoading: municipiosLoading } = useMunicipios(estadoSelected);
+  
+  // Mutaciones para el sorteo
+  const realizarSorteoMutation = useRealizarSorteo();
+  const quitarGanadoresMutation = useQuitarGanadores();
 
   useEffect(() => {
     fetchHost();
   }, []);
 
   useEffect(() => {
-    if (APIHost) {
-      fetchEstados();
-    }
-  }, [APIHost]);
-
-  useEffect(() => {
-    if (APIHost && estado) {
-      fetchMunicipios(estado);
-    } else {
-      setMunicipios([]);
-      setMunicipio("");
+    if (municipioSelected === "") {
       setMunicipioDescripcion("");
     }
-  }, [APIHost, estado]);
+  }, [municipioSelected]);
 
   const fetchHost = async () => {
     try {
@@ -70,74 +59,21 @@ const SorteoControl: React.FC = () => {
     }
   };
 
-  const fetchEstados = async () => {
-    if (!APIHost) return;
-    
-    try {
-      const response = await fetch(`${APIHost}/api/estados`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      const estadosOrdenados = data.sort((a: Estado, b: Estado) => 
-        a.estado.localeCompare(b.estado, 'es', { sensitivity: 'base' })
-      );
-      setEstados(estadosOrdenados);
-    } catch (error) {
-      console.error("Error fetching estados:", error);
-      setEstados([{ codigo_estado: "", estado: "No hay estados disponibles" }]);
-    }
-  };
-
-  const fetchMunicipios = async (codigoEstado: string) => {
-    if (!APIHost) return;
-    
-    try {
-      const response = await fetch(`${APIHost}/api/municipios/${encodeURIComponent(codigoEstado)}`);
-      if (!response.ok) {
-        throw new Error(`Error: ${response.statusText}`);
-      }
-      const data = await response.json();
-      const municipiosOrdenados = data.sort((a: Municipio, b: Municipio) => 
-        a.municipio.localeCompare(b.municipio, 'es', { sensitivity: 'base' })
-      );
-      setMunicipios(municipiosOrdenados.length > 0 ? municipiosOrdenados : [{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
-    } catch (error) {
-      console.error("Error fetching municipios:", error);
-      setMunicipios([{ codigo_municipio: "", municipio: "No hay municipios disponibles" }]);
-    }
-  };
-
   const handleSorteo = async () => {
-    if (!APIHost) return;
-    
     try {
-      const estadoDesc = estados.find(e => e.codigo_estado.toString() === estado.toString())?.estado || "";
-      const municipioDesc = municipios.find(m => m.codigo_municipio.toString() === municipio.toString())?.municipio || "";
+      const estadoDesc = estados.find(e => e.codigo_estado.toString() === estadoSelected.toString())?.estado || "";
+      const municipioDesc = municipios.find(m => m.codigo_municipio.toString() === municipioSelected.toString())?.municipio || "";
 
-      const body = JSON.stringify({
+      // Usar la mutación de realizar sorteo
+      const payload = {
         cantidad_ganadores: cantidadGanadores,
-        estado: estado !== "" && estado !== "Seleccionar Estado" ? estadoDesc : "",
-        municipio: municipio !== "" && municipio !== "Seleccionar Municipio" ? municipioDesc : ""
-      });
+        estado: estadoSelected !== "" && estadoSelected !== "Seleccionar Estado" ? estadoDesc : "",
+        municipio: municipioSelected !== "" && municipioSelected !== "Seleccionar Municipio" ? municipioDesc : ""
+      };
 
-      const response = await fetch(`${APIHost}/api/sorteo/ganadores`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: body
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setToastMessage(errorData.message || "Error realizando el sorteo. Por favor, intenta de nuevo.");
-        setToastType("error");
-        return;
-      }
-
-      const data: Ticket[] = await response.json();
-      setGanadores(Array.isArray(data) ? data : []);
+      const result = await realizarSorteoMutation.mutateAsync(payload);
+      
+      setGanadores(Array.isArray(result) ? result : []);
       setToastMessage("Sorteo realizado exitosamente");
       setToastType("success");
     } catch (error) {
@@ -149,17 +85,10 @@ const SorteoControl: React.FC = () => {
   };
 
   const handleQuitarGanadores = async () => {
-    if (!APIHost) return;
-    
     try {
-      const response = await fetch(`${APIHost}/api/sorteo/quitar_ganadores`, {
-        method: "POST"
-      });
-
-      if (!response.ok) {
-        throw new Error('Error en la respuesta del servidor');
-      }
-
+      // Usar la mutación de quitar ganadores
+      await quitarGanadoresMutation.mutateAsync();
+      
       setGanadores([]);
       setToastMessage("Marca de ganadores eliminada exitosamente");
       setToastType("success");
@@ -185,48 +114,64 @@ const SorteoControl: React.FC = () => {
       <div className="mb-4">
         <label className="block mb-2">Estado</label>
         <select
-          value={estado}
+          value={estadoSelected}
           onChange={(e) => {
-            setEstado(e.target.value);
+            setEstadoSelected(e.target.value);
+            setMunicipioSelected("");
             const selectedEstado = estados.find(est => est.codigo_estado === e.target.value);
             setEstadoDescripcion(selectedEstado ? selectedEstado.estado : "");
           }}
           className="input input-bordered w-full"
+          disabled={estadosLoading}
         >
           <option value="">Seleccionar Estado</option>
-          {estados.length > 0 && estados[0].estado !== "No hay estados disponibles" ? (
+          {!estadosLoading && estados.length > 0 ? (
             estados.map((estado) => (
               <option key={estado.codigo_estado} value={estado.codigo_estado}>{estado.estado}</option>
             ))
           ) : (
-            <option value="" disabled>No hay estados disponibles</option>
+            <option value="" disabled>Cargando estados...</option>
           )}
         </select>
       </div>
       <div className="mb-4">
         <label className="block mb-2">Municipio</label>
         <select
-          value={municipio}
+          value={municipioSelected}
           onChange={(e) => {
-            setMunicipio(e.target.value);
+            setMunicipioSelected(e.target.value);
             const selectedMunicipio = municipios.find(mun => mun.codigo_municipio === e.target.value);
             setMunicipioDescripcion(selectedMunicipio ? selectedMunicipio.municipio : "");
           }}
           className="input input-bordered w-full"
-          disabled={municipios.length === 0 || municipios[0].municipio === "No hay municipios disponibles"}
+          disabled={municipiosLoading || !estadoSelected}
         >
           <option value="">Seleccionar Municipio</option>
-          {municipios.length > 0 && municipios[0].municipio !== "No hay municipios disponibles" ? (
+          {!municipiosLoading && municipios.length > 0 ? (
             municipios.map((municipio) => (
               <option key={municipio.codigo_municipio} value={municipio.codigo_municipio}>{municipio.municipio}</option>
             ))
           ) : (
-            <option value="" disabled>No hay municipios disponibles</option>
+            <option value="" disabled>
+              {estadoSelected ? "Cargando municipios..." : "Seleccione primero un estado"}
+            </option>
           )}
         </select>
       </div>
-      <button onClick={handleSorteo} className="btn btn-primary mr-2">Realizar Sorteo</button>
-      <button onClick={handleQuitarGanadores} className="btn btn-danger">Quitar Marca de Ganadores</button>
+      <button 
+        onClick={handleSorteo} 
+        className="btn btn-primary mr-2"
+        disabled={realizarSorteoMutation.isPending}
+      >
+        {realizarSorteoMutation.isPending ? "Realizando sorteo..." : "Realizar Sorteo"}
+      </button>
+      <button 
+        onClick={handleQuitarGanadores} 
+        className="btn btn-danger"
+        disabled={quitarGanadoresMutation.isPending}
+      >
+        {quitarGanadoresMutation.isPending ? "Procesando..." : "Quitar Marca de Ganadores"}
+      </button>
       {toastMessage && (
         <Toast 
           message={toastMessage}

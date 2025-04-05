@@ -35,11 +35,11 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # Etapa 3: Configuración de la aplicación frontend
 FROM node:18-alpine as frontend
 
-WORKDIR /app/frontend
+WORKDIR /frontend
 
 # Copia los archivos de configuración del frontend y el código fuente
 COPY ./frontend/package.json ./frontend/package-lock.json* ./
-COPY ./frontend /app/frontend
+COPY ./frontend /frontend
 
 # Instala dependencias del frontend
 RUN npm install

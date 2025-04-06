@@ -178,7 +178,15 @@ async def procesar_cedula(update: Update, context: CallbackContext) -> int:
             )
             
             # Guardar la cédula en el contexto para usarla durante el registro
-            context.user_data['cedula_registro'] = cedula
+            try:
+                context.user_data['cedula_registro'] = cedula
+            except Exception as e:
+                logger.error(f"Error al guardar cédula en contexto: {e}")
+                # Alternativa si falla guardar en el contexto
+                update.message.reply_text(
+                    "Por favor envía tu número de cédula nuevamente junto con tu teléfono en este formato: CEDULA:TELEFONO"
+                )
+                return ESPERANDO_CEDULA
             
             # Solicitar el número de teléfono
             update.message.reply_text(
@@ -191,7 +199,11 @@ async def procesar_cedula(update: Update, context: CallbackContext) -> int:
         nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
         
         # Guardar información del usuario en el contexto
-        context.user_data['nombre'] = nombre_completo
+        try:
+            context.user_data['nombre'] = nombre_completo
+        except Exception as e:
+            logger.error(f"Error al guardar nombre en contexto: {e}")
+            # No es crítico, continuamos sin guardar el nombre
         
         try:
             # Llamada a la API para obtener el ticket por cédula
@@ -242,13 +254,31 @@ def registrar_usuario(update: Update, context: CallbackContext) -> int:
     chat_id = update.effective_chat.id
     
     # Obtener la cédula guardada anteriormente
-    cedula = context.user_data.get('cedula_registro')
+    cedula = None
+    try:
+        cedula = context.user_data.get('cedula_registro')
+    except Exception as e:
+        logger.error(f"Error al obtener cédula de registro del contexto: {e}")
+    
+    # Si no se encuentra la cédula, verificar si el usuario la envió junto con el teléfono
     if not cedula:
-        update.message.reply_text("No se encontró la cédula para el registro. Por favor inicia el proceso nuevamente.")
-        return mostrar_menu_principal(update, context)
+        message_text = update.message.text
+        if ":" in message_text:
+            parts = message_text.split(":")
+            if len(parts) >= 2:
+                cedula_part = parts[0].strip()
+                cedula = extract_cedula(cedula_part)
+                phone_text = parts[1].strip()
+            else:
+                phone_text = message_text
+        else:
+            phone_text = message_text
+            update.message.reply_text("No se encontró la cédula para el registro. Por favor inicia el proceso nuevamente.")
+            return mostrar_menu_principal(update, context)
+    else:
+        phone_text = update.message.text
     
     # Extraer el número de teléfono del mensaje
-    phone_text = update.message.text
     telefono = extract_phone_number(phone_text)
     
     if not telefono:
@@ -295,11 +325,14 @@ def registrar_usuario(update: Update, context: CallbackContext) -> int:
         update.message.reply_text(message)
         
         # Limpiar datos del contexto que ya no necesitamos
-        if 'cedula_registro' in context.user_data:
-            del context.user_data['cedula_registro']
-        
-        # Guardar el nombre del usuario para usarlo en los menús
-        context.user_data['nombre'] = user_name
+        try:
+            if 'cedula_registro' in context.user_data:
+                del context.user_data['cedula_registro']
+            
+            # Guardar el nombre del usuario para usarlo en los menús
+            context.user_data['nombre'] = user_name
+        except Exception as e:
+            logger.error(f"Error al manipular datos del contexto: {e}")
         
         # Mostrar menú post-registro
         return mostrar_menu_post_registro(update, context)
@@ -313,64 +346,13 @@ def registrar_usuario(update: Update, context: CallbackContext) -> int:
         update.message.reply_text("Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.")
         return mostrar_menu_principal(update, context)
 
-def mostrar_menu_principal(update: Update, context: CallbackContext) -> int:
-    """Mostrar menú principal para usuarios sin cédula registrada"""
-    user_name = update.effective_user.first_name
-    
-    keyboard = [
-        [InlineKeyboardButton("Registrarme en Lotto Bueno 📝", callback_data=REGISTRARSE)],
-        [InlineKeyboardButton("Visitar sitio web 🌐", callback_data=VISITAR_WEB_PRINCIPAL)],
-        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP_PRINCIPAL)],
-        [InlineKeyboardButton("Verificar otra cédula 🔢", callback_data=INTENTAR_CEDULA)],
-        [InlineKeyboardButton("Finalizar conversación 👋", callback_data=FINALIZAR_PRINCIPAL)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    # Enviar mensaje con el menú
-    if update.message:
-        update.message.reply_text(
-            f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
-            reply_markup=reply_markup
-        )
-    else:
-        # Si no hay mensaje (por ejemplo, si viene de un callback), actualizar el mensaje anterior
-        query = update.callback_query
-        query.edit_message_text(
-            f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
-            reply_markup=reply_markup
-        )
-    
-    return MENU_PRINCIPAL
-
-def mostrar_menu_post_registro(update: Update, context: CallbackContext) -> int:
-    """Mostrar menú post-registro"""
-    keyboard = [
-        [InlineKeyboardButton("Visitar Sitio Web 🌐", callback_data=VISITAR_WEB)],
-        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP)],
-        [InlineKeyboardButton("Finalizar Conversación 👋", callback_data=FINALIZAR)]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    # Enviar mensaje con el menú
-    if update.message:
-        update.message.reply_text(
-            "¿Qué te gustaría hacer ahora?",
-            reply_markup=reply_markup
-        )
-    else:
-        # Si no hay mensaje (por ejemplo, si viene de un callback), actualizar el mensaje anterior
-        query = update.callback_query
-        query.edit_message_text(
-            "¿Qué te gustaría hacer ahora?",
-            reply_markup=reply_markup
-        )
-    
-    return MENU_POST_REGISTRO
-
 def handle_menu_principal_callback(update: Update, context: CallbackContext) -> int:
     """Manejar los callbacks del menú principal"""
     query = update.callback_query
     query.answer()
+    
+    # Logging para depuración
+    logger.info(f"Callback recibido: {query.data}")
     
     # Obtener la opción seleccionada
     opcion = query.data
@@ -387,6 +369,10 @@ def handle_menu_principal_callback(update: Update, context: CallbackContext) -> 
             f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}"
         )
         # Volver a mostrar el menú para continuar interactuando
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="¿Deseas realizar alguna otra acción?",
+        )
         return mostrar_menu_principal(update, context)
     
     elif opcion == UNIRSE_WHATSAPP_PRINCIPAL:
@@ -394,6 +380,10 @@ def handle_menu_principal_callback(update: Update, context: CallbackContext) -> 
             f"¡Genial! Puedes contactarnos por WhatsApp en el siguiente enlace:\n{WHATSAPP_URL}"
         )
         # Volver a mostrar el menú para continuar interactuando
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="¿Deseas realizar alguna otra acción?",
+        )
         return mostrar_menu_principal(update, context)
     
     elif opcion == INTENTAR_CEDULA:
@@ -410,12 +400,17 @@ def handle_menu_principal_callback(update: Update, context: CallbackContext) -> 
         )
         return ConversationHandler.END
     
-    return MENU_PRINCIPAL
+    logger.warning(f"Opción desconocida recibida: {opcion}")
+    query.edit_message_text("No pude entender tu selección. Por favor, intenta nuevamente.")
+    return mostrar_menu_principal(update, context)
 
 def button_callback(update: Update, context: CallbackContext) -> int:
     """Manejar los callbacks de los botones del menú post-registro"""
     query = update.callback_query
     query.answer()
+    
+    # Logging para depuración
+    logger.info(f"Callback post-registro recibido: {query.data}")
     
     # Obtener la opción seleccionada
     opcion = query.data
@@ -425,6 +420,10 @@ def button_callback(update: Update, context: CallbackContext) -> int:
             f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}"
         )
         # Volver a mostrar el menú para continuar interactuando
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="¿Deseas realizar alguna otra acción?",
+        )
         return mostrar_menu_post_registro(update, context)
     
     elif opcion == UNIRSE_WHATSAPP:
@@ -432,6 +431,10 @@ def button_callback(update: Update, context: CallbackContext) -> int:
             f"¡Genial! Puedes contactarnos por WhatsApp en el siguiente enlace:\n{WHATSAPP_URL}"
         )
         # Volver a mostrar el menú para continuar interactuando
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="¿Deseas realizar alguna otra acción?",
+        )
         return mostrar_menu_post_registro(update, context)
     
     elif opcion == FINALIZAR:
@@ -441,6 +444,116 @@ def button_callback(update: Update, context: CallbackContext) -> int:
             "Te notificaremos si eres el ganador. ¡Buena suerte! 🍀"
         )
         return ConversationHandler.END
+    
+    logger.warning(f"Opción post-registro desconocida recibida: {opcion}")
+    query.edit_message_text("No pude entender tu selección. Por favor, intenta nuevamente.")
+    return mostrar_menu_post_registro(update, context)
+
+def mostrar_menu_principal(update: Update, context: CallbackContext) -> int:
+    """Mostrar menú principal para usuarios sin cédula registrada"""
+    user_name = update.effective_user.first_name
+    
+    keyboard = [
+        [InlineKeyboardButton("Registrarme en Lotto Bueno 📝", callback_data=REGISTRARSE)],
+        [InlineKeyboardButton("Visitar sitio web 🌐", callback_data=VISITAR_WEB_PRINCIPAL)],
+        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP_PRINCIPAL)],
+        [InlineKeyboardButton("Verificar otra cédula 🔢", callback_data=INTENTAR_CEDULA)],
+        [InlineKeyboardButton("Finalizar conversación 👋", callback_data=FINALIZAR_PRINCIPAL)]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    logger.info(f"Mostrando menú principal a usuario: {user_name}")
+    
+    # Enviar mensaje con el menú
+    try:
+        if update.message:
+            update.message.reply_text(
+                f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
+                reply_markup=reply_markup
+            )
+        elif update.callback_query:
+            # Si viene de un callback, actualizar el mensaje anterior o enviar uno nuevo
+            try:
+                update.callback_query.edit_message_text(
+                    f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
+                    reply_markup=reply_markup
+                )
+            except Exception as e:
+                logger.error(f"Error al editar mensaje: {e}")
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text=f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
+                    reply_markup=reply_markup
+                )
+        else:
+            # En caso de que no haya ni mensaje ni callback
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
+                reply_markup=reply_markup
+            )
+    except Exception as e:
+        logger.error(f"Error al mostrar menú principal: {e}")
+        try:
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"Hola {user_name}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?",
+                reply_markup=reply_markup
+            )
+        except Exception as e2:
+            logger.error(f"Error secundario al mostrar menú principal: {e2}")
+    
+    return MENU_PRINCIPAL
+
+def mostrar_menu_post_registro(update: Update, context: CallbackContext) -> int:
+    """Mostrar menú post-registro"""
+    keyboard = [
+        [InlineKeyboardButton("Visitar Sitio Web 🌐", callback_data=VISITAR_WEB)],
+        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP)],
+        [InlineKeyboardButton("Finalizar Conversación 👋", callback_data=FINALIZAR)]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    logger.info(f"Mostrando menú post-registro a usuario: {update.effective_user.first_name}")
+    
+    # Enviar mensaje con el menú
+    try:
+        if update.message:
+            update.message.reply_text(
+                "¿Qué te gustaría hacer ahora?",
+                reply_markup=reply_markup
+            )
+        elif update.callback_query:
+            # Si viene de un callback, actualizar el mensaje anterior o enviar uno nuevo
+            try:
+                update.callback_query.edit_message_text(
+                    "¿Qué te gustaría hacer ahora?",
+                    reply_markup=reply_markup
+                )
+            except Exception as e:
+                logger.error(f"Error al editar mensaje post-registro: {e}")
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="¿Qué te gustaría hacer ahora?",
+                    reply_markup=reply_markup
+                )
+        else:
+            # En caso de que no haya ni mensaje ni callback
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="¿Qué te gustaría hacer ahora?",
+                reply_markup=reply_markup
+            )
+    except Exception as e:
+        logger.error(f"Error al mostrar menú post-registro: {e}")
+        try:
+            context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="¿Qué te gustaría hacer ahora?",
+                reply_markup=reply_markup
+            )
+        except Exception as e2:
+            logger.error(f"Error secundario al mostrar menú post-registro: {e2}")
     
     return MENU_POST_REGISTRO
 
@@ -453,6 +566,10 @@ def main():
     """Función principal para iniciar el bot"""
     updater = Updater(TELEGRAM_TOKEN)
     dispatcher = updater.dispatcher
+    
+    # Nivel de logging más detallado para depurar problemas
+    logging.getLogger('telegram').setLevel(logging.DEBUG)
+    logging.getLogger('telegram.ext').setLevel(logging.DEBUG)
     
     # Crear el manejador de conversación
     conv_handler = ConversationHandler(
@@ -471,14 +588,19 @@ def main():
                 CallbackQueryHandler(handle_menu_principal_callback)
             ]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler('cancel', cancel)],
+        per_message=True  # Importante para rastrear callbacks en cada mensaje
     )
     
     # Añadir el manejador al dispatcher
     dispatcher.add_handler(conv_handler)
     
-    # Iniciar el bot
-    updater.start_polling()
+    # Manejador para comandos no reconocidos
+    dispatcher.add_handler(MessageHandler(Filters.command, lambda update, context: update.message.reply_text("Comando no reconocido. Usa /start para iniciar.")))
+    
+    # Iniciar el bot con polling más agresivo para mayor responsividad
+    updater.start_polling(poll_interval=0.5, timeout=30, drop_pending_updates=True)
+    logger.info("Bot de Telegram iniciado correctamente")
     updater.idle()
 
 if __name__ == '__main__':

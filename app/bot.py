@@ -115,19 +115,22 @@ def obtener_cedula(notification: Notification) -> None:
     user_state = notification.state_manager.get_state(sender)
     
     # Verificar si el usuario está en estado de menú post-registro
-    if user_state and user_state.get("state") == "menu_post_registro":
-        handle_post_registro_menu(notification, sender, message_data)
-        return
-    
-    # Verificar si el usuario está en estado de menú principal (para usuarios sin cédula registrada)
-    if user_state and user_state.get("state") == "menu_principal":
-        handle_menu_principal(notification, sender, message_data)
-        return
-    
-    # Verificar si el usuario está en proceso de registro (esperando teléfono)
-    if user_state and user_state.get("state") == "esperando_telefono":
-        handle_registro_telefono(notification, sender, message_data)
-        return
+    if user_state:
+        try:
+            if hasattr(user_state, "state") and user_state.state == "menu_post_registro":
+                handle_post_registro_menu(notification, sender, message_data)
+                return
+            # Verificar si el usuario está en estado de menú principal
+            elif hasattr(user_state, "state") and user_state.state == "menu_principal":
+                handle_menu_principal(notification, sender, message_data)
+                return
+            # Verificar si el usuario está en proceso de registro (esperando teléfono)
+            elif hasattr(user_state, "state") and user_state.state == "esperando_telefono":
+                handle_registro_telefono(notification, sender, message_data)
+                return
+        except Exception as e:
+            print(f"Error al verificar estado del usuario: {e}")
+            # Si hay error al procesar el estado, continuar con el flujo normal
     
     # Obtener el texto del mensaje
     message_text = None
@@ -254,8 +257,24 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
     
     # Obtener la cédula guardada anteriormente
     user_state = notification.state_manager.get_state(sender)
-    cedula = user_state.get("cedula")
-    nombre = user_state.get("nombre", "Usuario")
+    
+    # Acceder a los atributos del objeto State
+    cedula = None
+    nombre = "Usuario"
+    
+    if user_state:
+        try:
+            if hasattr(user_state, "cedula"):
+                cedula = user_state.cedula
+            if hasattr(user_state, "nombre"):
+                nombre = user_state.nombre
+        except Exception as e:
+            print(f"Error al obtener atributos del estado: {e}")
+    
+    if not cedula:
+        notification.answer("No he podido recuperar tus datos de registro. Por favor intenta nuevamente.")
+        show_menu_principal(notification, nombre)
+        return
     
     if not message_text:
         notification.answer("No he podido obtener tu mensaje. Por favor, envía tu número de teléfono (ejemplo: 0414-1234567):")
@@ -310,7 +329,7 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
         # Mostrar el menú después del registro
         show_post_registro_menu(notification, nombre)
         
-        # Actualizar el estado del usuario
+        # Actualizar el estado del usuario - Usando un diccionario serializado para el estado
         notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre})
         
     except requests.exceptions.HTTPError as e:
@@ -327,13 +346,16 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
 def show_menu_principal(notification: Notification, nombre: str):
     """Muestra el menú principal para usuarios sin cédula registrada"""
     menu_message = f"Hola {nombre}, estamos aquí para ayudarte. ¿Qué te gustaría hacer?\n\n" \
-                  f"*1*. Registrarme en Lotto Bueno 📝\n" \
-                  f"*2*. Visitar nuestro sitio web 🌐\n" \
-                  f"*3*. Unirme al canal de Telegram 📣\n" \
-                  f"*4*. Verificar otra cédula 🔢\n" \
-                  f"*5*. Finalizar conversación 👋\n\n" \
-                  f"Responde con el número de la opción deseada."
+                  f"*1.* Registrarme en Lotto Bueno 📝\n" \
+                  f"*2.* Visitar nuestro sitio web 🌐\n" \
+                  f"*3.* Unirme al canal de Telegram 📣\n" \
+                  f"*4.* Verificar otra cédula 🔢\n" \
+                  f"*5.* Finalizar conversación 👋\n\n" \
+                  f"Responde con el *número* de la opción deseada."
+    
+    # Enviar con formato de WhatsApp
     notification.answer(menu_message)
+    print(f"Menú principal enviado a {notification.sender}")
 
 def handle_menu_principal(notification: Notification, sender: str, message_data: dict):
     """Maneja las opciones del menú principal"""
@@ -349,17 +371,34 @@ def handle_menu_principal(notification: Notification, sender: str, message_data:
         if text_message_data:
             message_text = text_message_data.get("textMessage")
     
-    # Extraer solo el primer carácter numérico como opción
+    print(f"Mensaje recibido en menú principal: {message_text}")
+    
+    # Extraer opción del mensaje - más robusto
     option = None
     if message_text:
-        for char in message_text:
-            if char.isdigit():
-                option = char
-                break
+        # Intentar encontrar un número al principio del mensaje
+        match = re.match(r'^[^\d]*(\d+)', message_text)
+        if match:
+            option = match.group(1)
+        # Si no, buscar números en cualquier parte
+        else:
+            for char in message_text:
+                if char.isdigit():
+                    option = char
+                    break
     
     # Obtener el estado y nombre del usuario
     user_state = notification.state_manager.get_state(sender)
-    nombre = user_state.get("nombre", "Usuario")
+    nombre = "Usuario"
+    
+    if user_state:
+        try:
+            if hasattr(user_state, "nombre"):
+                nombre = user_state.nombre
+        except Exception as e:
+            print(f"Error al obtener nombre del usuario: {e}")
+    
+    print(f"Opción seleccionada: {option}")
     
     if option == "1":
         # Opción 1: Registrarse en Lotto Bueno
@@ -385,17 +424,20 @@ def handle_menu_principal(notification: Notification, sender: str, message_data:
         notification.state_manager.delete_state(sender)
     else:
         # Opción no válida
-        notification.answer("Por favor, selecciona una opción válida (1, 2, 3, 4 o 5):")
+        notification.answer("No he podido entender tu selección. Por favor, responde con el número de la opción deseada (1, 2, 3, 4 o 5):")
         show_menu_principal(notification, nombre)
 
 def show_post_registro_menu(notification: Notification, nombre: str):
     """Muestra el menú de opciones después del registro"""
     menu_message = f"¿Qué te gustaría hacer ahora?\n\n" \
-                  f"*1*. Visitar nuestro sitio web 🌐\n" \
-                  f"*2*. Unirte a nuestro canal de Telegram 📣\n" \
-                  f"*3*. Finalizar conversación 👋\n\n" \
-                  f"Responde con el número de la opción deseada."
+                  f"*1.* Visitar nuestro sitio web 🌐\n" \
+                  f"*2.* Unirte a nuestro canal de Telegram 📣\n" \
+                  f"*3.* Finalizar conversación 👋\n\n" \
+                  f"Responde con el *número* de la opción deseada."
+    
+    # Enviar con formato de WhatsApp
     notification.answer(menu_message)
+    print(f"Menú post-registro enviado a {notification.sender}")
 
 def handle_post_registro_menu(notification: Notification, sender: str, message_data: dict):
     """Maneja las opciones del menú post-registro"""
@@ -411,17 +453,34 @@ def handle_post_registro_menu(notification: Notification, sender: str, message_d
         if text_message_data:
             message_text = text_message_data.get("textMessage")
     
-    # Extraer solo el primer carácter numérico como opción
+    print(f"Mensaje recibido en menú post-registro: {message_text}")
+    
+    # Extraer opción del mensaje - más robusto
     option = None
     if message_text:
-        for char in message_text:
-            if char.isdigit():
-                option = char
-                break
+        # Intentar encontrar un número al principio del mensaje
+        match = re.match(r'^[^\d]*(\d+)', message_text)
+        if match:
+            option = match.group(1)
+        # Si no, buscar números en cualquier parte
+        else:
+            for char in message_text:
+                if char.isdigit():
+                    option = char
+                    break
     
     # Obtener el estado y nombre del usuario
     user_state = notification.state_manager.get_state(sender)
-    nombre = user_state.get("nombre", "Usuario")
+    nombre = "Usuario"
+    
+    if user_state:
+        try:
+            if hasattr(user_state, "nombre"):
+                nombre = user_state.nombre
+        except Exception as e:
+            print(f"Error al obtener nombre del usuario: {e}")
+    
+    print(f"Opción seleccionada post-registro: {option}")
     
     if option == "1":
         # Opción 1: Visitar sitio web
@@ -439,7 +498,7 @@ def handle_post_registro_menu(notification: Notification, sender: str, message_d
         notification.state_manager.delete_state(sender)
     else:
         # Opción no válida
-        notification.answer("Por favor, selecciona una opción válida (1, 2 o 3):")
+        notification.answer("No he podido entender tu selección. Por favor, responde con el número de la opción deseada (1, 2 o 3):")
         show_post_registro_menu(notification, nombre)
 
 def check_inactive_users():
@@ -462,6 +521,54 @@ def check_inactive_users():
             send_message(sender, "Tu sesión ha finalizado debido a inactividad. Envía cualquier mensaje para comenzar de nuevo.")
         except Exception as e:
             print(f"Error enviando mensaje de inactividad a {sender}: {e}")
+
+# Agregar una función para serializar y deserializar el estado
+def set_user_state(notification, sender, state_dict):
+    """Guarda el estado del usuario de forma compatible con la biblioteca"""
+    try:
+        notification.state_manager.set_state(sender, state_dict)
+    except Exception as e:
+        print(f"Error al guardar estado del usuario: {e}")
+        # Intentar otras formas de guardar estado si la primera falla
+        try:
+            serialized_state = json.dumps(state_dict)
+            notification.state_manager.set_state(sender, serialized_state)
+        except Exception as e2:
+            print(f"Error al guardar estado serializado: {e2}")
+
+def get_user_state(notification, sender):
+    """Obtiene el estado del usuario manejando diferentes formatos posibles"""
+    try:
+        state = notification.state_manager.get_state(sender)
+        
+        # Si es None, retornar un diccionario vacío
+        if state is None:
+            return {}
+            
+        # Si es un objeto, intentar convertirlo a diccionario
+        if hasattr(state, "__dict__"):
+            return state.__dict__
+            
+        # Si es un string, intentar parsearlo como JSON
+        if isinstance(state, str):
+            try:
+                return json.loads(state)
+            except:
+                pass
+                
+        # Si es un diccionario, retornarlo directamente
+        if isinstance(state, dict):
+            return state
+            
+        # Último recurso: crear un diccionario con los atributos del objeto
+        result = {}
+        for attr in dir(state):
+            if not attr.startswith('_') and not callable(getattr(state, attr)):
+                result[attr] = getattr(state, attr)
+        return result
+    except Exception as e:
+        print(f"Error al obtener estado del usuario: {e}")
+        return {}
 
 if __name__ == "__main__":
     # Iniciar un hilo que verifique los usuarios inactivos cada minuto

@@ -10,8 +10,10 @@ import jwt
 import logging
 import re
 import asyncio
+import aiosmtplib
+from email.message import EmailMessage
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union, Collection, Tuple, Optional
 
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta, date
@@ -142,6 +144,15 @@ origins = [
    # "http://localhost:8000"
 ]
 
+# Definir constantes para envío de SMS vía email
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 587
+# Mapeo de operadores venezolanos a sus dominios de puerta de enlace SMS
+CARRIER_MAP = {
+    "movistar": "sms.movistar.com.ve",
+    "digitel": "txt.digitel.ve",
+    "movilnet": "sms.movilnet.com.ve"
+}
 
 app.add_middleware(
     CORSMiddleware,
@@ -2942,3 +2953,200 @@ if __name__ == "__main__":
         uvloop.install()
         
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+class SMSRequest(BaseModel):
+    numero: str
+    operador: str  # "movistar", "digitel", o "movilnet"
+    mensaje: str
+    asunto: Optional[str] = "Notificación"
+    email_remitente: str
+    password_remitente: str
+
+@app.post("/api/send_sms")
+async def api_send_sms(request: SMSRequest):
+    """
+    Endpoint para enviar mensajes SMS a través de correo electrónico.
+    Utiliza los operadores venezolanos: Movistar, Digitel y Movilnet.
+    """
+    operador = request.operador.lower()
+    
+    # Validar que el operador sea soportado
+    if operador not in CARRIER_MAP:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Operador no soportado. Opciones válidas: {', '.join(CARRIER_MAP.keys())}"
+        )
+    
+    # Validar el formato del número telefónico (solo números)
+    numero = re.sub(r'[^0-9]', '', request.numero)
+    if not numero or len(numero) < 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Número de teléfono inválido. Debe contener al menos 10 dígitos."
+        )
+    
+    try:
+        # Enviar el SMS
+        result = await send_txt(
+            num=numero,
+            carrier=operador,
+            email=request.email_remitente,
+            pword=request.password_remitente,
+            msg=request.mensaje,
+            subj=request.asunto
+        )
+        
+        # Verificar si el envío fue exitoso
+        success = bool(re.search(r"\sOK\s", result[1]))
+        
+        if success:
+            return {"status": "success", "message": "SMS enviado correctamente"}
+        else:
+            return {"status": "error", "message": "Error al enviar el SMS", "details": result[1]}
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al enviar SMS: {str(e)}"
+        )
+
+@app.post("/api/send_bulk_sms")
+async def api_send_bulk_sms(request: List[SMSRequest]):
+    """
+    Endpoint para enviar mensajes SMS en masa.
+    """
+    results = []
+    
+    for sms_request in request:
+        try:
+            operador = sms_request.operador.lower()
+            
+            # Validar que el operador sea soportado
+            if operador not in CARRIER_MAP:
+                results.append({
+                    "numero": sms_request.numero,
+                    "status": "error",
+                    "message": f"Operador no soportado: {sms_request.operador}"
+                })
+                continue
+            
+            # Validar el formato del número telefónico
+            numero = re.sub(r'[^0-9]', '', sms_request.numero)
+            if not numero or len(numero) < 10:
+                results.append({
+                    "numero": sms_request.numero,
+                    "status": "error",
+                    "message": "Número de teléfono inválido"
+                })
+                continue
+            
+            # Enviar el SMS
+            result = await send_txt(
+                num=numero,
+                carrier=operador,
+                email=sms_request.email_remitente,
+                pword=sms_request.password_remitente,
+                msg=sms_request.mensaje,
+                subj=sms_request.asunto
+            )
+            
+            # Verificar si el envío fue exitoso
+            success = bool(re.search(r"\sOK\s", result[1]))
+            
+            if success:
+                results.append({
+                    "numero": sms_request.numero,
+                    "status": "success",
+                    "message": "SMS enviado correctamente"
+                })
+            else:
+                results.append({
+                    "numero": sms_request.numero,
+                    "status": "error",
+                    "message": "Error al enviar el SMS",
+                    "details": result[1]
+                })
+        
+        except Exception as e:
+            results.append({
+                "numero": sms_request.numero,
+                "status": "error",
+                "message": f"Error al enviar SMS: {str(e)}"
+            })
+    
+    return {"results": results}
+
+async def send_txt(
+    num: Union[str, int], 
+    carrier: str, 
+    email: str, 
+    pword: str, 
+    msg: str, 
+    subj: str
+) -> Tuple[dict, str]:
+    """
+    Envía un mensaje SMS a través de correo electrónico.
+    
+    Args:
+        num: Número de teléfono del destinatario
+        carrier: Operador móvil del destinatario
+        email: Correo electrónico del remitente
+        pword: Contraseña del correo electrónico del remitente
+        msg: Contenido del mensaje
+        subj: Asunto del mensaje
+    
+    Returns:
+        Tuple con la respuesta del servidor SMTP y un mensaje de éxito/fallo
+    """
+    to_email = CARRIER_MAP[carrier]
+
+    # Construir el mensaje
+    message = EmailMessage()
+    message["From"] = email
+    message["To"] = f"{num}@{to_email}"
+    message["Subject"] = subj
+    message.set_content(msg)
+
+    # Enviar el mensaje
+    send_kws = dict(
+        username=email, 
+        password=pword, 
+        hostname=SMTP_HOST, 
+        port=SMTP_PORT, 
+        start_tls=True
+    )
+    
+    res = await aiosmtplib.send(message, **send_kws)
+    status_msg = "succeeded" if re.search(r"\sOK\s", res[1]) else "failed"
+    print(f"SMS to {num}@{to_email} {status_msg}")
+    
+    return res
+
+async def send_txts(
+    nums: Collection[Union[str, int]], 
+    carrier: str, 
+    email: str, 
+    pword: str, 
+    msg: str, 
+    subj: str
+) -> List[Tuple[dict, str]]:
+    """
+    Envía mensajes SMS a múltiples destinatarios en paralelo.
+    
+    Args:
+        nums: Colección de números de teléfono
+        carrier: Operador móvil de los destinatarios
+        email: Correo electrónico del remitente
+        pword: Contraseña del correo electrónico del remitente
+        msg: Contenido del mensaje
+        subj: Asunto del mensaje
+    
+    Returns:
+        Lista de resultados para cada envío
+    """
+    tasks = [send_txt(n, carrier, email, pword, msg, subj) for n in set(nums)]
+    return await asyncio.gather(*tasks)
+
+if __name__ == "__main__":
+    import platform
+    import uvicorn

@@ -28,6 +28,18 @@ class GoogleCloudSMS:
         self.max_retries = int(os.getenv("SMS_MAX_RETRIES", "3"))
         self.retry_delay = float(os.getenv("SMS_RETRY_DELAY", "2.0"))
         
+        # Verificar si faltan credenciales
+        if not self.project_id or not self.client_id or not self.client_secret:
+            missing = []
+            if not self.project_id: missing.append("GOOGLE_PROJECT_ID")
+            if not self.client_id: missing.append("GOOGLE_CLIENT_ID")
+            if not self.client_secret: missing.append("GOOGLE_CLIENT_SECRET")
+            
+            warning_msg = f"⚠️ ADVERTENCIA: Faltan credenciales de Google Cloud: {', '.join(missing)}. "
+            warning_msg += "El envío de SMS no funcionará hasta que se configuren."
+            logger.warning(warning_msg)
+            print(warning_msg)
+        
         self.base_url = f"https://{self.subdomain}.{self.provider_url}/apps/api/v1"
         self.token = None
         self.token_expires_at = 0

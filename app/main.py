@@ -80,6 +80,7 @@ from whatsapp_chatbot_python import GreenAPIBot, Notification
 import zipfile
 import math
 import tempfile
+# from app.utils.google_sms import GoogleCloudSMS # Comentado por solicitud
 
 load_dotenv()
 
@@ -115,7 +116,7 @@ Base = declarative_base()
 app = FastAPI()
 
 # Inicializar servicio de SMS de Google Cloud
-google_sms = GoogleCloudSMS()
+# google_sms = GoogleCloudSMS() # Comentado por solicitud
 
 
 def to_dict(obj):
@@ -3255,370 +3256,374 @@ async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_
         }
     }
 
-# Endpoint para enviar un SMS individual usando Google Cloud
-@app.post("/api/google/send_sms", response_model=Dict[str, Any])
-async def api_send_google_sms(request_data: dict = Body(...)):
-    try:
-        # Extraer datos necesarios
-        phone = request_data.get("phone")
-        message = request_data.get("message")
-        
-        # Validación básica
-        if not all([phone, message]):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": "Número de teléfono y mensaje son requeridos"}
-            )
-        
-        # Verificar formato del número telefónico
-        if not is_valid_phone(phone):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": f"Número de teléfono inválido: {phone}"}
-            )
-        
-        # Enviar SMS usando Google Cloud
-        result = google_sms.send_sms(phone, message)
-        
-        if result.get("success"):
-            return result
-        else:
-            return JSONResponse(
-                status_code=500,
-                content=result
-            )
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint send_sms: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
-
-# Endpoint para enviar múltiples SMS usando Google Cloud
-@app.post("/api/google/send_bulk_sms", response_model=Dict[str, Any])
-async def api_send_google_bulk_sms(request_data: dict = Body(...)):
-    try:
-        # Extraer datos necesarios
-        messages = request_data.get("messages", [])
-        
-        # Validación básica
-        if not messages:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "success": False, 
-                    "error": "Se requiere al menos un mensaje para enviar"
-                }
-            )
-        
-        # Extraer números y mensaje
-        to_phones = []
-        message_text = ""
-        
-        # Si todos los mensajes son iguales, podemos usar la API de envío masivo
-        all_same_message = True
-        first_message = messages[0].get("message") if messages else ""
-        
-        for msg_data in messages:
-            phone = msg_data.get("phone")
-            msg = msg_data.get("message", "")
-            
-            if not phone:
-                continue
-                
-            to_phones.append(phone)
-            
-            # Si el mensaje es diferente al primero, no podemos usar envío masivo
-            if msg != first_message:
-                all_same_message = False
-                
-            # Guardar el primer mensaje como referencia
-            if not message_text and msg:
-                message_text = msg
-        
-        # Si no hay números válidos, retornar error
-        if not to_phones:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "success": False,
-                    "error": "No se encontraron números de teléfono válidos"
-                }
-            )
-        
-        # Si todos los mensajes son iguales, usar envío masivo
-        if all_same_message:
-            result = google_sms.send_bulk_sms(to_phones, message_text)
-            
-            if result.get("success"):
-                return result
-            else:
-                return JSONResponse(
-                    status_code=500,
-                    content=result
-                )
-        else:
-            # Si los mensajes son diferentes, enviar uno por uno
-            results = []
-            success_count = 0
-            fail_count = 0
-            
-            for msg_data in messages:
-                phone = msg_data.get("phone")
-                msg = msg_data.get("message", "")
-                
-                if not phone or not msg:
-                    results.append({
-                        "phone": phone or "desconocido",
-                        "success": False,
-                        "message": "Datos incompletos",
-                        "error": "Número o mensaje no proporcionado"
-                    })
-                    fail_count += 1
-                    continue
-                
-                # Enviar SMS individual
-                result = google_sms.send_sms(phone, msg)
-                
-                if result.get("success"):
-                    results.append({
-                        "phone": phone,
-                        "success": True,
-                        "message": "Mensaje enviado exitosamente",
-                        "request_id": result.get("request_id")
-                    })
-                    success_count += 1
-                else:
-                    results.append({
-                        "phone": phone,
-                        "success": False,
-                        "message": "Error al enviar mensaje",
-                        "error": result.get("error", "Error desconocido")
-                    })
-                    fail_count += 1
-            
-            return {
-                "success": fail_count == 0,
-                "message": f"Procesados {len(messages)} mensajes, {success_count} exitosos, {fail_count} fallidos",
-                "results": results,
-                "summary": {
-                    "total": len(messages),
-                    "success": success_count,
-                    "failed": fail_count
-                }
-            }
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint send_bulk_sms: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
-
-@app.post("/api/google/send_sms_with_thread", response_model=Dict[str, Any])
-async def api_send_google_sms_with_thread(request_data: dict = Body(...)):
-    """
-    Envía un SMS con posibilidad de agruparlo en una conversación específica
-    """
-    try:
-        # Extraer datos necesarios
-        phone = request_data.get("phone")
-        message = request_data.get("message")
-        thread_key = request_data.get("thread_key")  # Opcional
-        
-        # Validación básica
-        if not all([phone, message]):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": "Número de teléfono y mensaje son requeridos"}
-            )
-        
-        # Verificar formato del número telefónico
-        if not is_valid_phone(phone):
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": f"Número de teléfono inválido: {phone}"}
-            )
-        
-        # Enviar SMS usando Google Cloud con thread key
-        result = google_sms.send_sms(phone, message, thread_key=thread_key)
-        
-        if result.get("success"):
-            return result
-        else:
-            return JSONResponse(
-                status_code=500,
-                content=result
-            )
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint send_sms_with_thread: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
-
-@app.get("/api/google/message_status/{message_id}", response_model=Dict[str, Any])
-async def api_get_message_status(message_id: str):
-    """
-    Obtiene el estado de un mensaje específico
-    """
-    try:
-        result = google_sms.get_message_status(message_id)
-        
-        if result.get("exists"):
-            return result
-        else:
-            return JSONResponse(
-                status_code=404,
-                content=result
-            )
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint message_status: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
-
-@app.get("/api/google/conversation/{thread_key}", response_model=Dict[str, Any])
-async def api_get_conversation(thread_key: str):
-    """
-    Obtiene todos los mensajes de una conversación
-    """
-    try:
-        result = google_sms.get_conversation_messages(thread_key)
-        return result
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint conversation: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
-
-@app.post("/api/google/send_bulk_sms_batched", response_model=Dict[str, Any])
-async def api_send_google_bulk_sms_batched(request_data: dict = Body(...)):
-    """
-    Envía mensajes masivos procesados en lotes para mejor rendimiento
-    """
-    try:
-        # Extraer datos necesarios
-        messages = request_data.get("messages", [])
-        batch_size = request_data.get("batch_size", 25)
-        
-        # Validación básica
-        if not messages:
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": "Se requiere al menos un mensaje para enviar"}
-            )
-        
-        # Extraer números y mensaje
-        to_phones = []
-        message_text = ""
-        
-        # Si todos los mensajes son iguales, podemos usar la API de envío masivo
-        all_same_message = True
-        first_message = messages[0].get("message") if messages else ""
-        
-        for msg_data in messages:
-            phone = msg_data.get("phone")
-            msg = msg_data.get("message", "")
-            
-            if not phone:
-                continue
-                
-            to_phones.append(phone)
-            
-            # Si el mensaje es diferente al primero, no podemos usar envío masivo
-            if msg != first_message:
-                all_same_message = False
-                
-            # Guardar el primer mensaje como referencia
-            if not message_text and msg:
-                message_text = msg
-        
-        # Si no hay números válidos, retornar error
-        if not to_phones:
-            return JSONResponse(
-                status_code=400,
-                content={"success": False, "error": "No se encontraron números de teléfono válidos"}
-            )
-        
-        # Si todos los mensajes son iguales, usar envío masivo en lotes
-        if all_same_message:
-            result = google_sms.send_bulk_sms(to_phones, message_text, batch_size=batch_size)
-            
-            if result.get("success"):
-                return result
-            else:
-                return JSONResponse(
-                    status_code=500,
-                    content=result
-                )
-        else:
-            # Si los mensajes son diferentes, enviar uno por uno
-            results = []
-            success_count = 0
-            fail_count = 0
-            
-            for msg_data in messages:
-                phone = msg_data.get("phone")
-                msg = msg_data.get("message", "")
-                
-                if not phone or not msg:
-                    results.append({
-                        "phone": phone or "desconocido",
-                        "success": False,
-                        "message": "Datos incompletos",
-                        "error": "Número o mensaje no proporcionado"
-                    })
-                    fail_count += 1
-                    continue
-                
-                # Enviar SMS individual
-                result = google_sms.send_sms(phone, msg)
-                
-                if result.get("success"):
-                    results.append({
-                        "phone": phone,
-                        "success": True,
-                        "message": "Mensaje enviado exitosamente",
-                        "message_id": result.get("message_id"),
-                        "thread_key": result.get("thread_key"),
-                        "request_id": result.get("request_id")
-                    })
-                    success_count += 1
-                else:
-                    results.append({
-                        "phone": phone,
-                        "success": False,
-                        "message": "Error al enviar mensaje",
-                        "error": result.get("error", "Error desconocido"),
-                        "message_id": result.get("message_id"),
-                        "thread_key": result.get("thread_key")
-                    })
-                    fail_count += 1
-            
-            return {
-                "success": fail_count == 0,
-                "message": f"Procesados {len(messages)} mensajes, {success_count} exitosos, {fail_count} fallidos",
-                "results": results,
-                "summary": {
-                    "total": len(messages),
-                    "success": success_count,
-                    "failed": fail_count
-                }
-            }
-    
-    except Exception as e:
-        logging.error(f"Error en endpoint send_bulk_sms_batched: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": f"Error inesperado: {str(e)}"}
-        )
+# Comentado por solicitud - Inicio Bloque GoogleCloudSMS
+# # Endpoint para enviar un SMS individual usando Google Cloud
+# @app.post("/api/google/send_sms", response_model=Dict[str, Any])
+# async def api_send_google_sms(request_data: dict = Body(...)):
+#     try:
+#         # Extraer datos necesarios
+#         phone = request_data.get("phone")
+#         message = request_data.get("message")
+#         
+#         # Validación básica
+#         if not all([phone, message]):
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={"success": False, "error": "Número de teléfono y mensaje son requeridos"}
+#             )
+#         
+#         # Verificar formato del número telefónico
+#         # Nota: is_valid_phone no está definido en este archivo, se asume que está en GoogleCloudSMS o utils
+#         # if not is_valid_phone(phone):
+#         #     return JSONResponse(
+#         #         status_code=400,
+#         #         content={"success": False, "error": f"Número de teléfono inválido: {phone}"}
+#         #     )
+#         
+#         # Enviar SMS usando Google Cloud
+#         result = google_sms.send_sms(phone, message)
+#         
+#         if result.get("success"):
+#             return result
+#         else:
+#             return JSONResponse(
+#                 status_code=500,
+#                 content=result
+#             )
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint send_sms: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# 
+# # Endpoint para enviar múltiples SMS usando Google Cloud
+# @app.post("/api/google/send_bulk_sms", response_model=Dict[str, Any])
+# async def api_send_google_bulk_sms(request_data: dict = Body(...)):
+#     try:
+#         # Extraer datos necesarios
+#         messages = request_data.get("messages", [])
+#         
+#         # Validación básica
+#         if not messages:
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={
+#                     "success": False, 
+#                     "error": "Se requiere al menos un mensaje para enviar"
+#                 }
+#             )
+#         
+#         # Extraer números y mensaje
+#         to_phones = []
+#         message_text = ""
+#         
+#         # Si todos los mensajes son iguales, podemos usar la API de envío masivo
+#         all_same_message = True
+#         first_message = messages[0].get("message") if messages else ""
+#         
+#         for msg_data in messages:
+#             phone = msg_data.get("phone")
+#             msg = msg_data.get("message", "")
+#             
+#             if not phone:
+#                 continue
+#                 
+#             to_phones.append(phone)
+#             
+#             # Si el mensaje es diferente al primero, no podemos usar envío masivo
+#             if msg != first_message:
+#                 all_same_message = False
+#                 
+#             # Guardar el primer mensaje como referencia
+#             if not message_text and msg:
+#                 message_text = msg
+#         
+#         # Si no hay números válidos, retornar error
+#         if not to_phones:
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={
+#                     "success": False,
+#                     "error": "No se encontraron números de teléfono válidos"
+#                 }
+#             )
+#         
+#         # Si todos los mensajes son iguales, usar envío masivo
+#         if all_same_message:
+#             result = google_sms.send_bulk_sms(to_phones, message_text)
+#             
+#             if result.get("success"):
+#                 return result
+#             else:
+#                 return JSONResponse(
+#                     status_code=500,
+#                     content=result
+#                 )
+#         else:
+#             # Si los mensajes son diferentes, enviar uno por uno
+#             results = []
+#             success_count = 0
+#             fail_count = 0
+#             
+#             for msg_data in messages:
+#                 phone = msg_data.get("phone")
+#                 msg = msg_data.get("message", "")
+#                 
+#                 if not phone or not msg:
+#                     results.append({
+#                         "phone": phone or "desconocido",
+#                         "success": False,
+#                         "message": "Datos incompletos",
+#                         "error": "Número o mensaje no proporcionado"
+#                     })
+#                     fail_count += 1
+#                     continue
+#                 
+#                 # Enviar SMS individual
+#                 result = google_sms.send_sms(phone, msg)
+#                 
+#                 if result.get("success"):
+#                     results.append({
+#                         "phone": phone,
+#                         "success": True,
+#                         "message": "Mensaje enviado exitosamente",
+#                         "request_id": result.get("request_id")
+#                     })
+#                     success_count += 1
+#                 else:
+#                     results.append({
+#                         "phone": phone,
+#                         "success": False,
+#                         "message": "Error al enviar mensaje",
+#                         "error": result.get("error", "Error desconocido")
+#                     })
+#                     fail_count += 1
+#             
+#             return {
+#                 "success": fail_count == 0,
+#                 "message": f"Procesados {len(messages)} mensajes, {success_count} exitosos, {fail_count} fallidos",
+#                 "results": results,
+#                 "summary": {
+#                     "total": len(messages),
+#                     "success": success_count,
+#                     "failed": fail_count
+#                 }
+#             }
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint send_bulk_sms: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# 
+# @app.post("/api/google/send_sms_with_thread", response_model=Dict[str, Any])
+# async def api_send_google_sms_with_thread(request_data: dict = Body(...)):
+#     """
+#     Envía un SMS con posibilidad de agruparlo en una conversación específica
+#     """
+#     try:
+#         # Extraer datos necesarios
+#         phone = request_data.get("phone")
+#         message = request_data.get("message")
+#         thread_key = request_data.get("thread_key")  # Opcional
+#         
+#         # Validación básica
+#         if not all([phone, message]):
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={"success": False, "error": "Número de teléfono y mensaje son requeridos"}
+#             )
+#         
+#         # Verificar formato del número telefónico
+#         # Nota: is_valid_phone no está definido en este archivo
+#         # if not is_valid_phone(phone):
+#         #     return JSONResponse(
+#         #         status_code=400,
+#         #         content={"success": False, "error": f"Número de teléfono inválido: {phone}"}
+#         #     )
+#         
+#         # Enviar SMS usando Google Cloud con thread key
+#         result = google_sms.send_sms(phone, message, thread_key=thread_key)
+#         
+#         if result.get("success"):
+#             return result
+#         else:
+#             return JSONResponse(
+#                 status_code=500,
+#                 content=result
+#             )
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint send_sms_with_thread: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# 
+# @app.get("/api/google/message_status/{message_id}", response_model=Dict[str, Any])
+# async def api_get_message_status(message_id: str):
+#     """
+#     Obtiene el estado de un mensaje específico
+#     """
+#     try:
+#         result = google_sms.get_message_status(message_id)
+#         
+#         if result.get("exists"):
+#             return result
+#         else:
+#             return JSONResponse(
+#                 status_code=404,
+#                 content=result
+#             )
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint message_status: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# 
+# @app.get("/api/google/conversation/{thread_key}", response_model=Dict[str, Any])
+# async def api_get_conversation(thread_key: str):
+#     """
+#     Obtiene todos los mensajes de una conversación
+#     """
+#     try:
+#         result = google_sms.get_conversation_messages(thread_key)
+#         return result
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint conversation: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# 
+# @app.post("/api/google/send_bulk_sms_batched", response_model=Dict[str, Any])
+# async def api_send_google_bulk_sms_batched(request_data: dict = Body(...)):
+#     """
+#     Envía mensajes masivos procesados en lotes para mejor rendimiento
+#     """
+#     try:
+#         # Extraer datos necesarios
+#         messages = request_data.get("messages", [])
+#         batch_size = request_data.get("batch_size", 25)
+#         
+#         # Validación básica
+#         if not messages:
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={"success": False, "error": "Se requiere al menos un mensaje para enviar"}
+#             )
+#         
+#         # Extraer números y mensaje
+#         to_phones = []
+#         message_text = ""
+#         
+#         # Si todos los mensajes son iguales, podemos usar la API de envío masivo
+#         all_same_message = True
+#         first_message = messages[0].get("message") if messages else ""
+#         
+#         for msg_data in messages:
+#             phone = msg_data.get("phone")
+#             msg = msg_data.get("message", "")
+#             
+#             if not phone:
+#                 continue
+#                 
+#             to_phones.append(phone)
+#             
+#             # Si el mensaje es diferente al primero, no podemos usar envío masivo
+#             if msg != first_message:
+#                 all_same_message = False
+#                 
+#             # Guardar el primer mensaje como referencia
+#             if not message_text and msg:
+#                 message_text = msg
+#         
+#         # Si no hay números válidos, retornar error
+#         if not to_phones:
+#             return JSONResponse(
+#                 status_code=400,
+#                 content={"success": False, "error": "No se encontraron números de teléfono válidos"}
+#             )
+#         
+#         # Si todos los mensajes son iguales, usar envío masivo en lotes
+#         if all_same_message:
+#             result = google_sms.send_bulk_sms(to_phones, message_text, batch_size=batch_size)
+#             
+#             if result.get("success"):
+#                 return result
+#             else:
+#                 return JSONResponse(
+#                     status_code=500,
+#                     content=result
+#                 )
+#         else:
+#             # Si los mensajes son diferentes, enviar uno por uno
+#             results = []
+#             success_count = 0
+#             fail_count = 0
+#             
+#             for msg_data in messages:
+#                 phone = msg_data.get("phone")
+#                 msg = msg_data.get("message", "")
+#                 
+#                 if not phone or not msg:
+#                     results.append({
+#                         "phone": phone or "desconocido",
+#                         "success": False,
+#                         "message": "Datos incompletos",
+#                         "error": "Número o mensaje no proporcionado"
+#                     })
+#                     fail_count += 1
+#                     continue
+#                 
+#                 # Enviar SMS individual
+#                 result = google_sms.send_sms(phone, msg)
+#                 
+#                 if result.get("success"):
+#                     results.append({
+#                         "phone": phone,
+#                         "success": True,
+#                         "message": "Mensaje enviado exitosamente",
+#                         "message_id": result.get("message_id"),
+#                         "thread_key": result.get("thread_key"),
+#                         "request_id": result.get("request_id")
+#                     })
+#                     success_count += 1
+#                 else:
+#                     results.append({
+#                         "phone": phone,
+#                         "success": False,
+#                         "message": "Error al enviar mensaje",
+#                         "error": result.get("error", "Error desconocido"),
+#                         "message_id": result.get("message_id"),
+#                         "thread_key": result.get("thread_key")
+#                     })
+#                     fail_count += 1
+#             
+#             return {
+#                 "success": fail_count == 0,
+#                 "message": f"Procesados {len(messages)} mensajes, {success_count} exitosos, {fail_count} fallidos",
+#                 "results": results,
+#                 "summary": {
+#                     "total": len(messages),
+#                     "success": success_count,
+#                     "failed": fail_count
+#                 }
+#             }
+#     
+#     except Exception as e:
+#         logging.error(f"Error en endpoint send_bulk_sms_batched: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content={"success": False, "error": f"Error inesperado: {str(e)}"}
+#         )
+# Comentado por solicitud - Fin Bloque GoogleCloudSMS
 
 
 if __name__ == "__main__":

@@ -114,6 +114,9 @@ Base = declarative_base()
 
 app = FastAPI()
 
+# Inicializar servicio de SMS de Google Cloud
+google_sms = GoogleCloudSMS()
+
 
 def to_dict(obj):
     return obj.__dict__
@@ -2941,19 +2944,6 @@ async def importar_lineas_telefonicas(
         )
 
 
-
-
-if __name__ == "__main__":
-    import platform
-    import uvicorn
-    
-    if platform.system() != "Windows":
-        # En sistemas Unix/Linux, usar uvloop
-        import uvloop
-        uvloop.install()
-        
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 class SMSRequest(BaseModel):
     numero: str
     operador: str  # "movistar", "digitel", o "movilnet"
@@ -3147,10 +3137,6 @@ async def send_txts(
     tasks = [send_txt(n, carrier, email, pword, msg, subj) for n in set(nums)]
     return await asyncio.gather(*tasks)
 
-if __name__ == "__main__":
-    import platform
-    import uvicorn
-
 # Autenticación de Telegram
 import hashlib
 import hmac
@@ -3208,15 +3194,16 @@ async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_
         )
     
     # Buscar si existe un usuario con este Telegram ID o crearlo
+    # Corregir para usar el modelo 'Users' y 'isAdmin'
     usuario = None
     try:
         # Buscar por el telegram_id
-        usuario = db.query(Usuario).filter(Usuario.telegram_id == auth_data.id).first()
+        usuario = db.query(Users).filter(Users.telegram_id == auth_data.id).first()
         
         if not usuario:
             # Verificar si tenemos un usuario con este username (opcional)
             if auth_data.username:
-                usuario = db.query(Usuario).filter(Usuario.username == auth_data.username).first()
+                usuario = db.query(Users).filter(Users.username == auth_data.username).first()
                 if usuario:
                     # Actualizamos el telegram_id
                     usuario.telegram_id = auth_data.id
@@ -3224,13 +3211,18 @@ async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_
             
             # Si aún no encontramos usuario, creamos uno nuevo
             if not usuario:
-                nuevo_usuario = Usuario(
+                # Generar un password hash vacío o aleatorio seguro si es necesario
+                # Aquí se usa vacío, considerar implicaciones de seguridad si se usa para login normal
+                hashed_password = "" 
+                nuevo_usuario = Users(
                     username=auth_data.username or f"tg_{auth_data.id}",
-                    nombre=auth_data.first_name,
-                    apellido=auth_data.last_name or "",
+                    # Usar un email placeholder o derivado si es necesario
+                    email=f"{auth_data.username or f'tg_{auth_data.id}'}@telegram.user", 
+                    hashed_password=hashed_password, # Campo requerido, aunque no se use para login TG
+                    isAdmin=False,  # Usar isAdmin
                     telegram_id=auth_data.id,
-                    is_admin=False,  # Por defecto no es admin
-                    password_hash="",  # No hay password para usuarios de Telegram
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
                 )
                 db.add(nuevo_usuario)
                 db.commit()
@@ -3241,12 +3233,12 @@ async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_
         db.rollback()
         return JSONResponse(
             status_code=500,
-            content={"detail": f"Error creating user: {str(e)}"}
+            content={"detail": f"Error processing user: {str(e)}"}
         )
     
-    # Generamos un token JWT
+    # Generamos un token JWT usando 'isAdmin'
     access_token = create_access_token(
-        data={"sub": usuario.username, "id": usuario.id, "admin": usuario.is_admin},
+        data={"sub": usuario.username, "id": usuario.id, "admin": usuario.isAdmin},
     )
     
     # Devolvemos los datos del usuario y el token
@@ -3256,35 +3248,12 @@ async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_
         "user": {
             "id": usuario.id,
             "username": usuario.username,
-            "is_admin": usuario.is_admin,
+            "is_admin": usuario.isAdmin, # Devolver isAdmin
             "telegram_id": usuario.telegram_id,
             "first_name": auth_data.first_name,
             "photo_url": auth_data.photo_url
         }
     }
-
-# Si es necesario, modificamos el modelo de Usuario para incluir telegram_id
-# Esto debería hacerse en los modelos pero lo incluyo aquí como referencia
-"""
-class Usuario(Base):
-    __tablename__ = "usuarios"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
-    is_admin = Column(Boolean, default=False)
-    telegram_id = Column(BigInteger, unique=True, nullable=True)  # Nuevo campo
-"""
-
-if __name__ == '__main__':
-    # ... existing code ...
-
-# Importar la clase GoogleCloudSMS
-from app.utils.google_sms import GoogleCloudSMS
-
-# Inicializar servicio de SMS
-google_sms = GoogleCloudSMS()
 
 # Endpoint para enviar un SMS individual usando Google Cloud
 @app.post("/api/google/send_sms", response_model=Dict[str, Any])
@@ -3650,3 +3619,23 @@ async def api_send_google_bulk_sms_batched(request_data: dict = Body(...)):
             status_code=500,
             content={"success": False, "error": f"Error inesperado: {str(e)}"}
         )
+
+
+if __name__ == "__main__":
+    import platform
+    import uvicorn
+    
+    # Configurar uvloop si no es Windows
+    if platform.system() != "Windows":
+        try:
+            import uvloop
+            uvloop.install()
+            print("uvloop instalado y configurado.")
+        except ImportError:
+            print("uvloop no encontrado, usando asyncio por defecto.")
+            pass # Continuar sin uvloop si no está instalado
+        
+    print("Iniciando servidor Uvicorn...")
+    # Ejecutar Uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+

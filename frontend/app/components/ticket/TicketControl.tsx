@@ -6,6 +6,7 @@ import { useTickets, useUpdateTicket } from "../../hooks/useTickets";
 import { useEstados } from "../../hooks/useEstados";
 import { useRecolectores } from "../../hooks/useRecolectores";
 import ConfirmationModal from '../confirmation/ConfirmationModal';
+import MessagingModal from '../messaging/MessagingModal';
 
 // Componente para mostrar mensajes
 const MessageModal: React.FC<{
@@ -117,6 +118,10 @@ const TicketControl: React.FC = () => {
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [messageType, setMessageType] = useState<'info' | 'error' | 'success'>('info');
+  
+  // Nuevos estados para la funcionalidad de mensajería
+  const [showMessagingModal, setShowMessagingModal] = useState(false);
+  const [selectedTicketsForMessaging, setSelectedTicketsForMessaging] = useState<string[]>([]);
 
   // Usando React Query Hooks
   const { data: ticketsResponse, isLoading: ticketsLoading } = useTickets({
@@ -346,6 +351,108 @@ const TicketControl: React.FC = () => {
   // Obtener recolectores de la respuesta
   const recolectores = recolectoresData?.items || [];
 
+  // Actualizar la función para abrir el modal de mensajería
+  const openMessagingModal = () => {
+    setShowMessagingModal(true);
+  };
+
+  // Actualizar la función ticketsToContacts para incluir datos adicionales para personalización
+  const ticketsToContacts = () => {
+    return tickets
+      .filter(ticket => selectedTicketsForMessaging.length === 0 || selectedTicketsForMessaging.includes(ticket.id.toString()))
+      .map(ticket => ({
+        id: ticket.id.toString(),
+        name: ticket.nombre || `Usuario ${ticket.cedula}`,
+        phone: ticket.telefono,
+        lastMessage: undefined,
+        lastMessageTime: undefined,
+        // Campos adicionales para personalización
+        cedula: ticket.cedula,
+        estado: ticket.estado,
+        municipio: ticket.municipio,
+        numero_ticket: ticket.numero_ticket
+      }));
+  };
+
+  // Función para manejar la selección de tickets para mensajería
+  const handleTicketSelection = (ticketId: string) => {
+    setSelectedTicketsForMessaging(prev => {
+      if (prev.includes(ticketId)) {
+        return prev.filter(id => id !== ticketId);
+      } else {
+        return [...prev, ticketId];
+      }
+    });
+  };
+
+  // Función para manejar la selección/deselección de todos los tickets
+  const handleSelectAllTickets = () => {
+    if (selectedTicketsForMessaging.length === tickets.length) {
+      // Si todos están seleccionados, deseleccionar todos
+      setSelectedTicketsForMessaging([]);
+    } else {
+      // Si no todos están seleccionados, seleccionar todos
+      setSelectedTicketsForMessaging(tickets.map(ticket => ticket.id.toString()));
+    }
+  };
+
+  // Agregar estados y funciones para plantillas de mensajes
+  const [messageTemplate, setMessageTemplate] = useState("");
+  const messageTemplates = [
+    "Hola {nombre}, gracias por participar en Lotto Bueno. Tu ticket #{ticket} ha sido registrado.",
+    "Estimado/a {nombre}, te recordamos que tu ticket #{ticket} participa en nuestro próximo sorteo.",
+    "Importante: {nombre}, verifica tu ticket #{ticket} en nuestra página web."
+  ];
+
+  // Función para exportar tickets seleccionados a Excel para uso con API de mensajería
+  const exportTicketsForSMS = () => {
+    if (tickets.length === 0) {
+      showMessage("No hay tickets para exportar", "error");
+      return;
+    }
+
+    // Filtrar los tickets seleccionados o usar todos si no hay selección
+    const ticketsToExport = tickets.filter(ticket => 
+      selectedTicketsForMessaging.length === 0 || 
+      selectedTicketsForMessaging.includes(ticket.id.toString())
+    );
+
+    if (ticketsToExport.length === 0) {
+      showMessage("No hay tickets seleccionados para exportar", "error");
+      return;
+    }
+
+    // Crear los datos para el archivo Excel
+    const headers = ["phone", "message", "nombre", "cedula", "ticket", "estado"];
+    
+    // Generar filas con datos y mensaje vacío para que el usuario lo complete
+    const rows = ticketsToExport.map(ticket => ({
+      phone: ticket.telefono,
+      message: "", // El usuario completará este campo
+      nombre: ticket.nombre,
+      cedula: ticket.cedula,
+      ticket: ticket.numero_ticket,
+      estado: ticket.estado
+    }));
+
+    // Convertir a CSV
+    let csvContent = headers.join(",") + "\n";
+    csvContent += rows.map(row => 
+      headers.map(header => `"${row[header as keyof typeof row] || ""}"`).join(",")
+    ).join("\n");
+
+    // Crear blob y descargar
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.setAttribute("href", url);
+    a.setAttribute("download", `tickets_para_sms_${new Date().toISOString().slice(0, 10)}.csv`);
+    a.click();
+    window.URL.revokeObjectURL(url);
+
+    showMessage(`Se exportaron ${ticketsToExport.length} tickets para envío SMS`, "success");
+  };
+
   return (
     <div className="p-4">
       <h2>Control de Tickets</h2>
@@ -384,7 +491,7 @@ const TicketControl: React.FC = () => {
           ))}
         </select>
       </div>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         <button 
           onClick={() => handleDownload('tickets', 'excel')} 
           className="btn btn-secondary mr-2"
@@ -401,7 +508,7 @@ const TicketControl: React.FC = () => {
         </button>
         <button 
           onClick={() => handleDownload('tickets', 'txt')} 
-          className="btn btn-secondary"
+          className="btn btn-secondary mr-2"
           disabled={isDownloading}
         >
           {isDownloading ? (
@@ -413,7 +520,59 @@ const TicketControl: React.FC = () => {
             'Descargar Tickets TXT'
           )}
         </button>
+        
+        {/* Botón para enviar mensajes */}
+        <button 
+          onClick={openMessagingModal} 
+          className="btn bg-blue-600 text-white hover:bg-blue-700 mr-2"
+          disabled={tickets.length === 0}
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+          </svg>
+          Enviar Mensajes
+        </button>
+        
+        {/* Nuevo botón para exportar datos para SMS */}
+        <button 
+          onClick={exportTicketsForSMS} 
+          className="btn bg-green-600 text-white hover:bg-green-700"
+          disabled={tickets.length === 0}
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          Exportar para SMS
+        </button>
       </div>
+      
+      {/* Plantilla de mensaje */}
+      {tickets.length > 0 && selectedTicketsForMessaging.length > 0 && (
+        <div className="mb-4">
+          <label htmlFor="message-template" className="block text-sm font-medium mb-1">
+            Plantilla de mensaje para envío:
+          </label>
+          <div className="flex gap-2">
+            <select
+              id="message-template"
+              className="select select-bordered flex-grow"
+              value={messageTemplate}
+              onChange={(e) => setMessageTemplate(e.target.value)}
+            >
+              <option value="">Seleccionar plantilla</option>
+              {messageTemplates.map((template, index) => (
+                <option key={index} value={template}>
+                  {template.length > 50 ? `${template.substring(0, 50)}...` : template}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-gray-500 self-center">
+              Seleccionados: {selectedTicketsForMessaging.length}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
         <button onClick={() => paginate(currentPage - 1)} className="btn btn-primary mr-1">{"<"}</button>
@@ -424,56 +583,93 @@ const TicketControl: React.FC = () => {
       {ticketsLoading ? (
         <div className="text-center">Cargando tickets...</div>
       ) : (
-        <table className="table-auto w-full mb-4">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Número Ticket</th>
-              <th>Cédula</th>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>Estado</th>
-              <th>Municipio</th>
-              <th>Parroquia</th>
-              <th>Referido ID</th>
-              <th>Validado</th>
-              <th>Ganador</th>
-              <th>Creado en</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.length > 0 ? tickets.map((ticket) => (
-              <tr key={ticket.id}>
-                <td>{ticket.id}</td>
-                <td>{ticket.numero_ticket}</td>
-                <td>{ticket.cedula}</td>
-                <td>{ticket.nombre}</td>
-                <td>{ticket.telefono}</td>
-                <td>{ticket.estado}</td>
-                <td>{ticket.municipio}</td>
-                <td>{ticket.parroquia}</td>
-                <td>{ticket.referido_id}</td>
-                <td>{ticket.validado ? "Sí" : "No"}</td>
-                <td>{ticket.ganador ? "Sí" : "No"}</td>
-                <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
-                <td>
-                  <button className="btn btn-primary mr-2" onClick={() => openModal(ticket)}>
-                    Ver Detalles
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => openEditModal(ticket)}>
-                    Editar
-                  </button>
-                </td>
-              </tr>
-            )) : (
+        <>
+          {/* Selector para mensajería masiva */}
+          {tickets.length > 0 && (
+            <div className="mb-4 flex items-center">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="select-all"
+                  className="mr-2"
+                  checked={selectedTicketsForMessaging.length === tickets.length && tickets.length > 0}
+                  onChange={handleSelectAllTickets}
+                />
+                <label htmlFor="select-all">Seleccionar todos para mensajería</label>
+              </div>
+              {selectedTicketsForMessaging.length > 0 && (
+                <span className="ml-4 text-sm text-gray-600">
+                  {selectedTicketsForMessaging.length} ticket(s) seleccionado(s)
+                </span>
+              )}
+            </div>
+          )}
+          
+          <table className="table-auto w-full mb-4">
+            <thead>
               <tr>
-                <td colSpan={13} className="text-center">No hay tickets disponibles</td>
+                {tickets.length > 0 && (
+                  <th className="px-2 py-2 w-10">
+                    <input type="checkbox" onChange={handleSelectAllTickets} checked={selectedTicketsForMessaging.length === tickets.length && tickets.length > 0} />
+                  </th>
+                )}
+                <th>ID</th>
+                <th>Número Ticket</th>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Estado</th>
+                <th>Municipio</th>
+                <th>Parroquia</th>
+                <th>Referido ID</th>
+                <th>Validado</th>
+                <th>Ganador</th>
+                <th>Creado en</th>
+                <th>Acciones</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {tickets.length > 0 ? tickets.map((ticket) => (
+                <tr key={ticket.id}>
+                  <td className="px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedTicketsForMessaging.includes(ticket.id.toString())}
+                      onChange={() => handleTicketSelection(ticket.id.toString())}
+                    />
+                  </td>
+                  <td>{ticket.id}</td>
+                  <td>{ticket.numero_ticket}</td>
+                  <td>{ticket.cedula}</td>
+                  <td>{ticket.nombre}</td>
+                  <td>{ticket.telefono}</td>
+                  <td>{ticket.estado}</td>
+                  <td>{ticket.municipio}</td>
+                  <td>{ticket.parroquia}</td>
+                  <td>{ticket.referido_id}</td>
+                  <td>{ticket.validado ? "Sí" : "No"}</td>
+                  <td>{ticket.ganador ? "Sí" : "No"}</td>
+                  <td>{new Date(ticket.created_at).toLocaleDateString()}</td>
+                  <td>
+                    <button className="btn btn-primary mr-2" onClick={() => openModal(ticket)}>
+                      Ver Detalles
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => openEditModal(ticket)}>
+                      Editar
+                    </button>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={14} className="text-center">No hay tickets disponibles</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </>
       )}
+      
+      {/* Resto de modales existentes */}
       {modalIsOpen && selectedTicket && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -500,43 +696,15 @@ const TicketControl: React.FC = () => {
           </div>
         </div>
       )}
-      {editModalIsOpen && selectedTicket && (
-        <div className="modal-overlay" onClick={closeEditModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-button" onClick={closeEditModal}>×</button>
-            <h2>Editar Ticket</h2>
-            <form onSubmit={handleUpdateSubmit}>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Validado</label>
-                <input
-                  type="checkbox"
-                  name="validado"
-                  checked={updatedTicket.validado}
-                  onChange={handleUpdateChange}
-                  className="form-checkbox"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Ganador</label>
-                <input
-                  type="checkbox"
-                  name="ganador"
-                  checked={updatedTicket.ganador}
-                  onChange={handleUpdateChange}
-                  className="form-checkbox"
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="btn btn-primary mt-4"
-                disabled={updateTicketMutation.isPending}
-              >
-                {updateTicketMutation.isPending ? "Guardando..." : "Guardar Cambios"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      
+      {/* Modal de mensajería actualizado con plantilla y habilitando adjuntos */}
+      <MessagingModal
+        isOpen={showMessagingModal}
+        onClose={() => setShowMessagingModal(false)}
+        initialContacts={ticketsToContacts()}
+        initialTemplate={messageTemplate}
+        enableAttachments={true}
+      />
       
       {/* Indicador de progreso de descarga */}
       {isDownloading && (

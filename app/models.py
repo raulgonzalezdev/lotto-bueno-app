@@ -94,6 +94,7 @@ class Users(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     isAdmin = Column(Boolean, default=False)
+    telegram_id = Column(Integer, unique=True, nullable=True)  # Nuevo campo para identificador de Telegram
 
 
 

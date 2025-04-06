@@ -3150,3 +3150,132 @@ async def send_txts(
 if __name__ == "__main__":
     import platform
     import uvicorn
+
+# Autenticación de Telegram
+import hashlib
+import hmac
+import time
+from typing import Dict, Any, Optional
+
+class TelegramAuthData(BaseModel):
+    id: int
+    first_name: str
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    photo_url: Optional[str] = None
+    auth_date: int
+    hash: str
+
+@app.post("/api/auth/telegram")
+async def telegram_login(auth_data: TelegramAuthData, db: Session = Depends(get_db)):
+    """
+    Endpoint para manejar la autenticación desde el widget de Telegram.
+    1. Valida la autenticidad de los datos
+    2. Busca si el usuario existe o lo crea
+    3. Genera un token JWT para la sesión
+    """
+    # El token bot debe estar en una variable de entorno
+    bot_token = os.getenv("API_TELEGRAM_TOKEN", "")
+    
+    # Verificamos que los datos no sean muy antiguos (1 día)
+    if time.time() - auth_data.auth_date > 86400:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Authentication data is too old"}
+        )
+    
+    # Creamos la data check string como especifica Telegram
+    data_check_string = '\n'.join([
+        f"{k}={v}" for k, v in auth_data.dict().items() 
+        if k != 'hash' and v is not None
+    ])
+    
+    # Calculamos el secreto usando SHA-256 del token del bot
+    secret_key = hashlib.sha256(bot_token.encode()).digest()
+    
+    # Calculamos el hash HMAC-SHA-256
+    calculated_hash = hmac.new(
+        key=secret_key,
+        msg=data_check_string.encode(),
+        digestmod=hashlib.sha256
+    ).hexdigest()
+    
+    # Verificar que el hash sea correcto
+    if calculated_hash != auth_data.hash:
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Data is not from Telegram"}
+        )
+    
+    # Buscar si existe un usuario con este Telegram ID o crearlo
+    usuario = None
+    try:
+        # Buscar por el telegram_id
+        usuario = db.query(Usuario).filter(Usuario.telegram_id == auth_data.id).first()
+        
+        if not usuario:
+            # Verificar si tenemos un usuario con este username (opcional)
+            if auth_data.username:
+                usuario = db.query(Usuario).filter(Usuario.username == auth_data.username).first()
+                if usuario:
+                    # Actualizamos el telegram_id
+                    usuario.telegram_id = auth_data.id
+                    db.commit()
+            
+            # Si aún no encontramos usuario, creamos uno nuevo
+            if not usuario:
+                nuevo_usuario = Usuario(
+                    username=auth_data.username or f"tg_{auth_data.id}",
+                    nombre=auth_data.first_name,
+                    apellido=auth_data.last_name or "",
+                    telegram_id=auth_data.id,
+                    is_admin=False,  # Por defecto no es admin
+                    password_hash="",  # No hay password para usuarios de Telegram
+                )
+                db.add(nuevo_usuario)
+                db.commit()
+                db.refresh(nuevo_usuario)
+                usuario = nuevo_usuario
+    
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Error creating user: {str(e)}"}
+        )
+    
+    # Generamos un token JWT
+    access_token = create_access_token(
+        data={"sub": usuario.username, "id": usuario.id, "admin": usuario.is_admin},
+    )
+    
+    # Devolvemos los datos del usuario y el token
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": usuario.id,
+            "username": usuario.username,
+            "is_admin": usuario.is_admin,
+            "telegram_id": usuario.telegram_id,
+            "first_name": auth_data.first_name,
+            "photo_url": auth_data.photo_url
+        }
+    }
+
+# Si es necesario, modificamos el modelo de Usuario para incluir telegram_id
+# Esto debería hacerse en los modelos pero lo incluyo aquí como referencia
+"""
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    is_admin = Column(Boolean, default=False)
+    telegram_id = Column(BigInteger, unique=True, nullable=True)  # Nuevo campo
+"""
+
+if __name__ == '__main__':
+    # ... existing code ...

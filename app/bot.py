@@ -38,23 +38,33 @@ def extract_cedula(text):
     Busca un número que tenga entre 6 y 10 dígitos.
     """
     if not text:
+        print("Texto vacío recibido en extract_cedula")
         return None
         
     # Eliminar /start si está presente
     text = text.replace("/start", "")
+    print(f"Texto a procesar para cédula: '{text}'")
     
     # Buscar patrones de cédula (números de 6-10 dígitos)
     cedula_matches = re.findall(r'\b\d{6,10}\b', text)
     
     if cedula_matches:
         # Tomar el primer número que parece una cédula
-        return cedula_matches[0]
+        cedula = cedula_matches[0]
+        print(f"Cédula encontrada con regex: '{cedula}'")
+        return cedula
     
+    print(f"No se encontró cédula con regex, intentando extraer solo dígitos")
     # Si no encuentra números que parezcan cédula, intentar limpiar y extraer solo dígitos
     digits_only = ''.join(filter(str.isdigit, text))
+    print(f"Dígitos extraídos: '{digits_only}', longitud: {len(digits_only)}")
+    
     if len(digits_only) >= 6:
-        return digits_only[:10]  # Limitar a 10 dígitos máximo
+        cedula = digits_only[:10]  # Limitar a 10 dígitos máximo
+        print(f"Cédula extraída de dígitos: '{cedula}'")
+        return cedula
         
+    print(f"No se pudo extraer una cédula válida del texto")
     return None
 
 def extract_phone_number(text):
@@ -63,6 +73,7 @@ def extract_phone_number(text):
     El formato final debe ser 584XXXXXXXXX (12 dígitos).
     """
     if not text:
+        print(f"Texto vacío recibido en extract_phone_number")
         return None
     
     print(f"Procesando número de teléfono: '{text}'")
@@ -73,56 +84,65 @@ def extract_phone_number(text):
     
     # Extraer solo los dígitos
     digits_only = ''.join(filter(str.isdigit, text))
-    print(f"Solo dígitos: '{digits_only}'")
+    print(f"Solo dígitos: '{digits_only}', longitud: {len(digits_only)}")
     
     # Manejar diferentes formatos comunes en Venezuela
     if len(digits_only) >= 10:
-        # Si comienza con 58, verificar que tenga al menos 12 dígitos
+        # Si comienza con 58, verificar que tenga un código de operadora válido
         if digits_only.startswith('58'):
+            print(f"Detectado número que comienza con 58: '{digits_only}'")
             # Verificar que después del 58 tenga un código de operadora válido
             if re.match(r'^58(412|414|416|424|426)', digits_only):
                 result = digits_only[:12]  # Tomar solo los primeros 12 dígitos
-                print(f"Número con prefijo internacional 58: '{result}'")
+                print(f"Número con prefijo internacional 58 válido: '{result}'")
                 return result
             else:
-                print(f"Prefijo de operadora inválido después del 58: '{digits_only}'")
+                print(f"Prefijo de operadora inválido después del 58: '{digits_only[2:5] if len(digits_only) > 4 else digits_only[2:]}'")
                 return None
         
         # Si comienza con 0, quitar el 0 y agregar 58
         elif digits_only.startswith('0'):
+            print(f"Detectado número que comienza con 0: '{digits_only}'")
             # Verificar que sea una operadora venezolana válida
             if re.match(r'^0(412|414|416|424|426)', digits_only):
                 result = '58' + digits_only[1:11]  # Formato: 58 + 10 dígitos sin el 0
-                print(f"Número con prefijo 0: convertido a '{result}'")
+                print(f"Número con prefijo 0 convertido a: '{result}'")
                 return result
             else:
-                print(f"Prefijo de operadora inválido después del 0: '{digits_only}'")
+                print(f"Prefijo de operadora inválido después del 0: '{digits_only[1:4] if len(digits_only) > 3 else digits_only[1:]}'")
                 return None
         
         # Si comienza directamente con el código de operadora (sin 0)
         elif re.match(r'^(412|414|416|424|426)', digits_only):
-            result = '58' + digits_only[:10]  # Formato: 58 + 10 dígitos
-            print(f"Número sin prefijo: convertido a '{result}'")
-            return result
+            print(f"Detectado número que comienza con código de operadora: '{digits_only}'")
+            if len(digits_only) >= 10:
+                result = '58' + digits_only[:10]  # Formato: 58 + 10 dígitos
+                print(f"Número sin prefijo convertido a: '{result}'")
+                return result
+            else:
+                print(f"Número de operadora sin prefijo demasiado corto: '{digits_only}', longitud: {len(digits_only)}")
+                return None
         
         # Intento adicional: si tiene 10 dígitos y no coincide con los patrones anteriores
         elif len(digits_only) == 10:
             # Asumir que los primeros 3 dígitos son el código de operadora
             operator_code = digits_only[:3]
+            print(f"Intentando procesar número de 10 dígitos con código de operadora: '{operator_code}'")
             if operator_code in ['412', '414', '416', '424', '426']:
                 result = '58' + digits_only
-                print(f"Número de 10 dígitos: convertido a '{result}'")
+                print(f"Número de 10 dígitos convertido a: '{result}'")
                 return result
             else:
-                print(f"Código de operadora no reconocido: '{operator_code}'")
+                print(f"Código de operadora no reconocido: '{operator_code}' (debe ser uno de: 412, 414, 416, 424, 426)")
                 return None
         
         # Otros casos no válidos
         else:
-            print(f"Formato no reconocido: '{digits_only}'")
+            print(f"Formato no reconocido: '{digits_only}', longitud: {len(digits_only)}")
+            print("El número debe comenzar con: 58, 0 o directamente el código de operadora (412, 414, 416, 424, 426)")
             return None
     
-    print(f"Número demasiado corto: '{digits_only}'")
+    print(f"Número demasiado corto: '{digits_only}', longitud: {len(digits_only)} (se requieren al menos 10 dígitos)")
     return None
 
 @bot.router.message()
@@ -188,6 +208,9 @@ def obtener_cedula(notification: Notification) -> None:
         notification.answer(
             f"No he podido identificar un número de cédula válido en tu mensaje. Por favor, envía solo tu número de cédula (entre 6 y 10 dígitos)."
         )
+        notification.answer(
+            f"Ejemplo de formato correcto: 12345678"
+        )
         # Mostrar el menú principal como alternativa
         show_menu_principal(notification, sender_name)
         notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": sender_name})
@@ -198,15 +221,21 @@ def obtener_cedula(notification: Notification) -> None:
     
     try:
         # 1. Primero verificamos si la cédula existe en la base de datos de electores
+        print(f"Enviando cédula {cedula} para verificación")
         elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=cedula), db))
+        print(f"Respuesta de verificación de elector: {elector_response}")
 
         if elector_response.get("elector"):
             elector_data = elector_response.get("elector")
             nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
+            print(f"Elector encontrado: {nombre_completo}")
             
             # 2. Luego verificamos si la cédula ya tiene un ticket registrado
             try:
-                response = requests.get(f"{NEXT_PUBLIC_API_URL}/api/tickets/cedula/{cedula}")
+                ticket_url = f"{NEXT_PUBLIC_API_URL}/api/tickets/cedula/{cedula}"
+                print(f"Verificando ticket para cédula {cedula} en URL: {ticket_url}")
+                response = requests.get(ticket_url)
+                print(f"Respuesta al verificar ticket: Status {response.status_code}, Contenido: {response.text[:200]}...")
                 
                 # Si la respuesta es exitosa, la cédula ya tiene un ticket
                 if response.status_code == 200:
@@ -225,10 +254,11 @@ def obtener_cedula(notification: Notification) -> None:
                             f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
 
                     notification.answer(message)
+                    print(f"Enviando QR code para ticket #{existing_ticket['id']}")
                     send_qr_code(sender, qr_buf)
 
                     phone_contact = obtener_numero_contacto(db)
-                    print(f"phone_contact: {phone_contact}")
+                    print(f"phone_contact obtenido: {phone_contact}")
                     if phone_contact:
                         enviar_contacto(sender, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
                     
@@ -240,53 +270,70 @@ def obtener_cedula(notification: Notification) -> None:
                 
                 # Si la respuesta es 404, la cédula no tiene ticket, debemos registrarla
                 elif response.status_code == 404:
+                    print(f"Cédula {cedula} está registrada en el sistema pero no tiene ticket")
                     notification.answer(f"La cédula {cedula} está registrada en el sistema pero aún no tiene un ticket de Lotto Bueno.")
                     notification.answer(f"Para completar tu registro, por favor envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
                     
                     # Guardar información para el registro
-                    notification.state_manager.set_state(sender, {
+                    user_state_data = {
                         "state": "esperando_telefono", 
                         "nombre": nombre_completo,
                         "cedula": cedula
-                    })
+                    }
+                    print(f"Guardando estado del usuario: {user_state_data}")
+                    notification.state_manager.set_state(sender, user_state_data)
                     
                 else:
                     # Otros errores en la API
-                    raise Exception(f"Error al verificar ticket: {response.status_code} - {response.text}")
+                    error_message = f"Error al verificar ticket: {response.status_code}"
+                    try:
+                        error_response = response.json()
+                        error_message += f" - Detalle: {error_response.get('detail', response.text)}"
+                    except Exception:
+                        error_message += f" - Respuesta: {response.text}"
+                    
+                    print(error_message)
+                    raise Exception(error_message)
                     
             except requests.HTTPError as http_err:
-                print(f"HTTP error: {http_err}")
+                print(f"HTTP error al verificar ticket: {http_err}")
                 # Si la API no responde, asumimos que necesitamos registrar al usuario
                 notification.answer(f"No pudimos verificar si ya tienes un ticket. Para continuar con el registro, por favor envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
                 
                 # Guardar información para el registro
-                notification.state_manager.set_state(sender, {
+                user_state_data = {
                     "state": "esperando_telefono", 
                     "nombre": nombre_completo,
                     "cedula": cedula
-                })
+                }
+                print(f"Guardando estado del usuario: {user_state_data}")
+                notification.state_manager.set_state(sender, user_state_data)
                 
             except Exception as err:
                 print(f"Error inesperado al verificar ticket: {err}")
-                notification.answer(f"Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.")
+                notification.answer(f"Ha ocurrido un error inesperado: {str(err)}")
+                notification.answer(f"Por favor, intenta nuevamente más tarde.")
                 # Mostrar menú principal como fallback
                 show_menu_principal(notification, sender_name)
                 notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": sender_name})
         else:
-            print("Cédula no registrada.")
+            print(f"Cédula {cedula} no registrada en el sistema electoral.")
             notification.answer(f"El número de cédula {cedula} no está registrado en nuestra base de datos.")
             notification.answer("¿Te gustaría registrarte con esta cédula para participar en Lotto Bueno?")
             
             # Iniciar proceso de registro
-            notification.state_manager.set_state(sender, {
+            user_state_data = {
                 "state": "esperando_telefono", 
                 "nombre": sender_name,
                 "cedula": cedula
-            })
+            }
+            print(f"Guardando estado para cédula no registrada: {user_state_data}")
+            notification.state_manager.set_state(sender, user_state_data)
             notification.answer("Por favor, envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
     except Exception as e:
         print(f"Error al verificar cédula: {e}")
-        notification.answer("Ha ocurrido un error al procesar tu solicitud. Por favor intenta nuevamente con solo tu número de cédula.")
+        notification.answer(f"Ha ocurrido un error al procesar tu solicitud: {str(e)}")
+        notification.answer("Por favor intenta nuevamente con solo tu número de cédula.")
         # Mostrar menú principal como fallback
         show_menu_principal(notification, sender_name)
         notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": sender_name})
@@ -381,8 +428,17 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
             
             # Verificar si hay errores en la respuesta
             if response.status_code != 200:
-                print(f"Error HTTP: {response.status_code} - {response.text}")
-                notification.answer(f"Ha ocurrido un error durante el registro (HTTP {response.status_code}): {response.text}")
+                error_message = f"Error durante el registro (HTTP {response.status_code})."
+                try:
+                    error_details = response.json()
+                    error_detail = error_details.get("detail", "")
+                    error_message += f" Detalle del error: {error_detail}"
+                except Exception:
+                    error_message += f" Respuesta de la API: {response.text}"
+                
+                print(f"Error detallado: {error_message}")
+                notification.answer(f"Ha ocurrido un error durante el registro. ❌\n\n{error_message}")
+                notification.answer("Por favor, intenta nuevamente o contacta a soporte con este mensaje de error.")
                 show_menu_principal(notification, nombre)
                 notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
                 return
@@ -420,18 +476,28 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
             
         except requests.exceptions.RequestException as req_err:
             print(f"Error en la solicitud HTTP: {req_err}")
-            notification.answer(f"Ha ocurrido un error al contactar el servidor: {str(req_err)}")
+            error_message = f"❌ Error al contactar el servidor: {str(req_err)}"
+            notification.answer(error_message)
+            notification.answer("Por favor, verifica tu conexión e intenta nuevamente.")
             show_menu_principal(notification, nombre)
             notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
         
     except requests.exceptions.HTTPError as e:
         print(f"Error HTTP al registrar: {e}")
-        notification.answer(f"Ha ocurrido un error durante el registro: {str(e)}")
+        error_message = f"❌ Error durante el registro: {str(e)}"
+        try:
+            response_text = e.response.text
+            error_message += f"\n\nRespuesta del servidor: {response_text}"
+        except Exception:
+            pass
+        notification.answer(error_message)
         show_menu_principal(notification, nombre)
         notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
     except Exception as e:
         print(f"Error inesperado al registrar: {e}")
-        notification.answer("Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.")
+        error_message = f"❌ Error inesperado: {str(e)}"
+        notification.answer(error_message)
+        notification.answer("Por favor, intenta nuevamente más tarde o contacta a soporte con este mensaje de error.")
         show_menu_principal(notification, nombre)
         notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
 

@@ -6,6 +6,18 @@ import Toast from '../toast/Toast';
 import ConfirmationModal from '../confirmation/ConfirmationModal';
 import { useRecolectores } from '../../hooks/useRecolectores';
 import { useCreateTicket, type CreateTicketResponse } from '../../hooks/useCreateTicket';
+import Script from 'next/script';
+
+// Interface para los datos de autenticación de Telegram
+interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
 
 interface RegisterWindowProps {
   title: string;
@@ -49,6 +61,10 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
     isPending: isLoadingSubmit,
   } = useCreateTicket();
 
+  // Añadir estado para usuario de Telegram
+  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
+  const [isTelegramLoginLoading, setIsTelegramLoginLoading] = useState(false);
+  
   useEffect(() => {
     if (isErrorRecolectores && errorRecolectores) {
       console.error("Error fetching referidos:", errorRecolectores);
@@ -156,6 +172,62 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   const getTelegramMessage = () => {
     return formData.cedula;
   };
+
+  // Función que se llamará cuando el usuario se autentique con Telegram
+  const handleTelegramAuth = async (user: TelegramUser) => {
+    setIsTelegramLoginLoading(true);
+    setToastMessage(null);
+    
+    try {
+      // Llamar a nuestra API para verificar los datos y crear/obtener usuario
+      const response = await fetch('/api/auth/telegram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(user)
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Error al autenticar con Telegram');
+      }
+      
+      const data = await response.json();
+      setTelegramUser(user);
+      
+      // Guardar el token en localStorage
+      localStorage.setItem('token', data.access_token);
+      
+      // Si el usuario está logueado, mostrar mensaje de éxito
+      setToastMessage(`Inicio de sesión exitoso como ${user.first_name}`);
+      setToastType('success');
+      
+      // Chequeamos si es admin y redirigimos
+      if (data.user.is_admin) {
+        onAdminLogin(true);
+        setCurrentPage("WELCOME");
+      }
+      
+    } catch (error) {
+      console.error('Error en autenticación de Telegram:', error);
+      setToastMessage(error instanceof Error ? error.message : 'Error desconocido en la autenticación');
+      setToastType('error');
+    } finally {
+      setIsTelegramLoginLoading(false);
+    }
+  };
+
+  // Definir la función global para que el widget pueda llamarla
+  useEffect(() => {
+    // @ts-ignore
+    window.onTelegramAuth = handleTelegramAuth;
+    
+    return () => {
+      // @ts-ignore
+      delete window.onTelegramAuth;
+    };
+  }, []);
 
   return (
     <div className="welcome-page">
@@ -357,6 +429,50 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
           <button onClick={handleOpenLoginModal} className="text-blue-500 hover:underline">
             Ir al Dashboard
           </button>
+          
+          {/* Separador */}
+          <div className="my-4 flex items-center justify-center">
+            <div className="border-t border-gray-300 flex-grow"></div>
+            <span className="px-3 text-gray-500 bg-transparent text-sm">O</span>
+            <div className="border-t border-gray-300 flex-grow"></div>
+          </div>
+          
+          {/* Widget de Telegram */}
+          <div className="my-4">
+            <div className="text-white text-sm mb-2">Inicia sesión con Telegram:</div>
+            <div id="telegram-login-container">
+              {/* El script se cargará aquí */}
+              <Script
+                src="https://telegram.org/js/telegram-widget.js"
+                strategy="lazyOnload"
+                onLoad={() => {
+                  // Creamos el botón de Telegram una vez cargado el script
+                  const telegramBotName = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'Applottobueno_bot';
+                  const container = document.getElementById('telegram-login-container');
+                  
+                  if (container) {
+                    container.innerHTML = ''; // Limpiar cualquier contenido previo
+                    
+                    // Crear el script tag con los atributos necesarios
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.src = "https://telegram.org/js/telegram-widget.js";
+                    script.setAttribute('data-telegram-login', telegramBotName);
+                    script.setAttribute('data-size', 'medium');
+                    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+                    script.setAttribute('data-request-access', 'write');
+                    
+                    container.appendChild(script);
+                  }
+                }}
+              />
+            </div>
+            {isTelegramLoginLoading && (
+              <div className="mt-2">
+                <span className="spinner"></span> Verificando...
+              </div>
+            )}
+          </div>
         </div>
         <LoginModal
           isVisible={isLoginModalVisible}

@@ -248,14 +248,13 @@ def check_whatsapp(phone_number: str):
         print("----- END DEBUG -----\n")
         
         if response.status_code == 200:
-            result = response.json()
-            return result.get('existsWhatsapp', False)
+            return response.json()
         else:
             print(f"Error checking WhatsApp: {response.text}")
-            return False
+            return {"existsWhatsapp": False}
     except Exception as e:
         print(f"Exception in check_whatsapp: {str(e)}")
-        return False
+        return {"existsWhatsapp": False}
 
 
 def compress_file(file_bytes: BytesIO, filename: str) -> BytesIO:
@@ -420,8 +419,8 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
 @app.post("/api/generate_tickets")
 def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
-    whatsapp_valid = check_whatsapp(request.telefono)
-    if not whatsapp_valid:
+    whatsapp_check = check_whatsapp(request.telefono)
+    if whatsapp_check.get("existsWhatsapp") == False:
         # Procesar cuando no existe WhatsApp
         return {"status": "error", "message": "El número no tiene WhatsApp"}
 
@@ -530,8 +529,8 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
 @app.post("/api/generate_ticket")
 def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
-    whatsapp_valid = check_whatsapp(request.telefono)
-    if not whatsapp_valid:
+    whatsapp_check = check_whatsapp(request.telefono)
+    if whatsapp_check.get("existsWhatsapp") == False:
         return {"status": "error", "message": "El número no tiene WhatsApp"}
 
     # Verificar la cédula usando la función verificar_cedula

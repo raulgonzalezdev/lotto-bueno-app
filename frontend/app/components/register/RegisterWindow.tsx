@@ -150,11 +150,11 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   ) || [];
 
   const getWhatsAppMessage = () => {
-    return `/start\n${formData.cedula}. Hola, soy ${ticketMessage} con cédula ${formData.cedula}. Este es mi numero telefonico número ${fullnumberMessage} para Lotto Bueno.`;
+    return `${formData.cedula}\n\nHola, soy ${ticketMessage} con cédula ${formData.cedula}. Este es mi número telefónico ${fullnumberMessage} para Lotto Bueno.`;
   };
 
   const getTelegramMessage = () => {
-    return `/start ${formData.cedula}`;
+    return formData.cedula;
   };
 
   return (

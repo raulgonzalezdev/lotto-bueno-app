@@ -57,6 +57,24 @@ ALGORITHM=HS256
 HOST=https://applottobueno.com' > /.env
 
 
+echo 'POSTGRES_DB=lottobueno
+POSTGRES_USER=lottobueno
+POSTGRES_PASSWORD=lottobueno
+DATABASE_URL=postgresql+psycopg://lottobueno:lottobueno@postgres:5432/lottobueno
+API_URL_BASE=https://7103.api.greenapi.com/waInstance7103942544
+API_TOKEN=1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0
+REDIS_URL=redis://localhost:6380/0
+FASTAPI_BASE_URL=https://applottobueno.com
+COMPANY_PHONE_CONTACT=584262837784
+SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
+ALGORITHM=HS256
+HOST=https://applottobueno.com
+NEXT_PUBLIC_API_URL=https://applottobueno.com
+NEXT_PUBLIC_SITE_TITLE=Lotto Bueno
+NEXT_PUBLIC_SITE_DESCRIPTION=Participa y Gana con Lotto Bueno
+NEXT_PUBLIC_FAVICON_URL=/static/icon.ico' > .env
+
+
    docker exec -it 8fd75fd2984c /bin/bash
 
 https://github.com/raulgonzalezdev/lotto-bueno-app/blob/main/frontend/public/Lottos.png

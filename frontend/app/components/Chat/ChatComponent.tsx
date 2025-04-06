@@ -10,6 +10,75 @@ import { useCentrosVotacion } from '../../hooks/useCentrosVotacion';
 import { useElectores, useElectorDetail, useTotalElectores } from '../../hooks/useElectores';
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '../../api';
+import ConfirmationModal from '../confirmation/ConfirmationModal';
+
+// Componente para mostrar mensajes
+const MessageModal: React.FC<{
+  isOpen: boolean;
+  message: string;
+  type: 'info' | 'error' | 'success';
+  onClose: () => void;
+}> = ({ isOpen, message, type, onClose }) => {
+  if (!isOpen) return null;
+  
+  const bgColor = {
+    info: 'bg-blue-100 border-blue-500',
+    error: 'bg-red-100 border-red-500',
+    success: 'bg-green-100 border-green-500'
+  }[type];
+  
+  const textColor = {
+    info: 'text-blue-800',
+    error: 'text-red-800',
+    success: 'text-green-800'
+  }[type];
+  
+  const icon = {
+    info: (
+      <svg className="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    ),
+    error: (
+      <svg className="w-6 h-6 text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    ),
+    success: (
+      <svg className="w-6 h-6 text-green-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    )
+  }[type];
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className={`bg-white rounded-lg shadow-xl p-6 max-w-md border-l-4 ${bgColor}`}>
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            {icon}
+          </div>
+          <div className="ml-3">
+            <h3 className={`text-lg font-medium ${textColor}`}>
+              {type === 'info' ? 'Información' : type === 'error' ? 'Error' : 'Éxito'}
+            </h3>
+            <div className={`mt-2 text-sm ${textColor}`}>
+              <p>{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${textColor} bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+          >
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface ChatComponentProps {
   production: boolean;
@@ -57,6 +126,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [totalBatches, setTotalBatches] = useState(0);
   const [currentBatch, setCurrentBatch] = useState(0);
+
+  // Estados para modales de confirmación y mensajes
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [confirmationAction, setConfirmationAction] = useState<() => void>(() => {});
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [messageType, setMessageType] = useState<'info' | 'error' | 'success'>('info');
 
   // Utilizar los hooks de React Query
   const { data: estados = [], isLoading: estadosLoading, error: estadosError } = useEstados();
@@ -226,35 +303,101 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
   // Añadir estas funciones de mutación después de los otros hooks pero antes de las funciones de descargas
   const downloadElectoresInfoMutation = useMutation({
     mutationFn: async (query: URLSearchParams) => {
-      return apiClient.get<{ num_batches: number }>(`/api/download/excel/electores/info?${query}`);
+      const response = await fetch(`${APIHost}/api/download/excel/electores/info?${query}`);
+      if (!response.ok) {
+        throw new Error(`Error al obtener información de la descarga: ${response.statusText}`);
+      }
+      return response.json();
     }
   });
 
   const downloadElectoresBatchMutation = useMutation({
     mutationFn: async ({ batchNumber, query }: { batchNumber: number, query: URLSearchParams }) => {
-      return apiClient.get<Response>(`/api/download/excel/electores/batch/${batchNumber}?${query}`);
+      const response = await fetch(`${APIHost}/api/download/excel/electores/batch/${batchNumber}?${query}`);
+      if (!response.ok) {
+        throw new Error(`Error al descargar el lote ${batchNumber}: ${response.statusText}`);
+      }
+      return response;
     }
   });
 
   const downloadCentrosPorEstadoMutation = useMutation({
     mutationFn: async (codigoEstado: string) => {
-      return apiClient.get<Response>(`/api/download/excel/centros-por-estado/${codigoEstado}`);
+      const response = await fetch(`${APIHost}/api/download/excel/centros-por-estado/${codigoEstado}`);
+      if (!response.ok) {
+        throw new Error(`Error al descargar los centros: ${response.statusText}`);
+      }
+      return response;
     }
   });
 
   const downloadElectoresPorCentrosInfoMutation = useMutation({
     mutationFn: async (codigoEstado: string) => {
-      return apiClient.get<any>(`/api/download/excel/electores-por-centros/info/${codigoEstado}`);
+      const response = await fetch(`${APIHost}/api/download/excel/electores-por-centros/info/${codigoEstado}`);
+      if (!response.ok) {
+        throw new Error(`Error al obtener información de la descarga: ${response.statusText}`);
+      }
+      return response.json();
     }
   });
 
   const downloadElectoresPorCentroMutation = useMutation({
     mutationFn: async ({ codigoEstado, codigoCentro }: { codigoEstado: string, codigoCentro: string }) => {
-      return apiClient.get<Response>(`/api/download/excel/electores-por-centros/${codigoEstado}/${codigoCentro}`);
+      const response = await fetch(
+        `${APIHost}/api/download/excel/electores-por-centros/${codigoEstado}/${codigoCentro}`
+      );
+      if (!response.ok) {
+        throw new Error(`Error al descargar centro ${codigoCentro}: ${response.statusText}`);
+      }
+      return response;
     }
   });
 
-  // Reemplazar la función startSequentialDownload por esta versión
+  // Agregar una función auxiliar para descargar archivos más robusta 
+  const downloadBlobAsFile = async (blob: Blob, filename: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        
+        // Agregar evento de finalización para saber cuándo se completa la descarga
+        link.onload = () => {
+          console.log(`Archivo ${filename} cargado correctamente`);
+        };
+        
+        link.onclick = () => {
+          // Dar tiempo para que se inicie la descarga antes de limpiar
+          setTimeout(() => {
+            window.URL.revokeObjectURL(downloadUrl);
+            resolve();
+          }, 150);
+        };
+        
+        link.onerror = (err) => {
+          console.error(`Error en la descarga de ${filename}:`, err);
+          window.URL.revokeObjectURL(downloadUrl);
+          reject(err);
+        };
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Si no se activó el evento onclick (algunos navegadores), resolver después de un tiempo
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+          resolve();
+        }, 3000);
+      } catch (err) {
+        console.error(`Error preparando la descarga de ${filename}:`, err);
+        reject(err);
+      }
+    });
+  };
+
+  // Reemplazar la función startSequentialDownload por esta versión mejorada
   const startSequentialDownload = async () => {
     if (!downloadType) return;
     
@@ -273,10 +416,17 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       // Obtener información de descarga usando mutation
       const info = await downloadElectoresInfoMutation.mutateAsync(query);
       setTotalBatches(info.num_batches);
+      
+      console.log(`Iniciando descarga de ${info.num_batches} lotes, total ${info.total_records} registros`);
 
+      // ID único para seguimiento de progreso
+      const downloadId = `download_${Date.now()}`;
+      
       for (let batchNumber = 1; batchNumber <= info.num_batches; batchNumber++) {
         setCurrentBatch(batchNumber);
-        setDownloadProgress((batchNumber - 1) / info.num_batches * 100);
+        setDownloadProgress(((batchNumber - 1) / info.num_batches) * 100);
+        
+        console.log(`Descargando lote ${batchNumber} de ${info.num_batches}`);
 
         // Descargar cada lote usando mutation
         const response = await downloadElectoresBatchMutation.mutateAsync({ batchNumber, query });
@@ -285,22 +435,20 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
                         `electores_parte_${batchNumber}.xlsx.zip`;
 
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
+        await downloadBlobAsFile(blob, filename);
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Actualizar progreso real
+        setDownloadProgress((batchNumber / info.num_batches) * 100);
+
+        // Hacer una pausa antes de la siguiente descarga para que el navegador tenga tiempo de procesar
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       setDownloadProgress(100);
+      showMessage('Descarga completada exitosamente', 'success');
     } catch (error) {
       console.error('Error en la descarga:', error);
-      alert('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.');
+      showMessage('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.', 'error');
     } finally {
       setIsDownloading(false);
       setCurrentBatch(0);
@@ -308,43 +456,45 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
     }
   };
 
-  // Reemplazar la función downloadCentrosPorEstado por esta versión
+  // Mejorar la función downloadCentrosPorEstado
   const downloadCentrosPorEstado = async () => {
     if (!codigoEstado) {
-      alert('Por favor, seleccione un estado primero');
+      showMessage('Por favor, seleccione un estado primero', 'error');
       return;
     }
 
     try {
       setIsDownloading(true);
+      setDownloadProgress(10); // Indicador inicial de progreso
+      
+      console.log(`Iniciando descarga de centros para el estado ${codigoEstado}`);
       
       // Descargar centros usando mutation
       const response = await downloadCentrosPorEstadoMutation.mutateAsync(codigoEstado);
+      
+      setDownloadProgress(60); // Actualizar progreso
       
       const blob = await response.blob();
       const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
                       'centros_electorales.xlsx.zip';
 
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      setDownloadProgress(90); // Casi completado
+      
+      await downloadBlobAsFile(blob, filename);
+      
+      setDownloadProgress(100); // Completado
+      setTimeout(() => setIsDownloading(false), 1000); // Mostrar progreso completo por un momento
     } catch (error) {
       console.error('Error en la descarga:', error);
-      alert('Hubo un error al descargar el archivo. Por favor, inténtelo de nuevo.');
-    } finally {
+      showMessage('Hubo un error al descargar el archivo. Por favor, inténtelo de nuevo.', 'error');
       setIsDownloading(false);
     }
   };
 
-  // Reemplazar la función downloadElectoresPorCentros por esta versión
+  // Mejorar la función downloadElectoresPorCentros
   const downloadElectoresPorCentros = async () => {
     if (!codigoEstado) {
-      alert('Por favor, seleccione un estado primero');
+      showMessage('Por favor, seleccione un estado primero', 'error');
       return;
     }
 
@@ -352,6 +502,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       setIsDownloading(true);
       setDownloadProgress(0);
 
+      console.log(`Obteniendo información de centros para el estado ${codigoEstado}`);
+      
       // Obtener información sobre la descarga usando mutation
       const info = await downloadElectoresPorCentrosInfoMutation.mutateAsync(codigoEstado);
       
@@ -359,12 +511,16 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
         throw new Error('Formato de respuesta inválido: no se encontraron centros');
       }
 
+      console.log(`Se encontraron ${info.centros.length} centros con un total de ${info.total_electores} electores`);
+      
       let centrosProcesados = 0;
       const totalCentros = info.centros.length;
 
       // Procesar cada centro
       for (const centro of info.centros) {
         try {
+          console.log(`Descargando centro ${centro.codigo} (${centro.nombre})`);
+          
           // Descargar cada centro usando mutation
           const response = await downloadElectoresPorCentroMutation.mutateAsync({
             codigoEstado,
@@ -375,31 +531,26 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
           const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
                         `centro_${centro.codigo}.xlsx.zip`;
 
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(downloadUrl);
+          await downloadBlobAsFile(blob, filename);
 
           centrosProcesados++;
           const progreso = (centrosProcesados / totalCentros) * 100;
           setDownloadProgress(progreso);
+          
+          console.log(`Progreso: ${progreso.toFixed(1)}% (${centrosProcesados}/${totalCentros})`);
 
-          // Pequeña pausa entre descargas
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Pequeña pausa entre descargas para dar tiempo al navegador
+          await new Promise(resolve => setTimeout(resolve, 1500));
         } catch (error) {
           console.error(`Error descargando centro ${centro.codigo}:`, error);
         }
       }
 
       setDownloadProgress(100);
+      setTimeout(() => setIsDownloading(false), 1000); // Mostrar progreso completo por un momento
     } catch (error) {
       console.error('Error en la descarga:', error);
-      alert('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.');
-    } finally {
+      showMessage('Hubo un error al descargar los archivos. Por favor, inténtelo de nuevo.', 'error');
       setIsDownloading(false);
     }
   };
@@ -412,6 +563,20 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
       setModalIsOpen(true);
     }
   }, [electorDetailData]);
+
+  // Función para mostrar mensajes (reemplaza alert)
+  const showMessage = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setMessageText(message);
+    setMessageType(type);
+    setShowMessageModal(true);
+  };
+
+  // Función para mostrar confirmaciones (reemplaza confirm)
+  const showConfirmation = (message: string, onConfirm: () => void) => {
+    setConfirmationMessage(message);
+    setConfirmationAction(() => onConfirm);
+    setShowConfirmationModal(true);
+  };
 
   return (
     <div className="p-4">
@@ -643,6 +808,26 @@ const ChatComponent: React.FC<ChatComponentProps> = ({
             {Math.round(downloadProgress)}% completado
           </div>
         </div>
+      )}
+
+      {showConfirmationModal && (
+        <ConfirmationModal
+          message={confirmationMessage}
+          onConfirm={() => {
+            confirmationAction();
+            setShowConfirmationModal(false);
+          }}
+          onCancel={() => setShowConfirmationModal(false)}
+        />
+      )}
+
+      {showMessageModal && (
+        <MessageModal
+          isOpen={showMessageModal}
+          message={messageText}
+          type={messageType}
+          onClose={() => setShowMessageModal(false)}
+        />
       )}
     </div>
   );

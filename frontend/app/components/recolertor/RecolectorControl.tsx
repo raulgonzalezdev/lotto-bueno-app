@@ -63,6 +63,12 @@ const RecolectorControl: React.FC = () => {
   const [referidosData, setReferidosData] = useState<ReferidosData | null>(null);
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageModalConfig, setMessageModalConfig] = useState({
+    message: '',
+    type: 'info', // 'info', 'error', 'success'
+  });
 
   // React Query client
   const queryClient = useQueryClient();
@@ -324,46 +330,93 @@ const RecolectorControl: React.FC = () => {
     }
   };
 
+  // Función para mostrar mensajes
+  const showMessage = (message: string, type = 'info') => {
+    setMessageModalConfig({ message, type });
+    setShowMessageModal(true);
+  };
+  
+  // Función para cerrar el modal de mensaje
+  const closeMessageModal = () => {
+    setShowMessageModal(false);
+  };
+
+  // Función para descargar el archivo como blob
+  const downloadBlobAsFile = (blob: Blob, fileName: string) => {
+    try {
+      // Crear URL para el blob
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      
+      // Añadir a DOM, simular clic y eliminar
+      document.body.appendChild(link);
+      link.click();
+      
+      // Limpiar
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      
+      // Indicar finalización
+      setIsDownloading(false);
+      setDownloadProgress(0);
+      showMessage('Descarga completada con éxito', 'success');
+    } catch (error) {
+      console.error('Error al descargar el archivo:', error);
+      setIsDownloading(false);
+      setDownloadProgress(0);
+      showMessage('Error al descargar el archivo. Inténtelo de nuevo.', 'error');
+    }
+  };
+
   const downloadReferidosExcel = async (recolectorId: number) => {
-    if (!APIHost) return;
+    const apiHost = detectHost();
+    if (!apiHost) {
+      showMessage('No se pudo detectar el host del API. Verifique la configuración.', 'error');
+      return;
+    }
     
     try {
       setIsDownloading(true);
-      if (!APIHost) {
-        setToastMessage("Error: API host no está configurado");
-        setToastType("error");
-        setIsDownloading(false);
-        return;
-      }
+      setDownloadProgress(10);
+      
+      // Simular progreso de carga
+      const progressInterval = setInterval(() => {
+        setDownloadProgress(prev => {
+          const newProgress = prev + 5;
+          return newProgress >= 90 ? 90 : newProgress;
+        });
+      }, 300);
 
-      let url = `${APIHost}/api/download/excel/recolector-referidos/${recolectorId}`;
-      if (estadoFiltro) {
-        url += `?codigo_estado=${estadoFiltro}`;
+      const response = await fetch(`${apiHost}/api/recolector/referidos-excel/${recolectorId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      clearInterval(progressInterval);
+      
+      if (!response.ok) {
+        throw new Error(`Error al descargar: ${response.status} ${response.statusText}`);
       }
       
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Error al descargar el archivo');
-      }
+      setDownloadProgress(95);
       
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = `referidos_${recolectorId}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      setDownloadProgress(100);
       
-      setToastMessage("Archivo descargado exitosamente");
-      setToastType("success");
+      // Obtener nombre del recolector para personalizar el nombre del archivo
+      const recolectorName = estadisticas.find(stat => stat.recolector_id === recolectorId)?.nombre || 'recolector';
+      
+      const fileName = `referidos_${recolectorName.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      downloadBlobAsFile(blob, fileName);
     } catch (error) {
-      console.error("Error downloading file:", error);
-      setToastMessage("Error al descargar el archivo");
-      setToastType("error");
-    } finally {
+      console.error('Error al descargar referidos:', error);
       setIsDownloading(false);
+      setDownloadProgress(0);
+      showMessage(`Error al descargar referidos: ${error instanceof Error ? error.message : 'Error desconocido'}`, 'error');
     }
   };
 
@@ -539,7 +592,7 @@ const RecolectorControl: React.FC = () => {
       )}
       {isEstadisticasModalOpen && (
         <div className="modal-overlay" onClick={closeEstadisticasModal}>
-          <div className="modal-content max-w-7xl w-full p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content max-w-full w-11/12 lg:w-10/12 xl:w-9/12 p-6" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-button" onClick={closeEstadisticasModal}>×</button>
             <h2 className="text-xl font-bold mb-4">Estadísticas de Recolectores</h2>
             
@@ -548,7 +601,7 @@ const RecolectorControl: React.FC = () => {
               <select
                 value={estadoFiltro}
                 onChange={handleEstadoFiltroChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="mt-1 block w-full md:w-1/3 lg:w-1/4 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 disabled={estadosLoading}
               >
                 <option value="">Todos los estados</option>
@@ -569,19 +622,19 @@ const RecolectorControl: React.FC = () => {
                 <table className="table-auto w-full mb-4">
                   <thead>
                     <tr>
-                      <th>ID Recolector</th>
-                      <th>Nombre</th>
-                      <th>Cantidad de Tickets</th>
-                      <th>Acciones</th>
+                      <th className="px-4 py-2">ID Recolector</th>
+                      <th className="px-4 py-2">Nombre</th>
+                      <th className="px-4 py-2">Cantidad de Tickets</th>
+                      <th className="px-4 py-2">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {estadisticas.length > 0 ? estadisticas.map((stat) => (
                       <tr key={stat.recolector_id} className={selectedRecolectorId === stat.recolector_id ? 'bg-blue-100' : ''}>
-                        <td>{stat.recolector_id}</td>
-                        <td>{stat.nombre}</td>
-                        <td>{stat.tickets_count}</td>
-                        <td>
+                        <td className="border px-4 py-2">{stat.recolector_id}</td>
+                        <td className="border px-4 py-2">{stat.nombre}</td>
+                        <td className="border px-4 py-2">{stat.tickets_count}</td>
+                        <td className="border px-4 py-2">
                           <button 
                             onClick={() => fetchEstadisticas(stat.recolector_id)}
                             className="btn btn-sm btn-primary mr-2"
@@ -593,13 +646,19 @@ const RecolectorControl: React.FC = () => {
                             className="btn btn-sm btn-secondary"
                             disabled={isDownloading}
                           >
-                            {isDownloading ? 'Descargando...' : 'Descargar Excel'}
+                            {isDownloading ? 
+                              <span className="flex items-center">
+                                <span className="mr-2">Descargando...</span>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              </span> 
+                              : 'Descargar Excel'
+                            }
                           </button>
                         </td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={4} className="text-center">No hay estadísticas disponibles</td>
+                        <td colSpan={4} className="border px-4 py-2 text-center">No hay estadísticas disponibles</td>
                       </tr>
                     )}
                   </tbody>
@@ -624,29 +683,29 @@ const RecolectorControl: React.FC = () => {
                     <table className="table-auto w-full">
                       <thead>
                         <tr>
-                          <th>Cédula</th>
-                          <th>Nombre</th>
-                          <th>Teléfono</th>
-                          <th>Estado</th>
-                          <th>Municipio</th>
-                          <th>Parroquia</th>
-                          <th>Fecha Registro</th>
+                          <th className="px-4 py-2">Cédula</th>
+                          <th className="px-4 py-2">Nombre</th>
+                          <th className="px-4 py-2">Teléfono</th>
+                          <th className="px-4 py-2">Estado</th>
+                          <th className="px-4 py-2">Municipio</th>
+                          <th className="px-4 py-2">Parroquia</th>
+                          <th className="px-4 py-2">Fecha Registro</th>
                         </tr>
                       </thead>
                       <tbody>
                         {referidosData.referidos.length > 0 ? referidosData.referidos.map((referido) => (
                           <tr key={referido.id}>
-                            <td>{referido.cedula}</td>
-                            <td>{referido.nombre}</td>
-                            <td>{referido.telefono}</td>
-                            <td>{referido.estado}</td>
-                            <td>{referido.municipio}</td>
-                            <td>{referido.parroquia}</td>
-                            <td>{new Date(referido.fecha_registro).toLocaleDateString()}</td>
+                            <td className="border px-4 py-2">{referido.cedula}</td>
+                            <td className="border px-4 py-2">{referido.nombre}</td>
+                            <td className="border px-4 py-2">{referido.telefono}</td>
+                            <td className="border px-4 py-2">{referido.estado}</td>
+                            <td className="border px-4 py-2">{referido.municipio}</td>
+                            <td className="border px-4 py-2">{referido.parroquia}</td>
+                            <td className="border px-4 py-2">{new Date(referido.fecha_registro).toLocaleDateString()}</td>
                           </tr>
                         )) : (
                           <tr>
-                            <td colSpan={7} className="text-center">No hay referidos disponibles</td>
+                            <td colSpan={7} className="border px-4 py-2 text-center">No hay referidos disponibles</td>
                           </tr>
                         )}
                       </tbody>
@@ -655,6 +714,93 @@ const RecolectorControl: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {showMessageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className={`bg-white rounded-lg p-6 max-w-lg w-full shadow-lg ${
+            messageModalConfig.type === 'error' 
+              ? 'border-l-4 border-red-500' 
+              : messageModalConfig.type === 'success'
+                ? 'border-l-4 border-green-500'
+                : 'border-l-4 border-blue-500'
+          }`}>
+            <div className="flex items-start">
+              {messageModalConfig.type === 'error' && (
+                <svg className="w-6 h-6 text-red-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+              {messageModalConfig.type === 'success' && (
+                <svg className="w-6 h-6 text-green-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              )}
+              {messageModalConfig.type === 'info' && (
+                <svg className="w-6 h-6 text-blue-500 mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              )}
+              <div className="flex-1">
+                <h3 className={`text-lg font-medium ${
+                  messageModalConfig.type === 'error' 
+                    ? 'text-red-800' 
+                    : messageModalConfig.type === 'success'
+                      ? 'text-green-800'
+                      : 'text-blue-800'
+                }`}>
+                  {messageModalConfig.type === 'error' 
+                    ? 'Error' 
+                    : messageModalConfig.type === 'success'
+                      ? 'Éxito'
+                      : 'Información'}
+                </h3>
+                <p className="mt-2 text-sm text-gray-700">{messageModalConfig.message}</p>
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    className={`inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-${
+                      messageModalConfig.type === 'error' 
+                        ? 'red' 
+                        : messageModalConfig.type === 'success'
+                          ? 'green'
+                          : 'blue'
+                    }-600 border border-transparent rounded-md hover:bg-${
+                      messageModalConfig.type === 'error' 
+                        ? 'red' 
+                        : messageModalConfig.type === 'success'
+                          ? 'green'
+                          : 'blue'
+                    }-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-${
+                      messageModalConfig.type === 'error' 
+                        ? 'red' 
+                        : messageModalConfig.type === 'success'
+                          ? 'green'
+                          : 'blue'
+                    }-500`}
+                    onClick={closeMessageModal}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Indicador de progreso de descarga */}
+      {isDownloading && downloadProgress > 0 && (
+        <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50">
+          <h4 className="font-bold mb-2">Descargando archivo</h4>
+          <div className="w-64 h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-full bg-blue-500 rounded-full transition-all duration-300"
+              style={{ width: `${downloadProgress}%` }}
+            />
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            {Math.round(downloadProgress)}% completado
           </div>
         </div>
       )}

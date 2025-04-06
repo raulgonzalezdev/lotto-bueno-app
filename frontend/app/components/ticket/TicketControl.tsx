@@ -5,6 +5,75 @@ import { detectHost } from "../../api";
 import { useTickets, useUpdateTicket } from "../../hooks/useTickets";
 import { useEstados } from "../../hooks/useEstados";
 import { useRecolectores } from "../../hooks/useRecolectores";
+import ConfirmationModal from '../confirmation/ConfirmationModal';
+
+// Componente para mostrar mensajes
+const MessageModal: React.FC<{
+  isOpen: boolean;
+  message: string;
+  type: 'info' | 'error' | 'success';
+  onClose: () => void;
+}> = ({ isOpen, message, type, onClose }) => {
+  if (!isOpen) return null;
+  
+  const bgColor = {
+    info: 'bg-blue-100 border-blue-500',
+    error: 'bg-red-100 border-red-500',
+    success: 'bg-green-100 border-green-500'
+  }[type];
+  
+  const textColor = {
+    info: 'text-blue-800',
+    error: 'text-red-800',
+    success: 'text-green-800'
+  }[type];
+  
+  const icon = {
+    info: (
+      <svg className="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    ),
+    error: (
+      <svg className="w-6 h-6 text-red-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    ),
+    success: (
+      <svg className="w-6 h-6 text-green-800" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+    )
+  }[type];
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className={`bg-white rounded-lg shadow-xl p-6 max-w-md border-l-4 ${bgColor}`}>
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            {icon}
+          </div>
+          <div className="ml-3">
+            <h3 className={`text-lg font-medium ${textColor}`}>
+              {type === 'info' ? 'Información' : type === 'error' ? 'Error' : 'Éxito'}
+            </h3>
+            <div className={`mt-2 text-sm ${textColor}`}>
+              <p>{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={onClose}
+            className={`px-4 py-2 text-sm font-medium rounded-md ${textColor} bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+          >
+            Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface Ticket {
   id: number;
@@ -34,6 +103,20 @@ const TicketControl: React.FC = () => {
   const [updatedTicket, setUpdatedTicket] = useState({ validado: false, ganador: false });
   const [estadoFiltro, setEstadoFiltro] = useState<string>("");
   const [recolectorFiltro, setRecolectorFiltro] = useState<string>("");
+
+  // Estados para descargas
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [totalParts, setTotalParts] = useState(0);
+  const [currentPart, setCurrentPart] = useState(0);
+  
+  // Estados para modales de confirmación y mensajes
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState("");
+  const [confirmationAction, setConfirmationAction] = useState<() => void>(() => {});
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [messageType, setMessageType] = useState<'info' | 'error' | 'success'>('info');
 
   // Usando React Query Hooks
   const { data: ticketsResponse, isLoading: ticketsLoading } = useTickets({
@@ -129,30 +212,134 @@ const TicketControl: React.FC = () => {
     }
   };
 
+  // Función para mostrar mensajes (reemplaza alert)
+  const showMessage = (message: string, type: 'info' | 'error' | 'success' = 'info') => {
+    setMessageText(message);
+    setMessageType(type);
+    setShowMessageModal(true);
+  };
+
+  // Función para mostrar confirmaciones (reemplaza confirm)
+  const showConfirmation = (message: string, onConfirm: () => void) => {
+    setConfirmationMessage(message);
+    setConfirmationAction(() => onConfirm);
+    setShowConfirmationModal(true);
+  };
+
+  // Función mejorada para descargar blobs como archivos
+  const downloadBlobAsFile = async (blob: Blob, filename: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        
+        // Agregar evento de finalización para saber cuándo se completa la descarga
+        link.onload = () => {
+          console.log(`Archivo ${filename} cargado correctamente`);
+        };
+        
+        link.onclick = () => {
+          // Dar tiempo para que se inicie la descarga antes de limpiar
+          setTimeout(() => {
+            window.URL.revokeObjectURL(downloadUrl);
+            resolve();
+          }, 150);
+        };
+        
+        link.onerror = (err) => {
+          console.error(`Error en la descarga de ${filename}:`, err);
+          window.URL.revokeObjectURL(downloadUrl);
+          reject(err);
+        };
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        // Si no se activó el evento onclick (algunos navegadores), resolver después de un tiempo
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+          resolve();
+        }, 3000);
+      } catch (err) {
+        console.error(`Error preparando la descarga de ${filename}:`, err);
+        reject(err);
+      }
+    });
+  };
+
+  // Método de descarga mejorado
   const handleDownload = async (type: string, format: string) => {
-    const query = new URLSearchParams({
-      ...(searchTerm && { search: searchTerm }),
-      ...(estadoFiltro && { codigo_estado: estadoFiltro }),
-      ...(recolectorFiltro && { referido_id: recolectorFiltro }),
-    }).toString();
+    try {
+      setIsDownloading(true);
+      setDownloadProgress(0);
+      setCurrentPart(0);
+      
+      const query = new URLSearchParams({
+        ...(searchTerm && { search: searchTerm }),
+        ...(estadoFiltro && { codigo_estado: estadoFiltro }),
+        ...(recolectorFiltro && { referido_id: recolectorFiltro }),
+      }).toString();
 
-    let url = '';
-    if (type === 'tickets') {
-      url = format === 'excel' ? `/api/download/excel/tickets?${query}` : `/api/download/txt/tickets?${query}`;
-    }
+      let url = '';
+      if (type === 'tickets') {
+        url = format === 'excel' ? `/api/download/excel/tickets` : `/api/download/txt/tickets`;
+      }
 
-    let part = 1;
-    while (true) {
-      const link = document.createElement('a');
-      link.href = `${url}&part=${part}`;
-      link.download = `${type}_part${part}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      const response = await fetch(`${url}&part=${part}`, { method: 'HEAD' });
-      if (!response.ok) break;
-      part++;
+      // Obtener información sobre cuántas partes hay
+      const infoResponse = await fetch(`${APIHost}${url}/info?${query}`);
+      if (!infoResponse.ok) {
+        throw new Error(`Error obteniendo información de descarga: ${infoResponse.statusText}`);
+      }
+      
+      const info = await infoResponse.json();
+      setTotalParts(info.total_parts);
+      
+      console.log(`Iniciando descarga de ${info.total_parts} partes`);
+      
+      // Descargar cada parte
+      for (let part = 1; part <= info.total_parts; part++) {
+        setCurrentPart(part);
+        setDownloadProgress(((part - 1) / info.total_parts) * 100);
+        
+        console.log(`Descargando parte ${part} de ${info.total_parts}`);
+        
+        const downloadUrl = `${APIHost}${url}?${query}&part=${part}`;
+        const response = await fetch(downloadUrl);
+        
+        if (!response.ok) {
+          throw new Error(`Error descargando parte ${part}: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        const filename = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/["']/g, '') || 
+                        `${type}_parte_${part}.${format}`;
+        
+        await downloadBlobAsFile(blob, filename);
+        
+        // Actualizar progreso
+        setDownloadProgress((part / info.total_parts) * 100);
+        
+        // Hacer una pausa entre descargas
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+      
+      setDownloadProgress(100);
+      showMessage('Descarga completada exitosamente', 'success');
+      
+      // Ocultar progreso después de un tiempo
+      setTimeout(() => {
+        setIsDownloading(false);
+        setCurrentPart(0);
+        setDownloadProgress(0);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error en la descarga:', error);
+      showMessage(`Error en la descarga: ${error instanceof Error ? error.message : 'Error desconocido'}`, 'error');
+      setIsDownloading(false);
     }
   };
 
@@ -198,8 +385,34 @@ const TicketControl: React.FC = () => {
         </select>
       </div>
       <div className="mb-4">
-        <button onClick={() => handleDownload('tickets', 'excel')} className="btn btn-secondary mr-2">Descargar Tickets Excel</button>
-        <button onClick={() => handleDownload('tickets', 'txt')} className="btn btn-secondary">Descargar Tickets TXT</button>
+        <button 
+          onClick={() => handleDownload('tickets', 'excel')} 
+          className="btn btn-secondary mr-2"
+          disabled={isDownloading}
+        >
+          {isDownloading ? (
+            <span className="flex items-center">
+              <span className="mr-2">Descargando...</span>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </span>
+          ) : (
+            'Descargar Tickets Excel'
+          )}
+        </button>
+        <button 
+          onClick={() => handleDownload('tickets', 'txt')} 
+          className="btn btn-secondary"
+          disabled={isDownloading}
+        >
+          {isDownloading ? (
+            <span className="flex items-center">
+              <span className="mr-2">Descargando...</span>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            </span>
+          ) : (
+            'Descargar Tickets TXT'
+          )}
+        </button>
       </div>
       <div className="pagination mb-4 flex justify-center">
         <button onClick={() => paginate(1)} className="btn btn-primary mr-1">{"<<"}</button>
@@ -323,6 +536,46 @@ const TicketControl: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      
+      {/* Indicador de progreso de descarga */}
+      {isDownloading && (
+        <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg">
+          <h4 className="font-bold mb-2">Descargando archivos</h4>
+          <div className="mb-2">
+            Parte actual: {currentPart} de {totalParts}
+          </div>
+          <div className="w-64 h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-full bg-blue-500 rounded-full transition-all duration-300"
+              style={{ width: `${downloadProgress}%` }}
+            />
+          </div>
+          <div className="text-sm text-gray-600 mt-1">
+            {Math.round(downloadProgress)}% completado
+          </div>
+        </div>
+      )}
+      
+      {/* Modales de confirmación y mensajes */}
+      {showConfirmationModal && (
+        <ConfirmationModal
+          message={confirmationMessage}
+          onConfirm={() => {
+            confirmationAction();
+            setShowConfirmationModal(false);
+          }}
+          onCancel={() => setShowConfirmationModal(false)}
+        />
+      )}
+
+      {showMessageModal && (
+        <MessageModal
+          isOpen={showMessageModal}
+          message={messageText}
+          type={messageType}
+          onClose={() => setShowMessageModal(false)}
+        />
       )}
     </div>
   );

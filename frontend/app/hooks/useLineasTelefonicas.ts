@@ -31,6 +31,12 @@ interface LineaUpdatePayload {
   operador?: string;
 }
 
+interface ImportResult {
+  insertados: number;
+  errores: number;
+  mensaje: string;
+}
+
 // --- Hooks --- //
 
 // Hook para obtener líneas telefónicas
@@ -95,6 +101,30 @@ export const useDeleteLineaTelefonica = () => {
   const queryClient = useQueryClient();
   return useMutation<void, Error, number>({
     mutationFn: (lineaId) => apiClient.delete<void>(`api/lineas_telefonicas/${lineaId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lineasTelefonicas'] });
+    },
+  });
+};
+
+// Hook para importar múltiples líneas telefónicas desde un archivo
+export const useImportarLineasTelefonicas = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ImportResult, Error, FormData>({
+    mutationFn: async (formData) => {
+      // Usamos fetch directamente para manejar la carga del archivo
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://applottobueno.com'}/api/lineas_telefonicas/importar`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al importar líneas telefónicas');
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lineasTelefonicas'] });
     },

@@ -77,6 +77,7 @@ from dotenv import load_dotenv
 from whatsapp_chatbot_python import GreenAPIBot, Notification
 import zipfile
 import math
+import tempfile
 
 load_dotenv()
 
@@ -2741,6 +2742,150 @@ async def read_all_centros_votacion(skip: int = 0, limit: int = 100, db: Session
         CentroVotacion.nombre_cv
     ).offset(skip).limit(limit).all()
     return [to_dict(centro) for centro in centros]
+
+
+@app.post("/api/lineas_telefonicas/importar")
+async def importar_lineas_telefonicas(
+    file: UploadFile = File(...),
+    operador_default: str = Form(""),
+    db: Session = Depends(get_db)
+):
+    """
+    Importa múltiples líneas telefónicas desde un archivo Excel o CSV.
+    El archivo debe tener las columnas: "numero" y opcionalmente "operador".
+    """
+    try:
+        # Verificar el tipo de archivo
+        filename = file.filename.lower()
+        if not (filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv')):
+            raise HTTPException(
+                status_code=400,
+                detail="El archivo debe ser Excel (.xlsx, .xls) o CSV (.csv)"
+            )
+        
+        # Guardar temporalmente el archivo
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1]) as temp_file:
+            temp_filename = temp_file.name
+            content = await file.read()
+            temp_file.write(content)
+        
+        try:
+            # Leer el archivo según su tipo
+            if filename.endswith('.csv'):
+                try:
+                    df = pd.read_csv(temp_filename)
+                except Exception:
+                    # Intentar con diferentes encodings y delimitadores si falla
+                    encodings = ['utf-8', 'latin-1', 'ISO-8859-1']
+                    delimiters = [',', ';', '\t']
+                    success = False
+                    
+                    for encoding in encodings:
+                        for delimiter in delimiters:
+                            try:
+                                df = pd.read_csv(temp_filename, encoding=encoding, sep=delimiter)
+                                success = True
+                                break
+                            except Exception:
+                                continue
+                        if success:
+                            break
+                    
+                    if not success:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="No se pudo leer el archivo CSV. Verifique el formato."
+                        )
+            else:  # Excel
+                df = pd.read_excel(temp_filename)
+            
+            # Verificar que exista la columna requerida
+            if 'numero' not in df.columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail="El archivo debe contener una columna llamada 'numero'"
+                )
+            
+            # Eliminar filas con números vacíos y eliminar duplicados
+            df = df.dropna(subset=['numero'])
+            df = df.drop_duplicates(subset=['numero'])
+            
+            # Convertir columna numero a string y limpiar
+            df['numero'] = df['numero'].astype(str)
+            df['numero'] = df['numero'].str.strip()
+            
+            # Manejar la columna operador
+            if 'operador' not in df.columns:
+                if operador_default:
+                    df['operador'] = operador_default
+                else:
+                    df['operador'] = "Desconocido"  # Valor por defecto
+            else:
+                # Llenar valores vacíos en la columna operador
+                if operador_default:
+                    df['operador'] = df['operador'].fillna(operador_default)
+                else:
+                    df['operador'] = df['operador'].fillna("Desconocido")
+            
+            # Procesar los datos
+            insertados = 0
+            errores = 0
+            
+            # Obtener números existentes en la BD
+            existing_numbers = set()
+            for row in db.query(LineaTelefonica.numero).all():
+                existing_numbers.add(row[0])
+            
+            for _, row in df.iterrows():
+                numero = row['numero']
+                operador = row['operador']
+                
+                # Validar que el número no esté vacío
+                if not numero or len(numero.strip()) == 0:
+                    errores += 1
+                    continue
+                
+                # Verificar si el número ya existe
+                if numero in existing_numbers:
+                    errores += 1
+                    continue
+                
+                try:
+                    # Crear nueva línea telefónica
+                    nueva_linea = LineaTelefonica(
+                        numero=numero,
+                        operador=operador
+                    )
+                    db.add(nueva_linea)
+                    db.flush()  # Flush para verificar posibles errores sin hacer commit
+                    
+                    insertados += 1
+                    existing_numbers.add(numero)  # Agregar a números existentes
+                except Exception as e:
+                    errores += 1
+                    print(f"Error insertando línea {numero}: {str(e)}")
+            
+            # Commit al final para hacer la operación más eficiente
+            db.commit()
+            
+            return {
+                "insertados": insertados,
+                "errores": errores,
+                "mensaje": "Proceso de importación completado con éxito."
+            }
+            
+        finally:
+            # Eliminar el archivo temporal
+            os.unlink(temp_filename)
+            
+    except HTTPException:
+        raise  # Re-lanzar excepciones HTTP
+    except Exception as e:
+        print(f"Error procesando archivo: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error procesando el archivo: {str(e)}"
+        )
 
 
 

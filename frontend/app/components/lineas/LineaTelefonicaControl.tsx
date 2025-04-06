@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Toast from '../toast/Toast';
 import { detectHost } from "../../api";
 // Importar los hooks de React Query
@@ -8,7 +8,8 @@ import {
     useLineasTelefonicas,
     useCreateLineaTelefonica,
     useUpdateLineaTelefonica,
-    useDeleteLineaTelefonica
+    useDeleteLineaTelefonica,
+    useImportarLineasTelefonicas
 } from "../../hooks/useLineasTelefonicas"; // Ajusta la ruta si es necesario
 
 interface LineaTelefonica {
@@ -19,6 +20,7 @@ interface LineaTelefonica {
 
 const LineaTelefonicaControl: React.FC = () => {
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [importModalIsOpen, setImportModalIsOpen] = useState(false);
   const [selectedLinea, setSelectedLinea] = useState<Partial<LineaTelefonica> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,6 +30,10 @@ const LineaTelefonicaControl: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   const [APIHost, setAPIHost] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [operadorPorDefecto, setOperadorPorDefecto] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const queryParams = useMemo(() => ({
       currentPage,
@@ -45,6 +51,7 @@ const LineaTelefonicaControl: React.FC = () => {
   const createLineaMutation = useCreateLineaTelefonica();
   const updateLineaMutation = useUpdateLineaTelefonica();
   const deleteLineaMutation = useDeleteLineaTelefonica();
+  const importarLineasMutation = useImportarLineasTelefonicas();
 
   const totalPages = useMemo(() => {
       if (!lineasData) return 1;
@@ -95,6 +102,52 @@ const LineaTelefonicaControl: React.FC = () => {
     setModalIsOpen(false);
     setSelectedLinea(null);
     setIsEditing(false);
+  };
+
+  const openImportModal = () => {
+    setImportModalIsOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setImportModalIsOpen(false);
+    setSelectedFile(null);
+    setOperadorPorDefecto("");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      setToastMessage("Por favor seleccione un archivo para importar");
+      setToastType("error");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    
+    // Si se especificó un operador por defecto
+    if (operadorPorDefecto) {
+      formData.append("operador_default", operadorPorDefecto);
+    }
+
+    try {
+      const result = await importarLineasMutation.mutateAsync(formData);
+      setToastMessage(`Importación completada: ${result.insertados} líneas insertadas, ${result.errores} errores. ${result.mensaje}`);
+      setToastType("success");
+      closeImportModal();
+    } catch (error) {
+      setToastMessage(`Error durante la importación: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      setToastType("error");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,7 +211,10 @@ const LineaTelefonicaControl: React.FC = () => {
   return (
     <div className="p-4">
       <h2>Control de Líneas Telefónicas</h2>
-      <button onClick={() => openModal()} className="btn btn-primary mb-4">Crear Nueva Línea</button>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button onClick={() => openModal()} className="btn btn-primary">Crear Nueva Línea</button>
+        <button onClick={openImportModal} className="btn btn-secondary">Importar Líneas</button>
+      </div>
       <input
         type="text"
         placeholder="Buscar..."
@@ -232,6 +288,75 @@ const LineaTelefonicaControl: React.FC = () => {
               <button type="submit" className="btn btn-primary" disabled={createLineaMutation.isPending || updateLineaMutation.isPending}>
                 {createLineaMutation.isPending || updateLineaMutation.isPending ? "Guardando..." : (isEditing ? "Guardar Cambios" : "Crear")}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+      {importModalIsOpen && (
+        <div className="modal-overlay" onClick={closeImportModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-button" onClick={closeImportModal}>×</button>
+            <h2>Importar Líneas Telefónicas</h2>
+            <form onSubmit={handleImport}>
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  Seleccione un archivo Excel (.xlsx) o CSV (.csv) que contenga las líneas telefónicas a importar.
+                  <br />
+                  El archivo debe tener las columnas: <strong>numero</strong> y opcionalmente <strong>operador</strong>.
+                </p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Archivo</label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileChange}
+                  className="w-full p-2 border rounded"
+                />
+                {selectedFile && (
+                  <p className="mt-1 text-sm text-green-600">
+                    Archivo seleccionado: {selectedFile.name}
+                  </p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Operador por defecto (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Operador para números sin esta información"
+                  value={operadorPorDefecto}
+                  onChange={(e) => setOperadorPorDefecto(e.target.value)}
+                  className="input input-bordered w-full"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Si el archivo no incluye la columna de operador, o si hay celdas vacías,
+                  se utilizará este valor por defecto.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button 
+                  type="button" 
+                  onClick={closeImportModal}
+                  className="btn btn-outline"
+                  disabled={isUploading}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={isUploading || !selectedFile}
+                >
+                  {isUploading ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Importando...
+                    </span>
+                  ) : "Importar"}
+                </button>
+              </div>
             </form>
           </div>
         </div>

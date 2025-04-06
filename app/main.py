@@ -131,7 +131,8 @@ origins = [
     #"http://applottobueno.com",
     "https://www.applottobueno.com",
     "https://7103.api.greenapi.com",
-     "https://wa.me"
+     "https://wa.me",
+     "https://t.me"
     #"http://www.applottobueno.com",
     #"http://applottobueno.com:8000",
    # "https://applottobueno.com:8000",

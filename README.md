@@ -54,7 +54,8 @@ FASTAPI_BASE_URL=https://applottobueno.com
 COMPANY_PHONE_CONTACT=17867234220
 SECRET_KEY=J-yMKNjjVaUJUj-vC-cAun_qlyXH68p55er0WIlgFuo
 ALGORITHM=HS256
-HOST=https://applottobueno.com' > /.env
+HOST=https://applottobueno.com
+API_TELEGRAM_TOKEN=8187061957:AAEKVKWfBKuECSC7G63qFYzKbZJiFx4N18Q' > .env
 
 
 echo 'POSTGRES_DB=lottobueno

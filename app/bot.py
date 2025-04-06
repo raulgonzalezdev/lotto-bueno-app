@@ -5,6 +5,7 @@ import random
 import base64
 import json
 import asyncio
+import time
 from io import BytesIO
 import requests
 
@@ -16,25 +17,40 @@ from fastapi import HTTPException
 from app.schemas import CedulaRequest
 from app.main import get_db, send_message, send_qr_code, obtener_numero_contacto, enviar_contacto, verificar_cedula
 
-API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
-API_TOKEN = os.getenv("API_TOKEN", "fb1cffd3cfa14663a0bf5760528293c3fc0993da4b8b4c19ac")
-FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://34.134.166.180:8000")
+API_INSTANCE = os.getenv("API_INSTANCE", "7103942544")
+API_TOKEN = os.getenv("API_TOKEN", "1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0")
+NEXT_PUBLIC_API_URL = os.getenv("NEXT_PUBLIC_API_URL", "https://applottobueno.com")
+WEBSITE_URL = os.getenv("WEBSITE_URL", "https://applottobueno.com")
+TELEGRAM_CHANNEL = os.getenv("TELEGRAM_CHANNEL", "https://t.me/applottobueno")
+
+# Constante para el tiempo máximo de inactividad (5 minutos)
+MAX_INACTIVITY_TIME_SECONDS = 300
+
+# Diccionario para almacenar el último tiempo de interacción de cada usuario
+user_last_interaction = {}
 
 bot = GreenAPIBot(API_INSTANCE, API_TOKEN)
-
-@bot.router.message(command="start")
-def message_handler(notification: Notification) -> None:
-    sender_data = notification.event["senderData"]
-    sender_name = sender_data["senderName"]
-    notification.answer(
-        f"👋 Hola, {sender_name}. Para validar tu registro, por favor envíame tu número de cédula."
-    )
 
 @bot.router.message()
 def obtener_cedula(notification: Notification) -> None:
     sender = notification.sender
     message_data = notification.event.get("messageData", {})
-
+    
+    # Actualizar tiempo de la última interacción
+    user_last_interaction[sender] = time.time()
+    
+    # Obtener el nombre del remitente
+    sender_data = notification.event["senderData"]
+    sender_name = sender_data["senderName"]
+    
+    # Verificar si hay datos de estado para este usuario
+    user_state = notification.state_manager.get_state(sender)
+    
+    # Verificar si el usuario está en estado de menú post-registro
+    if user_state and user_state.get("state") == "menu_post_registro":
+        handle_post_registro_menu(notification, sender, message_data)
+        return
+    
     # Intentar obtener la cédula de ambas posibles estructuras
     extended_text_message_data = message_data.get("extendedTextMessageData", {})
     cedula = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
@@ -46,8 +62,11 @@ def obtener_cedula(notification: Notification) -> None:
     print(f"message_data: {message_data}")
     print(f"cedula: {cedula}")
 
-    if not cedula:
-        notification.answer(f"Por favor envíame un número de cédula válido. Datos recibidos: {json.dumps(message_data, indent=2)}")
+    # Si el texto es /start o no se pudo obtener la cédula, enviar mensaje de bienvenida
+    if cedula == "/start" or not cedula:
+        notification.answer(
+            f"👋 Hola, {sender_name}. Para validar tu registro, por favor envíame tu número de cédula."
+        )
         return
 
     print(f"Procesando cédula: {cedula}")
@@ -61,7 +80,7 @@ def obtener_cedula(notification: Notification) -> None:
 
         # Llamada a la API para obtener el ticket por cédula
         try:
-            response = requests.get(f"{FASTAPI_BASE_URL}/tickets/cedula/{cedula}")
+            response = requests.get(f"{NEXT_PUBLIC_API_URL}/tickets/cedula/{cedula}")
             response.raise_for_status()
             existing_ticket = response.json()
             print(f"Ticket encontrado: {existing_ticket}")
@@ -84,9 +103,12 @@ def obtener_cedula(notification: Notification) -> None:
             print(f"phone_contact: {phone_contact}")
             if phone_contact:
                 enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
-
-            notification.answer("Gracias por registrarte. ¡Hasta pronto!")
-            notification.state_manager.delete_state(sender)
+            
+            # Mostrar el menú después del registro
+            show_post_registro_menu(notification, nombre_completo)
+            
+            # Guardar el estado del usuario como "en menú post-registro"
+            notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre_completo})
         except requests.HTTPError as http_err:
             print(f"HTTP error: {http_err}")
             notification.answer(f"Error al obtener ticket: {http_err}")
@@ -97,5 +119,77 @@ def obtener_cedula(notification: Notification) -> None:
         print("Cédula no registrada.")
         notification.answer("El número de cédula proporcionado no está registrado. Por favor intenta nuevamente.")
 
+def show_post_registro_menu(notification: Notification, nombre: str):
+    """Muestra el menú de opciones después del registro"""
+    menu_message = f"¿Qué te gustaría hacer ahora?\n\n" \
+                  f"*1*. Visitar nuestro sitio web 🌐\n" \
+                  f"*2*. Unirte a nuestro canal de Telegram 📣\n" \
+                  f"*3*. Finalizar conversación 👋\n\n" \
+                  f"Responde con el número de la opción deseada."
+    notification.answer(menu_message)
+
+def handle_post_registro_menu(notification: Notification, sender: str, message_data: dict):
+    """Maneja las opciones del menú post-registro"""
+    # Intentar obtener la opción seleccionada
+    extended_text_message_data = message_data.get("extendedTextMessageData", {})
+    option = extended_text_message_data.get("textMessage") or extended_text_message_data.get("text")
+    
+    if not option:
+        text_message_data = message_data.get("textMessageData", {})
+        option = text_message_data.get("textMessage")
+    
+    # Obtener el estado y nombre del usuario
+    user_state = notification.state_manager.get_state(sender)
+    nombre = user_state.get("nombre", "Usuario")
+    
+    if option == "1":
+        # Opción 1: Visitar sitio web
+        notification.answer(f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}")
+        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+    elif option == "2":
+        # Opción 2: Unirse al canal de Telegram
+        notification.answer(f"¡Genial! Únete a nuestro canal de Telegram para recibir noticias y actualizaciones:\n{TELEGRAM_CHANNEL}")
+        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+    elif option == "3":
+        # Opción 3: Finalizar conversación
+        notification.answer(f"¡Gracias por registrarte, {nombre}! Estamos emocionados de tenerte como participante en Lotto Bueno. Te notificaremos si eres el ganador. ¡Buena suerte! 🍀")
+        notification.state_manager.delete_state(sender)
+    else:
+        # Opción no válida
+        notification.answer("Por favor, selecciona una opción válida (1, 2 o 3):")
+        show_post_registro_menu(notification, nombre)
+
+def check_inactive_users():
+    """Verifica y cierra las sesiones inactivas"""
+    current_time = time.time()
+    inactive_users = []
+    
+    for sender, last_time in user_last_interaction.items():
+        if current_time - last_time > MAX_INACTIVITY_TIME_SECONDS:
+            inactive_users.append(sender)
+    
+    for sender in inactive_users:
+        # Eliminar el estado del usuario
+        bot.router.state_manager.delete_state(sender)
+        # Eliminar el registro de tiempo de interacción
+        del user_last_interaction[sender]
+        
+        # Opcional: enviar un mensaje de cierre de sesión
+        try:
+            send_message(sender, "Tu sesión ha finalizado debido a inactividad. Envía cualquier mensaje para comenzar de nuevo.")
+        except Exception as e:
+            print(f"Error enviando mensaje de inactividad a {sender}: {e}")
+
 if __name__ == "__main__":
+    # Iniciar un hilo que verifique los usuarios inactivos cada minuto
+    import threading
+    
+    def inactivity_checker():
+        while True:
+            check_inactive_users()
+            time.sleep(60)  # Verificar cada minuto
+    
+    threading.Thread(target=inactivity_checker, daemon=True).start()
+    
+    # Iniciar el bot
     bot.run_forever()

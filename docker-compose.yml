@@ -44,6 +44,9 @@ services:
     environment:
       DATABASE_URL: "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno"
       REDIS_URL: "redis://redis:6379/0"
+      API_INSTANCE: "${API_INSTANCE:-7103942544}"
+      API_TOKEN: "${API_TOKEN:-1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-https://applottobueno.com}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,6 +54,77 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
+    networks:
+      - lotto-bueno-network
+    command: >
+      sh -c "uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  whatsapp-bot:
+    build:
+      context: .
+      target: app
+    environment:
+      DATABASE_URL: "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno"
+      REDIS_URL: "redis://redis:6379/0"
+      API_INSTANCE: "${API_INSTANCE:-7103942544}"
+      API_TOKEN: "${API_TOKEN:-1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-https://applottobueno.com}"
+      WEBSITE_URL: "${WEBSITE_URL:-https://applottobueno.com}"
+      TELEGRAM_CHANNEL: "${TELEGRAM_CHANNEL:-https://t.me/applottobueno}"
+    depends_on:
+      app:
+        condition: service_healthy
+    command: python app/bot.py
+    restart: unless-stopped
+    networks:
+      - lotto-bueno-network
+
+  telegram-bot:
+    build:
+      context: .
+      target: app
+    environment:
+      DATABASE_URL: "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno"
+      REDIS_URL: "redis://redis:6379/0"
+      TELEGRAM_TOKEN: "${TELEGRAM_TOKEN:-8187061957:AAEKVKWfBKuECSC7G63qFYzKbZJiFx4N18Q}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-https://applottobueno.com}"
+      WEBSITE_URL: "${WEBSITE_URL:-https://applottobueno.com}"
+      TELEGRAM_CHANNEL: "${TELEGRAM_CHANNEL:-https://t.me/applottobueno}"
+    depends_on:
+      app:
+        condition: service_healthy
+    command: python app/telegram_bot/bot.py
+    restart: unless-stopped
+    networks:
+      - lotto-bueno-network
+
+  bot-monitor:
+    build:
+      context: .
+      target: app
+    environment:
+      DATABASE_URL: "postgresql://lottobueno:lottobueno@postgres:5432/lottobueno"
+      REDIS_URL: "redis://redis:6379/0"
+      API_INSTANCE: "${API_INSTANCE:-7103942544}"
+      API_TOKEN: "${API_TOKEN:-1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-https://applottobueno.com}"
+    depends_on:
+      - whatsapp-bot
+    volumes:
+      - ./app:/app/app
+    command: >
+      sh -c "while true; do 
+             sleep 300; 
+             curl -s -X POST http://app:8000/api/reboot_instance || echo 'Error rebooting instance'; 
+             echo 'Automatic reboot executed at '`date`; 
+             done"
+    restart: unless-stopped
     networks:
       - lotto-bueno-network
 

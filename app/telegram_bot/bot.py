@@ -39,6 +39,7 @@ WHATSAPP_URL = os.getenv("WHATSAPP_URL", "https://wa.me/17867234220")
 # Opciones del menú post-registro
 VISITAR_WEB = 'web'
 UNIRSE_WHATSAPP = 'whatsapp'
+VOLVER_MENU_PRINCIPAL = 'volver_menu'
 FINALIZAR = 'finalizar'
 
 # Opciones del menú principal
@@ -166,7 +167,7 @@ async def procesar_cedula(update: Update, context: CallbackContext) -> int:
     db = next(get_db())
     
     try:
-        # Verificar cédula en la base de datos
+        # 1. Primero verificamos si la cédula existe en la base de datos de electores
         elector_response = await verificar_cedula(CedulaRequest(numero_cedula=cedula), db)
         
         if not elector_response.get("elector"):
@@ -205,33 +206,81 @@ async def procesar_cedula(update: Update, context: CallbackContext) -> int:
             logger.error(f"Error al guardar nombre en contexto: {e}")
             # No es crítico, continuamos sin guardar el nombre
         
+        # 2. Verificar si ya tiene un ticket registrado con esta cédula
         try:
             # Llamada a la API para obtener el ticket por cédula
             response = requests.get(f"{NEXT_PUBLIC_API_URL}/api/tickets/cedula/{cedula}")
-            response.raise_for_status()
-            existing_ticket = response.json()
             
-            # Extraer el QR del ticket
-            qr_code_base64 = existing_ticket["qr_ticket"]
-            qr_bytes = base64.b64decode(qr_code_base64)
+            # Si la respuesta es exitosa, la cédula ya tiene un ticket
+            if response.status_code == 200:
+                existing_ticket = response.json()
+                
+                # Extraer el QR del ticket
+                qr_code_base64 = existing_ticket["qr_ticket"]
+                qr_bytes = base64.b64decode(qr_code_base64)
+                
+                # Mensaje de bienvenida
+                message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
+                        f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket['id']} ¡El número ganador!\n\n" \
+                        f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
+                        f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+                        f"¡Mucha suerte!\n" \
+                        f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+                
+                # Enviar mensaje
+                update.message.reply_text(message)
+                
+                # Enviar el QR como imagen
+                with BytesIO(qr_bytes) as bio:
+                    update.message.reply_photo(bio, caption=f"Ticket #{existing_ticket['id']}")
+                
+                # Mostrar menú post-registro
+                return mostrar_menu_post_registro(update, context)
             
-            # Mensaje de bienvenida
-            message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
-                    f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket['id']} ¡El número ganador!\n\n" \
-                    f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
-                    f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
-                    f"¡Mucha suerte!\n" \
-                    f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+            # Si la respuesta es 404, la cédula no tiene ticket, debemos registrarla
+            elif response.status_code == 404:
+                update.message.reply_text(
+                    f"La cédula {cedula} está registrada en el sistema electoral pero aún no tiene un ticket de Lotto Bueno."
+                )
+                update.message.reply_text(
+                    "Para completar tu registro, necesito tu número de teléfono."
+                )
+                
+                # Guardar la cédula en el contexto para el registro
+                try:
+                    context.user_data['cedula_registro'] = cedula
+                except Exception as e:
+                    logger.error(f"Error al guardar cédula para registro: {e}")
+                    update.message.reply_text(
+                        "Por favor envía tu número de cédula nuevamente junto con tu teléfono en este formato: CEDULA:TELEFONO"
+                    )
+                    return ESPERANDO_CEDULA
+                
+                # Solicitar el número de teléfono
+                update.message.reply_text(
+                    "Por favor, envíame tu número de teléfono (con formato 04XX-XXXXXXX):"
+                )
+                return ESPERANDO_TELEFONO
             
-            # Enviar mensaje
-            update.message.reply_text(message)
+            else:
+                # Otros errores en la API
+                raise Exception(f"Error al verificar ticket: {response.status_code} - {response.text}")
+        
+        except requests.RequestException as e:
+            logger.error(f"Error en la solicitud HTTP: {e}")
+            update.message.reply_text(
+                f"No pudimos verificar si ya tienes un ticket. Para continuar con el registro, necesito tu número de teléfono."
+            )
             
-            # Enviar el QR como imagen
-            with BytesIO(qr_bytes) as bio:
-                update.message.reply_photo(bio, caption=f"Ticket #{existing_ticket['id']}")
+            # Guardar la cédula para el registro
+            context.user_data['cedula_registro'] = cedula
             
-            # Mostrar menú post-registro
-            return mostrar_menu_post_registro(update, context)
+            # Solicitar el número de teléfono
+            update.message.reply_text(
+                "Por favor, envíame tu número de teléfono (con formato 04XX-XXXXXXX):"
+            )
+            return ESPERANDO_TELEFONO
+            
         except Exception as e:
             logger.error(f"Error al procesar ticket: {str(e)}")
             update.message.reply_text(
@@ -437,6 +486,13 @@ def button_callback(update: Update, context: CallbackContext) -> int:
         )
         return mostrar_menu_post_registro(update, context)
     
+    elif opcion == VOLVER_MENU_PRINCIPAL:
+        query.edit_message_text(
+            "Regresando al menú principal..."
+        )
+        # Mostrar el menú principal
+        return mostrar_menu_principal(update, context)
+    
     elif opcion == FINALIZAR:
         nombre = context.user_data.get('nombre', 'Usuario')
         query.edit_message_text(
@@ -510,6 +566,7 @@ def mostrar_menu_post_registro(update: Update, context: CallbackContext) -> int:
     keyboard = [
         [InlineKeyboardButton("Visitar Sitio Web 🌐", callback_data=VISITAR_WEB)],
         [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP)],
+        [InlineKeyboardButton("Regresar al Menú Principal 🔄", callback_data=VOLVER_MENU_PRINCIPAL)],
         [InlineKeyboardButton("Finalizar Conversación 👋", callback_data=FINALIZAR)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)

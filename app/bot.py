@@ -171,53 +171,78 @@ def obtener_cedula(notification: Notification) -> None:
     db = next(get_db())
     
     try:
+        # 1. Primero verificamos si la cédula existe en la base de datos de electores
         elector_response = asyncio.run(verificar_cedula(CedulaRequest(numero_cedula=cedula), db))
 
         if elector_response.get("elector"):
             elector_data = elector_response.get("elector")
             nombre_completo = f"{elector_data['p_nombre']} {elector_data['s_nombre']} {elector_data['p_apellido']} {elector_data['s_apellido']}"
             
-
-            # Llamada a la API para obtener el ticket por cédula
+            # 2. Luego verificamos si la cédula ya tiene un ticket registrado
             try:
                 response = requests.get(f"{NEXT_PUBLIC_API_URL}/api/tickets/cedula/{cedula}")
-                response.raise_for_status()
-                existing_ticket = response.json()
-                print(f"Ticket encontrado: {existing_ticket}")
-                chat_id = existing_ticket["telefono"]
-
-                qr_code_base64 = existing_ticket["qr_ticket"]
-                qr_buf = BytesIO(base64.b64decode(qr_code_base64))
-
-                message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
-                        f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket['id']} ¡El número ganador!\n\n" \
-                        f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
-                        f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
-                        f"¡Mucha suerte!\n" \
-                        f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
-
-                send_message(chat_id, message)
-                send_qr_code(chat_id, qr_buf)
-
-                phone_contact = obtener_numero_contacto(db)
-                print(f"phone_contact: {phone_contact}")
-                if phone_contact:
-                    enviar_contacto(chat_id, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
                 
-                # Mostrar el menú después del registro
-                show_post_registro_menu(notification, nombre_completo)
+                # Si la respuesta es exitosa, la cédula ya tiene un ticket
+                if response.status_code == 200:
+                    existing_ticket = response.json()
+                    print(f"Ticket encontrado: {existing_ticket}")
+                    chat_id = existing_ticket["telefono"]
+
+                    qr_code_base64 = existing_ticket["qr_ticket"]
+                    qr_buf = BytesIO(base64.b64decode(qr_code_base64))
+
+                    message = f"{nombre_completo}, hoy es tu día de suerte!\n\n" \
+                            f"Desde este momento estás participando en el Lotto Bueno y este es tu número de ticket {existing_ticket['id']} ¡El número ganador!\n\n" \
+                            f"Es importante que guardes nuestro contacto, así podremos anunciarte que tú eres el afortunado ganador.\n" \
+                            f"No pierdas tu número de ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+                            f"¡Mucha suerte!\n" \
+                            f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+
+                    notification.answer(message)
+                    send_qr_code(sender, qr_buf)
+
+                    phone_contact = obtener_numero_contacto(db)
+                    print(f"phone_contact: {phone_contact}")
+                    if phone_contact:
+                        enviar_contacto(sender, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
+                    
+                    # Mostrar el menú después del registro
+                    show_post_registro_menu(notification, nombre_completo)
+                    
+                    # Guardar el estado del usuario como "en menú post-registro"
+                    notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre_completo})
                 
-                # Guardar el estado del usuario como "en menú post-registro"
-                notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre_completo})
+                # Si la respuesta es 404, la cédula no tiene ticket, debemos registrarla
+                elif response.status_code == 404:
+                    notification.answer(f"La cédula {cedula} está registrada en el sistema electoral pero aún no tiene un ticket de Lotto Bueno.")
+                    notification.answer(f"Para completar tu registro, por favor envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
+                    
+                    # Guardar información para el registro
+                    notification.state_manager.set_state(sender, {
+                        "state": "esperando_telefono", 
+                        "nombre": nombre_completo,
+                        "cedula": cedula
+                    })
+                    
+                else:
+                    # Otros errores en la API
+                    raise Exception(f"Error al verificar ticket: {response.status_code} - {response.text}")
+                    
             except requests.HTTPError as http_err:
                 print(f"HTTP error: {http_err}")
-                notification.answer(f"Error al obtener ticket: {http_err}")
-                # Mostrar menú principal como fallback
-                show_menu_principal(notification, sender_name)
-                notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": sender_name})
+                # Si la API no responde, asumimos que necesitamos registrar al usuario
+                notification.answer(f"No pudimos verificar si ya tienes un ticket. Para continuar con el registro, por favor envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
+                
+                # Guardar información para el registro
+                notification.state_manager.set_state(sender, {
+                    "state": "esperando_telefono", 
+                    "nombre": nombre_completo,
+                    "cedula": cedula
+                })
+                
             except Exception as err:
-                print(f"Unexpected error: {err}")
-                notification.answer(f"Error inesperado: {err}")
+                print(f"Error inesperado al verificar ticket: {err}")
+                notification.answer(f"Ha ocurrido un error inesperado. Por favor, intenta nuevamente más tarde.")
                 # Mostrar menú principal como fallback
                 show_menu_principal(notification, sender_name)
                 notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": sender_name})
@@ -432,7 +457,8 @@ def show_post_registro_menu(notification: Notification, nombre: str):
     menu_message = f"¿Qué te gustaría hacer ahora?\n\n" \
                   f"*1.* Visitar nuestro sitio web 🌐\n" \
                   f"*2.* Unirte a nuestro canal de Telegram 📣\n" \
-                  f"*3.* Finalizar conversación 👋\n\n" \
+                  f"*3.* Regresar al menú principal 🔄\n" \
+                  f"*4.* Finalizar conversación 👋\n\n" \
                   f"Responde con el *número* de la opción deseada."
     
     # Enviar con formato de WhatsApp
@@ -493,12 +519,17 @@ def handle_post_registro_menu(notification: Notification, sender: str, message_d
         # Volver a mostrar el menú para que el usuario pueda elegir otra opción
         show_post_registro_menu(notification, nombre)
     elif option == "3":
-        # Opción 3: Finalizar conversación
+        # Opción 3: Regresar al menú principal
+        notification.answer("Regresando al menú principal...")
+        show_menu_principal(notification, nombre)
+        notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
+    elif option == "4":
+        # Opción 4: Finalizar conversación
         notification.answer(f"¡Gracias por registrarte, {nombre}! Estamos emocionados de tenerte como participante en Lotto Bueno. Te notificaremos si eres el ganador. ¡Buena suerte! 🍀")
         notification.state_manager.delete_state(sender)
     else:
         # Opción no válida
-        notification.answer("No he podido entender tu selección. Por favor, responde con el número de la opción deseada (1, 2 o 3):")
+        notification.answer("No he podido entender tu selección. Por favor, responde con el número de la opción deseada (1, 2, 3 o 4):")
         show_post_registro_menu(notification, nombre)
 
 def check_inactive_users():

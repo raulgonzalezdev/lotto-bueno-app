@@ -62,8 +62,8 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   } = useCreateTicket();
 
   // Añadir estado para usuario de Telegram
-  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
-  const [isTelegramLoginLoading, setIsTelegramLoginLoading] = useState(false);
+  // const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null); // Comentado
+  // const [isTelegramLoginLoading, setIsTelegramLoginLoading] = useState(false); // Comentado
   
   useEffect(() => {
     if (isErrorRecolectores && errorRecolectores) {
@@ -174,6 +174,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
   };
 
   // Función que se llamará cuando el usuario se autentique con Telegram
+  /* Comentado por solicitud
   const handleTelegramAuth = async (user: TelegramUser) => {
     setIsTelegramLoginLoading(true);
     setToastMessage(null);
@@ -217,8 +218,10 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
       setIsTelegramLoginLoading(false);
     }
   };
+  */
 
   // Definir la función global para que el widget pueda llamarla
+  /* Comentado por solicitud
   useEffect(() => {
     // @ts-ignore
     window.onTelegramAuth = handleTelegramAuth;
@@ -228,6 +231,7 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
       delete window.onTelegramAuth;
     };
   }, []);
+  */
 
   return (
     <div className="welcome-page">
@@ -437,12 +441,13 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
             <div className="border-t border-gray-300 flex-grow"></div>
           </div>
           
-          {/* Widget de Telegram */}
+          {/* Widget de Telegram - Comentado por solicitud */}
+          {/* 
           <div className="my-4">
             <div className="text-white text-sm mb-2">Inicia sesión con Telegram:</div>
             <div id="telegram-login-container">
               {/* El script se cargará aquí */}
-              <Script
+              {/* <Script
                 src="https://telegram.org/js/telegram-widget.js"
                 strategy="lazyOnload"
                 onLoad={() => {
@@ -459,20 +464,20 @@ const RegisterWindow: React.FC<RegisterWindowProps> = ({ title, subtitle, imageS
                     script.src = "https://telegram.org/js/telegram-widget.js";
                     script.setAttribute('data-telegram-login', telegramBotName);
                     script.setAttribute('data-size', 'medium');
-                    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+                    // script.setAttribute('data-onauth', 'onTelegramAuth(user)'); // Comentado
                     script.setAttribute('data-request-access', 'write');
                     
                     container.appendChild(script);
                   }
                 }}
-              />
-            </div>
+              /> */}
+            {/* </div>
             {isTelegramLoginLoading && (
               <div className="mt-2">
                 <span className="spinner"></span> Verificando...
               </div>
-            )}
-          </div>
+            )} */}
+          {/* </div> */}
         </div>
         <LoginModal
           isVisible={isLoginModalVisible}

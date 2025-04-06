@@ -2071,10 +2071,19 @@ async def login(
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password are required")
 
-    user = db.query(Users).filter(Users.username == username).first()
+    # Modificar consulta para seleccionar solo columnas necesarias y evitar error UndefinedColumn
+    # Querying specific columns returns a Row object, access columns by name.
+    user = db.query(
+        Users.id,
+        Users.username,
+        Users.hashed_password,
+        Users.isAdmin
+    ).filter(Users.username == username).first()
+
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     
+    # Acceder a las columnas por nombre
     if not check_password_hash(user.hashed_password, password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
     

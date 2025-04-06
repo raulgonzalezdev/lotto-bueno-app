@@ -34,16 +34,17 @@ TELEGRAM_TOKEN = os.getenv("API_TELEGRAM_TOKEN", "8187061957:AAEKVKWfBKuECSC7G63
 NEXT_PUBLIC_API_URL = os.getenv("NEXT_PUBLIC_API_URL", "https://applottobueno.com")
 WEBSITE_URL = os.getenv("WEBSITE_URL", "https://applottobueno.com")
 TELEGRAM_CHANNEL = os.getenv("TELEGRAM_CHANNEL", "https://t.me/applottobueno")
+WHATSAPP_URL = os.getenv("WHATSAPP_URL", "https://wa.me/17867234220")
 
 # Opciones del menú post-registro
 VISITAR_WEB = 'web'
-UNIRSE_CANAL = 'canal'
+UNIRSE_WHATSAPP = 'whatsapp'
 FINALIZAR = 'finalizar'
 
 # Opciones del menú principal
 REGISTRARSE = 'register'
 VISITAR_WEB_PRINCIPAL = 'web_principal'
-UNIRSE_CANAL_PRINCIPAL = 'canal_principal'
+UNIRSE_WHATSAPP_PRINCIPAL = 'whatsapp_principal'
 INTENTAR_CEDULA = 'cedula'
 FINALIZAR_PRINCIPAL = 'finalizar_principal'
 
@@ -319,7 +320,7 @@ def mostrar_menu_principal(update: Update, context: CallbackContext) -> int:
     keyboard = [
         [InlineKeyboardButton("Registrarme en Lotto Bueno 📝", callback_data=REGISTRARSE)],
         [InlineKeyboardButton("Visitar sitio web 🌐", callback_data=VISITAR_WEB_PRINCIPAL)],
-        [InlineKeyboardButton("Unirme al canal de Telegram 📣", callback_data=UNIRSE_CANAL_PRINCIPAL)],
+        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP_PRINCIPAL)],
         [InlineKeyboardButton("Verificar otra cédula 🔢", callback_data=INTENTAR_CEDULA)],
         [InlineKeyboardButton("Finalizar conversación 👋", callback_data=FINALIZAR_PRINCIPAL)]
     ]
@@ -345,7 +346,7 @@ def mostrar_menu_post_registro(update: Update, context: CallbackContext) -> int:
     """Mostrar menú post-registro"""
     keyboard = [
         [InlineKeyboardButton("Visitar Sitio Web 🌐", callback_data=VISITAR_WEB)],
-        [InlineKeyboardButton("Unirme al Canal de Telegram 📣", callback_data=UNIRSE_CANAL)],
+        [InlineKeyboardButton("Contactarnos por WhatsApp 📱", callback_data=UNIRSE_WHATSAPP)],
         [InlineKeyboardButton("Finalizar Conversación 👋", callback_data=FINALIZAR)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -385,12 +386,14 @@ def handle_menu_principal_callback(update: Update, context: CallbackContext) -> 
         query.edit_message_text(
             f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}"
         )
+        # Volver a mostrar el menú para continuar interactuando
         return mostrar_menu_principal(update, context)
     
-    elif opcion == UNIRSE_CANAL_PRINCIPAL:
+    elif opcion == UNIRSE_WHATSAPP_PRINCIPAL:
         query.edit_message_text(
-            f"¡Genial! Únete a nuestro canal para recibir noticias y actualizaciones:\n{TELEGRAM_CHANNEL}"
+            f"¡Genial! Puedes contactarnos por WhatsApp en el siguiente enlace:\n{WHATSAPP_URL}"
         )
+        # Volver a mostrar el menú para continuar interactuando
         return mostrar_menu_principal(update, context)
     
     elif opcion == INTENTAR_CEDULA:
@@ -421,12 +424,14 @@ def button_callback(update: Update, context: CallbackContext) -> int:
         query.edit_message_text(
             f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}"
         )
+        # Volver a mostrar el menú para continuar interactuando
         return mostrar_menu_post_registro(update, context)
     
-    elif opcion == UNIRSE_CANAL:
+    elif opcion == UNIRSE_WHATSAPP:
         query.edit_message_text(
-            f"¡Genial! Únete a nuestro canal para recibir noticias y actualizaciones:\n{TELEGRAM_CHANNEL}"
+            f"¡Genial! Puedes contactarnos por WhatsApp en el siguiente enlace:\n{WHATSAPP_URL}"
         )
+        # Volver a mostrar el menú para continuar interactuando
         return mostrar_menu_post_registro(update, context)
     
     elif opcion == FINALIZAR:

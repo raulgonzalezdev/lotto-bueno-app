@@ -368,12 +368,12 @@ def handle_menu_principal(notification: Notification, sender: str, message_data:
     elif option == "2":
         # Opción 2: Visitar sitio web
         notification.answer(f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}")
-        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+        # Volver a mostrar el menú para permitir al usuario elegir otra opción
         show_menu_principal(notification, nombre)
     elif option == "3":
         # Opción 3: Unirse al canal de Telegram
         notification.answer(f"¡Genial! Únete a nuestro canal de Telegram para recibir noticias y actualizaciones:\n{TELEGRAM_CHANNEL}")
-        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+        # Volver a mostrar el menú para permitir al usuario elegir otra opción
         show_menu_principal(notification, nombre)
     elif option == "4":
         # Opción 4: Verificar otra cédula
@@ -426,11 +426,13 @@ def handle_post_registro_menu(notification: Notification, sender: str, message_d
     if option == "1":
         # Opción 1: Visitar sitio web
         notification.answer(f"¡Excelente! Puedes visitar nuestro sitio web en:\n{WEBSITE_URL}")
-        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+        # Volver a mostrar el menú para que el usuario pueda elegir otra opción
+        show_post_registro_menu(notification, nombre)
     elif option == "2":
         # Opción 2: Unirse al canal de Telegram
         notification.answer(f"¡Genial! Únete a nuestro canal de Telegram para recibir noticias y actualizaciones:\n{TELEGRAM_CHANNEL}")
-        notification.answer("¿Hay algo más en lo que pueda ayudarte?")
+        # Volver a mostrar el menú para que el usuario pueda elegir otra opción
+        show_post_registro_menu(notification, nombre)
     elif option == "3":
         # Opción 3: Finalizar conversación
         notification.answer(f"¡Gracias por registrarte, {nombre}! Estamos emocionados de tenerte como participante en Lotto Bueno. Te notificaremos si eres el ganador. ¡Buena suerte! 🍀")

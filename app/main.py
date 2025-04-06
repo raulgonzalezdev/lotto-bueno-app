@@ -224,6 +224,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def check_whatsapp(phone_number: str):
+    """
+    Verifica si un número de teléfono tiene WhatsApp.
+    Retorna un diccionario con la estructura {"existsWhatsapp": True/False}
+    """
     try:
         # Formato de URL correcto según la documentación
         url = f"{API_URL_BASE}/checkWhatsapp/{API_TOKEN}"
@@ -248,7 +252,14 @@ def check_whatsapp(phone_number: str):
         print("----- END DEBUG -----\n")
         
         if response.status_code == 200:
-            return response.json()
+            result = response.json()
+            # Verificamos que el resultado sea un diccionario
+            if isinstance(result, dict) and "existsWhatsapp" in result:
+                return result
+            else:
+                # Si la respuesta no tiene el formato esperado, creamos uno estándar
+                exists = bool(result) if isinstance(result, bool) else False
+                return {"existsWhatsapp": exists}
         else:
             print(f"Error checking WhatsApp: {response.text}")
             return {"existsWhatsapp": False}
@@ -334,6 +345,10 @@ def generate_file_responses(data, file_type, base_filename):
 @app.post("/api/check_whatsapp")
 def api_check_whatsapp(request: PhoneNumberRequest):
     result = check_whatsapp(request.phone_number)
+    # Garantizar que result sea un diccionario
+    if not isinstance(result, dict):
+        result = {"existsWhatsapp": bool(result)}
+    
     if result.get("status") == "api":
         return {
             "status": "api",
@@ -419,8 +434,13 @@ def send_qr_code(chat_id: str, qr_buf: BytesIO):
 @app.post("/api/generate_tickets")
 def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
-    whatsapp_check = check_whatsapp(request.telefono)
-    if whatsapp_check.get("existsWhatsapp") == False:
+    result = check_whatsapp(request.telefono)
+    
+    # Asegurar que result sea un diccionario
+    if not isinstance(result, dict):
+        result = {"existsWhatsapp": bool(result)}
+    
+    if not result.get("existsWhatsapp"):
         # Procesar cuando no existe WhatsApp
         return {"status": "error", "message": "El número no tiene WhatsApp"}
 
@@ -529,8 +549,13 @@ def api_generate_tickets(request: TicketRequest, db: Session = Depends(get_db)):
 @app.post("/api/generate_ticket")
 def api_generate_ticket(request: TicketRequest, db: Session = Depends(get_db)):
     # Verificar si el número de WhatsApp es válido
-    whatsapp_check = check_whatsapp(request.telefono)
-    if whatsapp_check.get("existsWhatsapp") == False:
+    result = check_whatsapp(request.telefono)
+    
+    # Asegurar que result sea un diccionario
+    if not isinstance(result, dict):
+        result = {"existsWhatsapp": bool(result)}
+    
+    if not result.get("existsWhatsapp"):
         return {"status": "error", "message": "El número no tiene WhatsApp"}
 
     # Verificar la cédula usando la función verificar_cedula

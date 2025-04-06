@@ -159,9 +159,9 @@ DATABASE_URL = os.getenv(
     f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@postgres:5432/{POSTGRES_DB}"
 )
 
-API_INSTANCE = os.getenv("API_INSTANCE", "7103945340")
+API_INSTANCE = os.getenv("API_INSTANCE", "7103942544")
 API_URL_BASE = os.getenv("API_URL_BASE", f"https://7103.api.greenapi.com/waInstance{API_INSTANCE}")
-API_TOKEN = os.getenv("API_TOKEN", "1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64")
+API_TOKEN = os.getenv("API_TOKEN", "1b64dc5c3ccc4d9aa01265ce553b874784d414aa81d64777a0")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6380/0")
 NEXT_PUBLIC_API_URL = os.getenv("NEXT_PUBLIC_API_URL", "https://applottobueno.com")
 COMPANY_PHONE_CONTACT = os.getenv("COMPANY_PHONE_CONTACT", "17867234220")
@@ -224,18 +224,38 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 def check_whatsapp(phone_number: str):
-    url = f"{API_URL_BASE}/checkWhatsapp/{API_TOKEN}"
-    payload = json.dumps({"phoneNumber": phone_number})
-    headers = {'Content-Type': 'application/json'}
-    
     try:
-        response = requests.post(url, headers=headers, data=payload)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.HTTPError as http_err:
-        return {"status": "api", "message": "Error de HTTP en la verificación de WhatsApp"}
-    except Exception as err:
-        return {"status": "error", "message": "No se pudo conectar a la API de verificación de WhatsApp"}
+        # Formato de URL correcto según la documentación
+        url = f"{API_URL_BASE}/checkWhatsapp/{API_TOKEN}"
+        
+        # El número debe estar limpio (solo dígitos)
+        phone_number = ''.join(filter(str.isdigit, phone_number))
+        
+        payload = {"phoneNumber": int(phone_number)}
+        
+        # Imprime la información de depuración
+        print(f"\n----- DEBUG CHECK WHATSAPP -----")
+        print(f"URL: {url}")
+        print(f"Payload: {json.dumps(payload)}")
+        print(f"API_INSTANCE: {API_INSTANCE}")
+        print(f"API_TOKEN: {API_TOKEN}")
+        
+        response = requests.post(url, json=payload)
+        
+        # Imprime la respuesta completa
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.text}")
+        print("----- END DEBUG -----\n")
+        
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('existsWhatsapp', False)
+        else:
+            print(f"Error checking WhatsApp: {response.text}")
+            return False
+    except Exception as e:
+        print(f"Exception in check_whatsapp: {str(e)}")
+        return False
 
 
 def compress_file(file_bytes: BytesIO, filename: str) -> BytesIO:

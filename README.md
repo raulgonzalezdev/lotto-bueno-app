@@ -79,7 +79,8 @@ HOST=https://applottobueno.com
 NEXT_PUBLIC_API_URL=https://applottobueno.com
 NEXT_PUBLIC_SITE_TITLE=Lotto Bueno
 NEXT_PUBLIC_SITE_DESCRIPTION=Participa y Gana con Lotto Bueno
-NEXT_PUBLIC_FAVICON_URL=/static/icon.ico' > .env
+NEXT_PUBLIC_FAVICON_URL=/static/icon.ico
+API_TELEGRAM_TOKEN=8187061957:AAEKVKWfBKuECSC7G63qFYzKbZJiFx4N18Q' > .env
 
 
    docker exec -it 8fd75fd2984c /bin/bash

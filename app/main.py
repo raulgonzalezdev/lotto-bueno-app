@@ -700,10 +700,10 @@ def send_contact(chat_id: int, db: Session = Depends(get_db)):
             phone_contact = random.choice(phone_contacts)[0]
         else:
             # Usar la variable de ambiente si no hay números disponibles
-            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
+            phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "17867234220")
     except Exception as e:
         # Usar la variable de ambiente en caso de cualquier error
-        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "584262831867")
+        phone_contact = os.getenv("COMPANY_PHONE_CONTACT", "17867234220")
 
     contact_request = ContactRequest(
         chat_id=chat_id,

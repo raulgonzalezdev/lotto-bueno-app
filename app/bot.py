@@ -65,38 +65,64 @@ def extract_phone_number(text):
     if not text:
         return None
     
+    print(f"Procesando número de teléfono: '{text}'")
+    
     # Eliminar espacios, guiones y paréntesis
     text = re.sub(r'[\s\-\(\)]', '', text)
+    print(f"Texto limpio sin espacios/guiones: '{text}'")
     
     # Extraer solo los dígitos
     digits_only = ''.join(filter(str.isdigit, text))
+    print(f"Solo dígitos: '{digits_only}'")
     
-    # Manejar diferentes formatos
+    # Manejar diferentes formatos comunes en Venezuela
     if len(digits_only) >= 10:
         # Si comienza con 58, verificar que tenga al menos 12 dígitos
         if digits_only.startswith('58'):
             # Verificar que después del 58 tenga un código de operadora válido
             if re.match(r'^58(412|414|416|424|426)', digits_only):
-                return digits_only[:12]  # Tomar solo los primeros 12 dígitos
+                result = digits_only[:12]  # Tomar solo los primeros 12 dígitos
+                print(f"Número con prefijo internacional 58: '{result}'")
+                return result
             else:
+                print(f"Prefijo de operadora inválido después del 58: '{digits_only}'")
                 return None
         
         # Si comienza con 0, quitar el 0 y agregar 58
         elif digits_only.startswith('0'):
             # Verificar que sea una operadora venezolana válida
             if re.match(r'^0(412|414|416|424|426)', digits_only):
-                return '58' + digits_only[1:11]  # Formato: 58 + 10 dígitos sin el 0
+                result = '58' + digits_only[1:11]  # Formato: 58 + 10 dígitos sin el 0
+                print(f"Número con prefijo 0: convertido a '{result}'")
+                return result
             else:
+                print(f"Prefijo de operadora inválido después del 0: '{digits_only}'")
                 return None
         
         # Si comienza directamente con el código de operadora (sin 0)
         elif re.match(r'^(412|414|416|424|426)', digits_only):
-            return '58' + digits_only[:10]  # Formato: 58 + 10 dígitos
+            result = '58' + digits_only[:10]  # Formato: 58 + 10 dígitos
+            print(f"Número sin prefijo: convertido a '{result}'")
+            return result
+        
+        # Intento adicional: si tiene 10 dígitos y no coincide con los patrones anteriores
+        elif len(digits_only) == 10:
+            # Asumir que los primeros 3 dígitos son el código de operadora
+            operator_code = digits_only[:3]
+            if operator_code in ['412', '414', '416', '424', '426']:
+                result = '58' + digits_only
+                print(f"Número de 10 dígitos: convertido a '{result}'")
+                return result
+            else:
+                print(f"Código de operadora no reconocido: '{operator_code}'")
+                return None
         
         # Otros casos no válidos
         else:
+            print(f"Formato no reconocido: '{digits_only}'")
             return None
     
+    print(f"Número demasiado corto: '{digits_only}'")
     return None
 
 @bot.router.message()
@@ -214,7 +240,7 @@ def obtener_cedula(notification: Notification) -> None:
                 
                 # Si la respuesta es 404, la cédula no tiene ticket, debemos registrarla
                 elif response.status_code == 404:
-                    notification.answer(f"La cédula {cedula} está registrada en el sistema electoral pero aún no tiene un ticket de Lotto Bueno.")
+                    notification.answer(f"La cédula {cedula} está registrada en el sistema pero aún no tiene un ticket de Lotto Bueno.")
                     notification.answer(f"Para completar tu registro, por favor envíame tu número de teléfono (con formato 04XX-XXXXXXX):")
                     
                     # Guardar información para el registro
@@ -280,8 +306,11 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
         if text_message_data:
             message_text = text_message_data.get("textMessage")
     
+    print(f"Mensaje de teléfono recibido: {message_text}")
+    
     # Obtener la cédula guardada anteriormente
     user_state = notification.state_manager.get_state(sender)
+    print(f"Estado del usuario recuperado: {user_state}")
     
     # Acceder a los atributos del objeto State
     cedula = None
@@ -291,10 +320,23 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
         try:
             if hasattr(user_state, "cedula"):
                 cedula = user_state.cedula
+                print(f"Cédula recuperada del estado: {cedula}")
+            elif isinstance(user_state, dict) and "cedula" in user_state:
+                cedula = user_state["cedula"]
+                print(f"Cédula recuperada del diccionario de estado: {cedula}")
+            else:
+                print(f"No se encontró cédula en el estado. Atributos disponibles: {dir(user_state) if not isinstance(user_state, dict) else user_state.keys()}")
+                
             if hasattr(user_state, "nombre"):
                 nombre = user_state.nombre
+                print(f"Nombre recuperado del estado: {nombre}")
+            elif isinstance(user_state, dict) and "nombre" in user_state:
+                nombre = user_state["nombre"]
+                print(f"Nombre recuperado del diccionario de estado: {nombre}")
         except Exception as e:
             print(f"Error al obtener atributos del estado: {e}")
+    else:
+        print("No se encontró estado del usuario")
     
     if not cedula:
         notification.answer("No he podido recuperar tus datos de registro. Por favor intenta nuevamente.")
@@ -307,8 +349,13 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
     
     # Extraer el número de teléfono
     telefono = extract_phone_number(message_text)
+    print(f"Número extraído: {telefono} del texto original: {message_text}")
     
     if not telefono:
+        # Intentar extraer de forma más directa para ver si falla el formateo
+        digits_only = ''.join(filter(str.isdigit, message_text))
+        print(f"Texto después de filtrar solo dígitos: {digits_only}")
+        
         notification.answer("No he podido identificar un número de teléfono válido. Por favor, envía tu número con formato 04XX-XXXXXXX:")
         return
     
@@ -323,39 +370,59 @@ def handle_registro_telefono(notification: Notification, sender: str, message_da
             "referido_id": 1  # Valor por defecto para registros desde el bot
         }
         
-        response = requests.post(
-            f"{NEXT_PUBLIC_API_URL}/api/generate_tickets", 
-            json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
+        print(f"Enviando solicitud a la API: {payload}")
         
-        # Si el registro fue exitoso
-        notification.answer(f"¡Felicidades! Tu registro ha sido completado exitosamente.")
-        
-        if data.get("qr_code"):
-            qr_buf = BytesIO(base64.b64decode(data["qr_code"]))
-            send_qr_code(sender, qr_buf)
-        
-        message = f"¡Bienvenido a Lotto Bueno! Tu ticket ha sido generado.\n\n" \
-                  f"Es importante que guardes nuestro contacto, así podremos anunciarte si eres el afortunado ganador.\n" \
-                  f"No pierdas tu ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
-                  f"¡Mucha suerte!\n" \
-                  f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
-                  
-        notification.answer(message)
-        
-        # Obtener un contacto aleatorio para compartir
-        db = next(get_db())
-        phone_contact = obtener_numero_contacto(db)
-        if phone_contact:
-            enviar_contacto(sender, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
-        
-        # Mostrar el menú después del registro
-        show_post_registro_menu(notification, nombre)
-        
-        # Actualizar el estado del usuario - Usando un diccionario serializado para el estado
-        notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre})
+        try:
+            response = requests.post(
+                f"{NEXT_PUBLIC_API_URL}/api/generate_tickets", 
+                json=payload
+            )
+            print(f"Respuesta de la API: Status: {response.status_code}, Texto: {response.text}")
+            
+            # Verificar si hay errores en la respuesta
+            if response.status_code != 200:
+                print(f"Error HTTP: {response.status_code} - {response.text}")
+                notification.answer(f"Ha ocurrido un error durante el registro (HTTP {response.status_code}): {response.text}")
+                show_menu_principal(notification, nombre)
+                notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
+                return
+                
+            # Continuar solo si la respuesta es exitosa
+            response.raise_for_status()
+            data = response.json()
+            
+            # Si el registro fue exitoso
+            notification.answer(f"¡Felicidades! Tu registro ha sido completado exitosamente.")
+            
+            if data.get("qr_code"):
+                qr_buf = BytesIO(base64.b64decode(data["qr_code"]))
+                send_qr_code(sender, qr_buf)
+            
+            message = f"¡Bienvenido a Lotto Bueno! Tu ticket ha sido generado.\n\n" \
+                    f"Es importante que guardes nuestro contacto, así podremos anunciarte si eres el afortunado ganador.\n" \
+                    f"No pierdas tu ticket y guarda nuestro contacto, ¡prepárate para celebrar!\n\n" \
+                    f"¡Mucha suerte!\n" \
+                    f"Lotto Bueno: ¡Tu mejor oportunidad de ganar!"
+                    
+            notification.answer(message)
+            
+            # Obtener un contacto aleatorio para compartir
+            db = next(get_db())
+            phone_contact = obtener_numero_contacto(db)
+            if phone_contact:
+                enviar_contacto(sender, phone_contact.split('@')[0], "Lotto", "Bueno", "Lotto Bueno Inc")
+            
+            # Mostrar el menú después del registro
+            show_post_registro_menu(notification, nombre)
+            
+            # Actualizar el estado del usuario - Usando un diccionario serializado para el estado
+            notification.state_manager.set_state(sender, {"state": "menu_post_registro", "nombre": nombre})
+            
+        except requests.exceptions.RequestException as req_err:
+            print(f"Error en la solicitud HTTP: {req_err}")
+            notification.answer(f"Ha ocurrido un error al contactar el servidor: {str(req_err)}")
+            show_menu_principal(notification, nombre)
+            notification.state_manager.set_state(sender, {"state": "menu_principal", "nombre": nombre})
         
     except requests.exceptions.HTTPError as e:
         print(f"Error HTTP al registrar: {e}")

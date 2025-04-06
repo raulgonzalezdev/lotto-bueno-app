@@ -240,7 +240,7 @@ async def procesar_cedula(update: Update, context: CallbackContext) -> int:
             # Si la respuesta es 404, la cédula no tiene ticket, debemos registrarla
             elif response.status_code == 404:
                 update.message.reply_text(
-                    f"La cédula {cedula} está registrada en el sistema electoral pero aún no tiene un ticket de Lotto Bueno."
+                    f"La cédula {cedula} está registrada en el sistema pero aún no tiene un ticket de Lotto Bueno."
                 )
                 update.message.reply_text(
                     "Para completar tu registro, necesito tu número de teléfono."
@@ -619,6 +619,16 @@ def cancel(update: Update, context: CallbackContext) -> int:
     update.message.reply_text("Conversación finalizada. Envía /start para comenzar de nuevo.")
     return ConversationHandler.END
 
+def mensaje_inicial(update: Update, context: CallbackContext) -> None:
+    """Responde a cualquier mensaje cuando no hay una conversación activa"""
+    user = update.effective_user
+    update.message.reply_text(
+        f"👋 Hola, {user.first_name}. Bienvenido al bot de Lotto Bueno.\n\n"
+        f"Para iniciar tu registro o verificar tu cédula, por favor envía el comando /start\n\n"
+        f"Si ya enviaste tu cédula antes, puedes escribir directamente:\n"
+        f"/start TUCEDULA (ejemplo: /start 12345678)"
+    )
+
 def main():
     """Función principal para iniciar el bot"""
     updater = Updater(TELEGRAM_TOKEN)
@@ -646,14 +656,20 @@ def main():
             ]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
-        per_message=True  # Importante para rastrear callbacks en cada mensaje
+        per_message=True,  # Importante para rastrear callbacks en cada mensaje
+        name="conversacion_principal"
     )
     
     # Añadir el manejador al dispatcher
     dispatcher.add_handler(conv_handler)
     
-    # Manejador para comandos no reconocidos
-    dispatcher.add_handler(MessageHandler(Filters.command, lambda update, context: update.message.reply_text("Comando no reconocido. Usa /start para iniciar.")))
+    # Manejador para comandos no reconocidos - Este debe ir DESPUÉS del ConversationHandler
+    # y además debe excluir específicamente el comando /start
+    dispatcher.add_handler(MessageHandler(Filters.command & ~Filters.regex(r'^/start'), 
+                          lambda update, context: update.message.reply_text("Comando no reconocido. Usa /start para iniciar.")))
+    
+    # Manejador para mensajes de texto cuando no hay conversación activa
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, mensaje_inicial))
     
     # Iniciar el bot con polling más agresivo para mayor responsividad
     updater.start_polling(poll_interval=0.5, timeout=30, drop_pending_updates=True)
